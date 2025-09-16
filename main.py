@@ -119,5 +119,8 @@ def main():
     except Exception as e:
         logger.error(f"Xatolik yuz berdi: {e}")
 
+# Gunicorn uchun Flask app
+app = flask_app
+
 if __name__ == "__main__":
     main()
