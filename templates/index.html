@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>💰 Balans AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1 class="app-title">💰 Balans AI</h1>
+                    <p class="app-subtitle">Moliyaviy hisobotlar</p>
+                </div>
+                <div class="user-info" id="userInfo">
+                    <div class="user-avatar" id="userAvatar">👤</div>
+                    <span id="userName">Foydalanuvchi</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="dashboard">
+                <span class="tab-icon">📊</span>
+                <span class="tab-text">Bosh sahifa</span>
+            </button>
+            <button class="nav-tab" data-tab="transactions">
+                <span class="tab-icon">💰</span>
+                <span class="tab-text">Tranzaksiyalar</span>
+            </button>
+            <button class="nav-tab" data-tab="debts">
+                <span class="tab-icon">🏦</span>
+                <span class="tab-text">Qarzlar</span>
+            </button>
+            <button class="nav-tab" data-tab="analytics">
+                <span class="tab-icon">📈</span>
+                <span class="tab-text">Tahlil</span>
+            </button>
+        </nav>
+
+        <!-- Content Sections -->
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <section id="dashboard" class="tab-content active">
+                <!-- Balance Cards -->
+                <div class="balance-section">
+                    <div class="balance-card main-balance">
+                        <div class="balance-header">
+                            <span class="balance-label">Joriy balans</span>
+                            <span class="balance-icon">💳</span>
+                        </div>
+                        <div class="balance-amount" id="mainBalance">0 so'm</div>
+                        <div class="balance-change" id="balanceChange">
+                            <span class="change-icon">📈</span>
+                            <span class="change-text">Bu oyda</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="quick-stats">
+                    <div class="stat-card income-card">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalIncomeQuick">0</div>
+                            <div class="stat-label">Daromad</div>
+                        </div>
+                    </div>
+                    <div class="stat-card expense-card">
+                        <div class="stat-icon">📉</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalExpenseQuick">0</div>
+                            <div class="stat-label">Xarajat</div>
+                        </div>
+                    </div>
+                    <div class="stat-card debt-card">
+                        <div class="stat-icon">🏦</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalDebtQuick">0</div>
+                            <div class="stat-label">Qarzlar</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-section">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>📊 Oylik statistika</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="monthlyChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>🍰 Kategoriyalar</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="recent-section">
+                    <div class="section-header">
+                        <h3>🕐 So'nggi tranzaksiyalar</h3>
+                        <button class="btn-link" onclick="app.switchTab('transactions')">
+                            Barchasini ko'rish →
+                        </button>
+                    </div>
+                    <div class="recent-list" id="recentTransactions">
+                        <!-- So'nggi tranzaksiyalar bu yerda -->
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="action-btn income-btn" onclick="showAddTransactionModal('income')">
+                        <span class="action-icon">💰</span>
+                        <span class="action-text">Daromad qo'shish</span>
+                    </button>
+                    <button class="action-btn expense-btn" onclick="showAddTransactionModal('expense')">
+                        <span class="action-icon">💸</span>
+                        <span class="action-text">Xarajat qo'shish</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Transactions Tab -->
+            <section id="transactions" class="tab-content">
+                <div class="section-header">
+                    <h2>💰 Barcha tranzaksiyalar</h2>
+                    <button class="btn-primary" onclick="showAddTransactionModal()">
+                        <span class="btn-icon">➕</span>
+                        Qo'shish
+                    </button>
+                </div>
+                
+                <!-- Transaction Filters -->
+                <div class="filters-section">
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">Barchasi</button>
+                        <button class="filter-btn" data-filter="income">Daromad</button>
+                        <button class="filter-btn" data-filter="expense">Xarajat</button>
+                        <button class="filter-btn" data-filter="debt">Qarz</button>
+                    </div>
+                </div>
+
+                <div class="data-list" id="transactionsList">
+                    <!-- Tranzaksiyalar bu yerda ko'rsatiladi -->
+                </div>
+            </section>
+
+            <!-- Debts Tab -->
+            <section id="debts" class="tab-content">
+                <div class="section-header">
+                    <h2>🏦 Qarzlar</h2>
+                    <button class="btn-primary" onclick="showAddTransactionModal('debt')">
+                        <span class="btn-icon">➕</span>
+                        Qarz qo'shish
+                    </button>
+                </div>
+                
+                <div class="debt-summary">
+                    <div class="debt-total">
+                        <span class="debt-label">Umumiy qarz:</span>
+                        <span class="debt-amount" id="totalDebtAmount">0 so'm</span>
+                    </div>
+                </div>
+
+                <div class="data-list" id="debtsList">
+                    <!-- Qarzlar bu yerda ko'rsatiladi -->
+                </div>
+            </section>
+
+            <!-- Analytics Tab -->
+            <section id="analytics" class="tab-content">
+                <div class="section-header">
+                    <h2>📈 Tahlil va hisobotlar</h2>
+                </div>
+                
+                <!-- Advanced Charts -->
+                <div class="analytics-section">
+                    <div class="chart-card full-width">
+                        <div class="chart-header">
+                            <h3>📊 Yillik trend</h3>
+                        </div>
+                        <div class="chart-container large">
+                            <canvas id="yearlyChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <h4>📈 Eng ko'p daromad</h4>
+                            <div class="analytics-value" id="maxIncomeCategory">-</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>📉 Eng ko'p xarajat</h4>
+                            <div class="analytics-value" id="maxExpenseCategory">-</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>💰 O'rtacha daromad</h4>
+                            <div class="analytics-value" id="avgIncome">-</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>💸 O'rtacha xarajat</h4>
+                            <div class="analytics-value" id="avgExpense">-</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Transaction Modal -->
+    <div id="addTransactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="transactionModalTitle">💰 Tranzaksiya qo'shish</h3>
+                <span class="close" onclick="closeModal('addTransactionModal')">&times;</span>
+            </div>
+            <form id="addTransactionForm">
+                <div class="form-group">
+                    <label>Turi:</label>
+                    <div class="transaction-type-selector">
+                        <button type="button" class="type-btn" data-type="income">
+                            <span class="type-icon">📈</span>
+                            Daromad
+                        </button>
+                        <button type="button" class="type-btn" data-type="expense">
+                            <span class="type-icon">📉</span>
+                            Xarajat
+                        </button>
+                        <button type="button" class="type-btn" data-type="debt">
+                            <span class="type-icon">🏦</span>
+                            Qarz
+                        </button>
+                    </div>
+                    <input type="hidden" id="transactionType" required>
+                </div>
+                <div class="form-group">
+                    <label>Miqdor (so'm):</label>
+                    <input type="number" id="transactionAmount" step="0.01" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>Kategoriya:</label>
+                    <input type="text" id="transactionCategory" required placeholder="Masalan: Oziq-ovqat">
+                </div>
+                <div class="form-group">
+                    <label>Tavsif:</label>
+                    <textarea id="transactionDescription" placeholder="Qo'shimcha ma'lumot (ixtiyoriy)"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('addTransactionModal')">
+                        Bekor qilish
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        <span class="btn-icon">💾</span>
+                        Saqlash
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="editModalTitle">Tahrirlash</h3>
+                <span class="close" onclick="closeModal('editModal')">&times;</span>
+            </div>
+            <div id="editModalContent">
+                <!-- Edit form bu yerda dinamik ravishda qo'shiladi -->
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
