@@ -1,82 +1,70 @@
-import mysql.connector
-from mysql.connector import Error
-from mysql.connector.pooling import MySQLConnectionPool
+import pymysql
+import pymysql.cursors
 from config import DB_CONFIG
 import logging
 import threading
+from contextlib import contextmanager
 
 class Database:
     def __init__(self):
-        self.pool = None
+        self.connection_config = DB_CONFIG.copy()
+        self.connection_config.update({
+            'charset': 'utf8mb4',
+            'cursorclass': pymysql.cursors.DictCursor,
+            'autocommit': True
+        })
         self.lock = threading.Lock()
-        self._create_pool()
-    
-    def _create_pool(self):
-        """Connection pool yaratish"""
-        try:
-            pool_config = DB_CONFIG.copy()
-            pool_config.update({
-                'pool_name': 'balans_ai_pool',
-                'pool_size': 5,
-                'pool_reset_session': True,
-                'autocommit': True
-            })
-            self.pool = MySQLConnectionPool(**pool_config)
-            logging.info("Ma'lumotlar bazasi connection pool yaratildi")
-        except Error as e:
-            logging.error(f"Connection pool yaratishda xatolik: {e}")
+        logging.info("Ma'lumotlar bazasi konfiguratsiyasi yaratildi")
     
     def connect(self):
-        """Connection pool mavjudligini tekshirish"""
-        return self.pool is not None
-    
-    def get_connection(self):
-        """Pool dan connection olish"""
+        """Ma'lumotlar bazasiga ulanish imkoniyatini tekshirish"""
         try:
-            if self.pool:
-                return self.pool.get_connection()
-        except Error as e:
+            connection = pymysql.connect(**self.connection_config)
+            connection.close()
+            logging.info("Ma'lumotlar bazasiga ulanish muvaffaqiyatli")
+            return True
+        except Exception as e:
+            logging.error(f"Ma'lumotlar bazasiga ulanishda xatolik: {e}")
+            return False
+    
+    @contextmanager
+    def get_connection(self):
+        """Context manager orqali connection olish"""
+        connection = None
+        try:
+            connection = pymysql.connect(**self.connection_config)
+            yield connection
+        except Exception as e:
             logging.error(f"Connection olishda xatolik: {e}")
-        return None
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if connection:
+                connection.close()
     
     def disconnect(self):
-        """Pool ni yopish"""
-        if self.pool:
-            try:
-                # Pool ni to'g'ridan-to'g'ri yopib bo'lmaydi, lekin referensni o'chiramiz
-                self.pool = None
-                logging.info("Ma'lumotlar bazasi pool referensi o'chirildi")
-            except Exception as e:
-                logging.error(f"Pool yopishda xatolik: {e}")
+        """Disconnect funksiyasi (PyMySQL da kerak emas)"""
+        logging.info("Database disconnect chaqirildi")
     
     def execute_query(self, query, params=None):
         """Query bajarish"""
-        connection = None
-        cursor = None
         try:
             with self.lock:
-                connection = self.get_connection()
-                if not connection:
-                    return None
-                
-                cursor = connection.cursor(dictionary=True)
-                cursor.execute(query, params)
-                
-                if query.strip().upper().startswith('SELECT'):
-                    result = cursor.fetchall()
-                else:
-                    connection.commit()
-                    result = cursor.rowcount
-                
-                return result
-        except Error as e:
+                with self.get_connection() as connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute(query, params)
+                        
+                        if query.strip().upper().startswith('SELECT'):
+                            result = cursor.fetchall()
+                        else:
+                            connection.commit()
+                            result = cursor.rowcount
+                        
+                        return result
+        except Exception as e:
             logging.error(f"Query bajarishda xatolik: {e}")
             return None
-        finally:
-            if cursor:
-                cursor.close()
-            if connection:
-                connection.close()
     
     def get_user_data(self, user_id):
         """Foydalanuvchi ma'lumotlarini olish"""
