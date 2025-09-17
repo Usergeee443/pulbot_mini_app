@@ -22,9 +22,30 @@ FLASK_HOST = os.getenv('FLASK_HOST')
 FLASK_PORT = int(os.getenv('FLASK_PORT'))
 SECRET_KEY = os.getenv('SECRET_KEY')
 
+# OpenAI sozlamalari
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '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')
+
+# Tarif tizimi
+TARIFF_LIMITS = {
+    'FREE': {
+        'transactions_per_month': 50,
+        'ai_requests_per_day': 3,
+        'advanced_analytics': False,
+        'export_data': False,
+        'custom_categories': 5
+    },
+    'PREMIUM': {
+        'transactions_per_month': -1,  # Unlimited
+        'ai_requests_per_day': 50,
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1  # Unlimited
+    }
+}
+
 # Qo'shimcha sozlamalar
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
-ENVIRONMENT = os.getenv('ENVIRONMENT')
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
 # Mini app URL
 MINI_APP_URL = f"{WEBHOOK_URL}/miniapp" if WEBHOOK_URL and WEBHOOK_URL != 'YOUR_NGROK_URL_HERE' else f'http://localhost:{FLASK_PORT}/miniapp'

@@ -10,80 +10,143 @@
 </head>
 <body>
     <div id="app">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="header-left">
-                    <h1 class="app-title">💰 Balans AI</h1>
-                    <p class="app-subtitle">Moliyaviy hisobotlar</p>
-                </div>
-                <div class="user-info" id="userInfo">
-                    <div class="user-avatar" id="userAvatar">👤</div>
-                    <span id="userName">Foydalanuvchi</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- Navigation -->
-        <nav class="nav-tabs">
-            <button class="nav-tab active" data-tab="dashboard">
-                <span class="tab-icon">📊</span>
-                <span class="tab-text">Bosh sahifa</span>
-            </button>
-            <button class="nav-tab" data-tab="transactions">
-                <span class="tab-icon">💰</span>
-                <span class="tab-text">Tranzaksiyalar</span>
-            </button>
-            <button class="nav-tab" data-tab="debts">
-                <span class="tab-icon">🏦</span>
-                <span class="tab-text">Qarzlar</span>
-            </button>
-            <button class="nav-tab" data-tab="analytics">
-                <span class="tab-icon">📈</span>
-                <span class="tab-text">Tahlil</span>
-            </button>
-        </nav>
-
         <!-- Content Sections -->
         <main class="main-content">
-            <!-- Dashboard Tab -->
-            <section id="dashboard" class="tab-content active">
-                <!-- Balance Cards -->
-                <div class="balance-section">
-                    <div class="balance-card main-balance">
-                        <div class="balance-header">
-                            <span class="balance-label">Joriy balans</span>
-                            <span class="balance-icon">💳</span>
+            <!-- Home Tab -->
+            <section id="home" class="tab-content active">
+                <!-- Tariff Badge -->
+                <div class="tariff-badge" id="tariffBadge">
+                    <span class="tariff-icon">⭐</span>
+                    <span class="tariff-text" id="tariffText">FREE</span>
+                    <button class="upgrade-btn" id="upgradeBtn" onclick="app.showUpgradeModal()">
+                        Upgrade
+                    </button>
+                </div>
+
+                <!-- Balance Card - Wallet Style -->
+                <div class="wallet-balance-card">
+                    <div class="balance-header">
+                        <div class="balance-label">Joriy balans</div>
+                        <div class="balance-menu">
+                            <button class="menu-dot" onclick="app.showBalanceMenu()">⋯</button>
                         </div>
-                        <div class="balance-amount" id="mainBalance">0 so'm</div>
-                        <div class="balance-change" id="balanceChange">
-                            <span class="change-icon">📈</span>
-                            <span class="change-text">Bu oyda</span>
-                        </div>
+                    </div>
+                    <div class="balance-amount" id="mainBalance">0 so'm</div>
+                    <div class="balance-change" id="balanceChange">
+                        <span class="change-icon">📈</span>
+                        <span class="change-text">Bu oyda +0%</span>
                     </div>
                 </div>
 
-                <!-- Quick Stats -->
-                <div class="quick-stats">
-                    <div class="stat-card income-card">
+                <!-- Quick Actions - Wallet Style -->
+                <div class="wallet-actions">
+                    <button class="wallet-action-btn exchange" onclick="app.showAIAnalysis()">
+                        <div class="action-icon">🤖</div>
+                        <div class="action-label">AI Tahlil</div>
+                    </button>
+                    <button class="wallet-action-btn receive" onclick="app.getAIReport()">
+                        <div class="action-icon">📊</div>
+                        <div class="action-label">AI Hisobot</div>
+                    </button>
+                    <button class="wallet-action-btn send" onclick="app.showTab('analytics')">
+                        <div class="action-icon">📈</div>
+                        <div class="action-label">Statistika</div>
+                    </button>
+                    <button class="wallet-action-btn more" onclick="app.showTab('debts')">
+                        <div class="action-icon">🏦</div>
+                        <div class="action-label">Qarzlar</div>
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-item income">
                         <div class="stat-icon">📈</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="totalIncomeQuick">0</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="totalIncomeHome">0</div>
                             <div class="stat-label">Daromad</div>
                         </div>
                     </div>
-                    <div class="stat-card expense-card">
+                    <div class="stat-item expense">
                         <div class="stat-icon">📉</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="totalExpenseQuick">0</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="totalExpenseHome">0</div>
                             <div class="stat-label">Xarajat</div>
                         </div>
                     </div>
-                    <div class="stat-card debt-card">
+                    <div class="stat-item debt">
                         <div class="stat-icon">🏦</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="totalDebtQuick">0</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="totalDebtHome">0</div>
                             <div class="stat-label">Qarzlar</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="recent-section">
+                    <div class="section-header">
+                        <h3>So'nggi tranzaksiyalar</h3>
+                        <button class="view-all-btn" onclick="app.switchTab('transactions')">
+                            Barchasi →
+                        </button>
+                    </div>
+                    <div class="transaction-list" id="recentTransactionsList">
+                        <!-- Recent transactions here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions Tab -->
+            <section id="transactions" class="tab-content">
+                <div class="page-header">
+                    <h1>Tranzaksiyalar</h1>
+                    <button class="header-btn" onclick="showAddTransactionModal()">
+                        <span class="btn-icon">➕</span>
+                    </button>
+                </div>
+                
+                <!-- Transaction Filters -->
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="all">Barchasi</button>
+                    <button class="filter-tab" data-filter="income">Daromad</button>
+                    <button class="filter-tab" data-filter="expense">Xarajat</button>
+                    <button class="filter-tab" data-filter="debt">Qarz</button>
+                </div>
+
+                <div class="transaction-list" id="transactionsList">
+                    <!-- Transactions here -->
+                </div>
+            </section>
+
+            <!-- Analytics Tab -->
+            <section id="analytics" class="tab-content">
+                <div class="page-header">
+                    <h1>Tahlillar</h1>
+                    <div class="premium-badge" id="analyticsPremiumBadge">
+                        <span class="premium-icon">⭐</span>
+                        <span>Premium</span>
+                    </div>
+                </div>
+
+                <!-- AI Analysis Section -->
+                <div class="ai-section">
+                    <div class="ai-card">
+                        <div class="ai-header">
+                            <div class="ai-icon">🤖</div>
+                            <div class="ai-info">
+                                <h3>AI Moliyaviy Maslahatchi</h3>
+                                <p id="aiLimitText">Kunlik limit: 3/3</p>
+                            </div>
+                        </div>
+                        <button class="ai-btn" id="aiAnalysisBtn" onclick="app.requestAIAnalysis()">
+                            Tahlil qilish
+                        </button>
+                    </div>
+                    
+                    <div class="ai-result" id="aiResult" style="display: none;">
+                        <div class="ai-result-content" id="aiResultContent">
+                            <!-- AI analysis result -->
                         </div>
                     </div>
                 </div>
@@ -109,180 +172,260 @@
                     </div>
                 </div>
 
-                <!-- Recent Transactions -->
-                <div class="recent-section">
-                    <div class="section-header">
-                        <h3>🕐 So'nggi tranzaksiyalar</h3>
-                        <button class="btn-link" onclick="app.switchTab('transactions')">
-                            Barchasini ko'rish →
+                <!-- Advanced Analytics (Premium) -->
+                <div class="premium-section" id="advancedAnalytics">
+                    <div class="premium-lock" id="analyticsLock">
+                        <div class="lock-icon">🔒</div>
+                        <h3>Kengaytirilgan tahlillar</h3>
+                        <p>Bu funksiya Premium tarifida mavjud</p>
+                        <button class="upgrade-btn" onclick="app.showUpgradeModal()">
+                            Premium ga o'tish
                         </button>
                     </div>
-                    <div class="recent-list" id="recentTransactions">
-                        <!-- So'nggi tranzaksiyalar bu yerda -->
+                    
+                    <div class="advanced-analytics-content" id="advancedAnalyticsContent" style="display: none;">
+                        <!-- Eng yuqori/past xarajatlar -->
+                        <div class="stats-row">
+                            <div class="stat-card expense-high">
+                                <div class="stat-icon">📈</div>
+                                <div class="stat-content">
+                                    <h4>Eng yuqori xarajat</h4>
+                                    <div class="stat-value" id="highestExpense">0 so'm</div>
+                                    <div class="stat-detail" id="highestExpenseDetail">Ma'lumot yo'q</div>
+                                </div>
+                            </div>
+                            <div class="stat-card expense-low">
+                                <div class="stat-icon">📉</div>
+                                <div class="stat-content">
+                                    <h4>Eng kam xarajat</h4>
+                                    <div class="stat-value" id="lowestExpense">0 so'm</div>
+                                    <div class="stat-detail" id="lowestExpenseDetail">Ma'lumot yo'q</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Eng qimmat kun -->
+                        <div class="highlight-card">
+                            <div class="highlight-icon">💸</div>
+                            <div class="highlight-content">
+                                <h4>Eng ko'p harajat qilingan kun</h4>
+                                <div class="highlight-value" id="mostExpensiveDay">Ma'lumot yo'q</div>
+                                <div class="highlight-amount" id="mostExpensiveDayAmount">0 so'm</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Kunlik statistika grafigi -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>📅 Oxirgi 7 kun</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="dailyChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Top kategoriyalar -->
+                        <div class="top-categories">
+                            <h3>🏆 Top kategoriyalar</h3>
+                            <div class="category-list" id="topCategories">
+                                <!-- Categories will be loaded here -->
+                            </div>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="quick-actions">
-                    <button class="action-btn income-btn" onclick="showAddTransactionModal('income')">
-                        <span class="action-icon">💰</span>
-                        <span class="action-text">Daromad qo'shish</span>
-                    </button>
-                    <button class="action-btn expense-btn" onclick="showAddTransactionModal('expense')">
-                        <span class="action-icon">💸</span>
-                        <span class="action-text">Xarajat qo'shish</span>
-                    </button>
-                </div>
-            </section>
-
-            <!-- Transactions Tab -->
-            <section id="transactions" class="tab-content">
-                <div class="section-header">
-                    <h2>💰 Barcha tranzaksiyalar</h2>
-                    <button class="btn-primary" onclick="showAddTransactionModal()">
-                        <span class="btn-icon">➕</span>
-                        Qo'shish
-                    </button>
-                </div>
-                
-                <!-- Transaction Filters -->
-                <div class="filters-section">
-                    <div class="filter-buttons">
-                        <button class="filter-btn active" data-filter="all">Barchasi</button>
-                        <button class="filter-btn" data-filter="income">Daromad</button>
-                        <button class="filter-btn" data-filter="expense">Xarajat</button>
-                        <button class="filter-btn" data-filter="debt">Qarz</button>
-                    </div>
-                </div>
-
-                <div class="data-list" id="transactionsList">
-                    <!-- Tranzaksiyalar bu yerda ko'rsatiladi -->
                 </div>
             </section>
 
             <!-- Debts Tab -->
             <section id="debts" class="tab-content">
-                <div class="section-header">
-                    <h2>🏦 Qarzlar</h2>
-                    <button class="btn-primary" onclick="showAddTransactionModal('debt')">
-                        <span class="btn-icon">➕</span>
-                        Qarz qo'shish
-                    </button>
+                <div class="page-header">
+                    <h1>Qarzlar</h1>
                 </div>
-                
+
+                <!-- Qarzlar xulosasi -->
                 <div class="debt-summary">
-                    <div class="debt-total">
-                        <span class="debt-label">Umumiy qarz:</span>
-                        <span class="debt-amount" id="totalDebtAmount">0 so'm</span>
-                    </div>
-                </div>
-
-                <div class="data-list" id="debtsList">
-                    <!-- Qarzlar bu yerda ko'rsatiladi -->
-                </div>
-            </section>
-
-            <!-- Analytics Tab -->
-            <section id="analytics" class="tab-content">
-                <div class="section-header">
-                    <h2>📈 Tahlil va hisobotlar</h2>
-                </div>
-                
-                <!-- Advanced Charts -->
-                <div class="analytics-section">
-                    <div class="chart-card full-width">
-                        <div class="chart-header">
-                            <h3>📊 Yillik trend</h3>
-                        </div>
-                        <div class="chart-container large">
-                            <canvas id="yearlyChart"></canvas>
+                    <div class="summary-card total">
+                        <div class="summary-icon">📊</div>
+                        <div class="summary-content">
+                            <h4>Jami qarzlar</h4>
+                            <div class="summary-value" id="totalDebts">0 ta</div>
                         </div>
                     </div>
                     
-                    <div class="analytics-grid">
-                        <div class="analytics-card">
-                            <h4>📈 Eng ko'p daromad</h4>
-                            <div class="analytics-value" id="maxIncomeCategory">-</div>
+                    <div class="summary-card given">
+                        <div class="summary-icon">📤</div>
+                        <div class="summary-content">
+                            <h4>Bergan qarzlar</h4>
+                            <div class="summary-value" id="totalGiven">0 so'm</div>
                         </div>
-                        <div class="analytics-card">
-                            <h4>📉 Eng ko'p xarajat</h4>
-                            <div class="analytics-value" id="maxExpenseCategory">-</div>
+                    </div>
+                    
+                    <div class="summary-card received">
+                        <div class="summary-icon">📥</div>
+                        <div class="summary-content">
+                            <h4>Olgan qarzlar</h4>
+                            <div class="summary-value" id="totalReceived">0 so'm</div>
                         </div>
-                        <div class="analytics-card">
-                            <h4>💰 O'rtacha daromad</h4>
-                            <div class="analytics-value" id="avgIncome">-</div>
+                    </div>
+                    
+                    <div class="summary-card balance">
+                        <div class="summary-icon">⚖️</div>
+                        <div class="summary-content">
+                            <h4>Sof balans</h4>
+                            <div class="summary-value" id="netBalance">0 so'm</div>
                         </div>
-                        <div class="analytics-card">
-                            <h4>💸 O'rtacha xarajat</h4>
-                            <div class="analytics-value" id="avgExpense">-</div>
+                    </div>
+                </div>
+
+                <!-- Qarzlar ro'yxati -->
+                <div class="debts-list">
+                    <h3>📋 Qarzlar tarixi</h3>
+                    <div class="debt-items" id="debtItems">
+                        <!-- Debts will be loaded here -->
+                        <div class="empty-state">
+                            <div class="empty-icon">💰</div>
+                            <h4>Qarzlar yo'q</h4>
+                            <p>Hali hech qanday qarz ma'lumoti kiritilmagan</p>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Tab -->
+            <section id="profile" class="tab-content">
+                <div class="page-header">
+                    <h1>Profil</h1>
+                </div>
+
+                <!-- User Info -->
+                <div class="profile-card">
+                    <div class="profile-avatar" id="profileAvatar">👤</div>
+                    <div class="profile-info">
+                        <h2 id="profileName">Foydalanuvchi</h2>
+                        <div class="profile-tariff">
+                            <span class="tariff-badge-small" id="profileTariff">FREE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tariff Info -->
+                <div class="tariff-info">
+                    <h3>Sizning tarifingiz</h3>
+                    <div class="tariff-details" id="tariffDetails">
+                        <!-- Tariff details here -->
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div class="settings-section">
+                    <h3>Sozlamalar</h3>
+                    <div class="setting-item">
+                        <span>Bildirishnomalar</span>
+                        <label class="switch">
+                            <input type="checkbox" id="notificationsSwitch" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <span>Ma'lumotlarni eksport qilish</span>
+                        <button class="setting-btn" onclick="app.exportData()">
+                            Eksport
+                        </button>
                     </div>
                 </div>
             </section>
         </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-tab="home">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Bosh sahifa</div>
+            </button>
+            <button class="nav-item" data-tab="transactions">
+                <div class="nav-icon">💳</div>
+                <div class="nav-label">Tranzaksiyalar</div>
+            </button>
+            <button class="nav-item" data-tab="analytics">
+                <div class="nav-icon">📊</div>
+                <div class="nav-label">Tahlillar</div>
+            </button>
+            <button class="nav-item" data-tab="debts">
+                <div class="nav-icon">🏦</div>
+                <div class="nav-label">Qarzlar</div>
+            </button>
+            <button class="nav-item" data-tab="profile">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Profil</div>
+            </button>
+        </nav>
     </div>
 
     <!-- Modals -->
-    <!-- Add Transaction Modal -->
-    <div id="addTransactionModal" class="modal">
+
+    <!-- Upgrade Modal -->
+    <div id="upgradeModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="transactionModalTitle">💰 Tranzaksiya qo'shish</h3>
-                <span class="close" onclick="closeModal('addTransactionModal')">&times;</span>
+                <h3>⭐ Premium ga o'tish</h3>
+                <span class="close" onclick="closeModal('upgradeModal')">&times;</span>
             </div>
-            <form id="addTransactionForm">
-                <div class="form-group">
-                    <label>Turi:</label>
-                    <div class="transaction-type-selector">
-                        <button type="button" class="type-btn" data-type="income">
-                            <span class="type-icon">📈</span>
-                            Daromad
-                        </button>
-                        <button type="button" class="type-btn" data-type="expense">
-                            <span class="type-icon">📉</span>
-                            Xarajat
-                        </button>
-                        <button type="button" class="type-btn" data-type="debt">
-                            <span class="type-icon">🏦</span>
-                            Qarz
-                        </button>
+            <div class="upgrade-content">
+                <div class="upgrade-features">
+                    <h4>Premium imkoniyatlar:</h4>
+                    <div class="feature-list">
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Cheksiz tranzaksiyalar</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>50 ta AI so'rov kuniga</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Kengaytirilgan tahlillar</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Ma'lumotlar eksporti</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Cheksiz kategoriyalar</span>
+                        </div>
                     </div>
-                    <input type="hidden" id="transactionType" required>
                 </div>
-                <div class="form-group">
-                    <label>Miqdor (so'm):</label>
-                    <input type="number" id="transactionAmount" step="0.01" required placeholder="0.00">
-                </div>
-                <div class="form-group">
-                    <label>Kategoriya:</label>
-                    <input type="text" id="transactionCategory" required placeholder="Masalan: Oziq-ovqat">
-                </div>
-                <div class="form-group">
-                    <label>Tavsif:</label>
-                    <textarea id="transactionDescription" placeholder="Qo'shimcha ma'lumot (ixtiyoriy)"></textarea>
+                <div class="upgrade-price">
+                    <div class="price-tag">
+                        <span class="price">29,000 so'm</span>
+                        <span class="period">/ oyiga</span>
+                    </div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="closeModal('addTransactionModal')">
-                        Bekor qilish
+                    <button type="button" class="btn-secondary" onclick="closeModal('upgradeModal')">
+                        Keyinroq
                     </button>
-                    <button type="submit" class="btn-primary">
-                        <span class="btn-icon">💾</span>
-                        Saqlash
+                    <button type="button" class="btn-primary" onclick="app.upgradeToPremium()">
+                        <span class="btn-icon">⭐</span>
+                        Premium olish
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <!-- Edit Modal -->
-    <div id="editModal" class="modal">
+    <!-- AI Analysis Modal -->
+    <div id="aiAnalysisModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="editModalTitle">Tahrirlash</h3>
-                <span class="close" onclick="closeModal('editModal')">&times;</span>
+                <h3>🤖 AI Tahlil</h3>
+                <span class="close" onclick="closeModal('aiAnalysisModal')">&times;</span>
             </div>
-            <div id="editModalContent">
-                <!-- Edit form bu yerda dinamik ravishda qo'shiladi -->
+            <div class="ai-analysis-content" id="aiAnalysisContent">
+                <div class="ai-loading">
+                    <div class="loading-spinner"></div>
+                    <p>AI tahlil qilmoqda...</p>
+                </div>
             </div>
         </div>
     </div>

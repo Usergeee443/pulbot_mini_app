@@ -71,6 +71,27 @@ class Database:
         query = "SELECT * FROM users WHERE user_id = %s"
         return self.execute_query(query, (user_id,))
     
+    def add_user(self, user_id, username=None, first_name=None, last_name=None):
+        """Yangi foydalanuvchi qo'shish"""
+        query = """
+        INSERT INTO users (user_id, username, first_name, last_name, tariff, created_at) 
+        VALUES (%s, %s, %s, %s, 'PREMIUM', NOW())
+        ON DUPLICATE KEY UPDATE 
+        username = VALUES(username), 
+        first_name = VALUES(first_name), 
+        last_name = VALUES(last_name)
+        """
+        return self.execute_query(query, (user_id, username, first_name, last_name))
+    
+    def update_user_info(self, user_id, username=None, first_name=None, last_name=None):
+        """Foydalanuvchi ma'lumotlarini yangilash"""
+        query = """
+        UPDATE users 
+        SET username = %s, first_name = %s, last_name = %s 
+        WHERE user_id = %s
+        """
+        return self.execute_query(query, (username, first_name, last_name, user_id))
+    
     def get_transactions(self, user_id, limit=50):
         """Tranzaksiyalarni olish"""
         query = """
@@ -164,6 +185,98 @@ class Database:
         """Maqsadni o'chirish"""
         query = "DELETE FROM goals WHERE id = %s"
         return self.execute_query(query, (goal_id,))
+    
+    def create_ai_requests_table(self):
+        """AI so'rovlar jadvali yaratish"""
+        query = """
+        CREATE TABLE IF NOT EXISTS ai_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            request_type VARCHAR(50) NOT NULL,
+            prompt TEXT NOT NULL,
+            response TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_request_type (request_type),
+            INDEX idx_created_at (created_at)
+        )
+        """
+        return self.execute_query(query)
+    
+    def get_user_tariff(self, user_id):
+        """Foydalanuvchi tarifini olish"""
+        query = "SELECT tariff FROM users WHERE user_id = %s"
+        result = self.execute_query(query, (user_id,))
+        if result:
+            user = result[0]
+            return user['tariff'] or 'FREE'
+        return 'FREE'
+    
+    def update_user_tariff(self, user_id, tariff, expires_at=None):
+        """Foydalanuvchi tarifini yangilash"""
+        query = """
+        UPDATE users 
+        SET tariff = %s 
+        WHERE user_id = %s
+        """
+        return self.execute_query(query, (tariff, user_id))
+    
+    def get_monthly_transaction_count(self, user_id):
+        """Oylik tranzaksiyalar sonini olish"""
+        from datetime import datetime, timedelta
+        start_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        query = """
+        SELECT COUNT(*) as count FROM transactions 
+        WHERE user_id = %s AND created_at >= %s
+        """
+        result = self.execute_query(query, (user_id, start_of_month))
+        return result[0]['count'] if result else 0
+    
+    def get_debts_detailed(self, user_id):
+        """Batafsil qarzlar ma'lumotlarini olish"""
+        query = """
+        SELECT 
+            id,
+            amount,
+            category,
+            description,
+            created_at,
+            CASE 
+                WHEN amount > 0 THEN 'bergan'
+                ELSE 'olgan'
+            END as debt_type,
+            ABS(amount) as debt_amount
+        FROM transactions 
+        WHERE user_id = %s AND transaction_type = 'debt'
+        ORDER BY created_at DESC
+        """
+        return self.execute_query(query, (user_id,))
+    
+    def get_debt_summary(self, user_id):
+        """Qarzlar xulosasi"""
+        query = """
+        SELECT 
+            COUNT(*) as total_debts,
+            SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as total_given,
+            SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END) as total_received,
+            SUM(amount) as net_balance
+        FROM transactions 
+        WHERE user_id = %s AND transaction_type = 'debt'
+        """
+        result = self.execute_query(query, (user_id,))
+        return result[0] if result else {
+            'total_debts': 0,
+            'total_given': 0,
+            'total_received': 0,
+            'net_balance': 0
+        }
 
 # Global database instance
 db = Database()
+
+# AI requests jadvali yaratish
+try:
+    db.create_ai_requests_table()
+except:
+    pass  # Jadval allaqachon mavjud bo'lsa

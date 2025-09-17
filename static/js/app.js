@@ -1,17 +1,18 @@
-// Balans AI - Premium JavaScript Application
+// Telegram Wallet Style - Balans AI Application
 
 class BalansAI {
     constructor() {
         this.currentUser = null;
-        this.currentTab = 'dashboard';
+        this.currentTab = 'home';
+        this.userTariff = 'FREE';
+        this.userLimits = null;
         this.data = {
             transactions: [],
             statistics: null
         };
         this.charts = {
             monthly: null,
-            category: null,
-            yearly: null
+            category: null
         };
         this.currentFilter = 'all';
         
@@ -26,9 +27,13 @@ class BalansAI {
             tg.expand();
             tg.enableClosingConfirmation();
             
-            // Full screen rejimi
-            tg.setHeaderColor('#2481cc');
+            // Full screen va Wallet style
+            tg.setHeaderColor('#007aff');
             tg.setBackgroundColor('#ffffff');
+            
+            // Main button ni yashirish
+            tg.MainButton.hide();
+            tg.BackButton.hide();
             
             // Foydalanuvchi ma'lumotlari
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -42,10 +47,6 @@ class BalansAI {
             
             // Tema sozlash
             this.setTheme(tg.colorScheme || 'light');
-            
-            // Telegram tugmalarni yashirish
-            tg.MainButton.hide();
-            tg.BackButton.hide();
         } else {
             // Test rejimi
             this.currentUser = { id: 123456789, first_name: 'Test User' };
@@ -54,18 +55,22 @@ class BalansAI {
         }
 
         this.setupEventListeners();
+        await this.loadUserTariff();
         await this.loadAllData();
     }
 
     updateUserInfo() {
         if (this.currentUser) {
-            document.getElementById('userName').textContent = 
-                this.currentUser.first_name || 'Foydalanuvchi';
+            // Profile sahifasida
+            const profileName = document.getElementById('profileName');
+            if (profileName) {
+                profileName.textContent = this.currentUser.first_name || 'Foydalanuvchi';
+            }
             
             // Avatar
-            const avatar = document.getElementById('userAvatar');
-            if (this.currentUser.first_name) {
-                avatar.textContent = this.currentUser.first_name.charAt(0).toUpperCase();
+            const profileAvatar = document.getElementById('profileAvatar');
+            if (profileAvatar && this.currentUser.first_name) {
+                profileAvatar.textContent = this.currentUser.first_name.charAt(0).toUpperCase();
             }
         }
     }
@@ -75,26 +80,26 @@ class BalansAI {
         
         // Chart.js uchun rang sozlamalari
         this.chartColors = {
-            income: theme === 'dark' ? '#10b981' : '#10b981',
-            expense: theme === 'dark' ? '#ef4444' : '#ef4444',
-            debt: theme === 'dark' ? '#f59e0b' : '#f59e0b',
+            income: '#34c759',
+            expense: '#ff3b30',
+            debt: '#ff9500',
             text: theme === 'dark' ? '#ffffff' : '#000000',
-            grid: theme === 'dark' ? '#374151' : '#e5e7eb'
+            grid: theme === 'dark' ? '#48484a' : '#e5e5ea'
         };
     }
 
     setupEventListeners() {
-        // Tab navigation
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const tabName = e.target.closest('.nav-tab').dataset.tab;
+        // Bottom navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const tabName = e.target.closest('.nav-item').dataset.tab;
                 this.switchTab(tabName);
             });
         });
 
-        // Filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+        // Filter tabs
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
                 const filter = e.target.dataset.filter;
                 this.setFilter(filter);
             });
@@ -110,10 +115,7 @@ class BalansAI {
         });
 
         // Form submission
-        document.getElementById('addTransactionForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.addTransaction();
-        });
+        // Transaction form olib tashlandi - faqat ko'rish va o'chirish
 
         // Modal close events
         document.querySelectorAll('.modal').forEach(modal => {
@@ -124,18 +126,18 @@ class BalansAI {
             });
         });
 
-        // Haptic feedback for buttons (Telegram WebApp)
+        // Haptic feedback for Telegram
         document.addEventListener('click', (e) => {
-            if (e.target.closest('button') && window.Telegram?.WebApp) {
+            if (e.target.closest('button, .nav-item, .wallet-action-btn') && window.Telegram?.WebApp) {
                 window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
             }
         });
     }
 
     switchTab(tabName) {
-        // Update active tab
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.classList.remove('active');
+        // Update active nav item
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
         });
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
 
@@ -153,12 +155,77 @@ class BalansAI {
         this.currentFilter = filter;
         
         // Update filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
+        document.querySelectorAll('.filter-tab').forEach(btn => {
             btn.classList.remove('active');
         });
         document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
         
         this.renderTransactions();
+    }
+
+    async loadUserTariff() {
+        if (!this.currentUser) return;
+
+        try {
+            const response = await fetch(`/api/user/tariff/${this.currentUser.id}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                this.userTariff = result.data.tariff;
+                this.userLimits = result.data;
+                console.log('Tarif yuklandi:', this.userTariff, this.userLimits);
+                this.updateTariffUI();
+            } else {
+                console.error('Tarif yuklashda xatolik:', result.message);
+            }
+        } catch (error) {
+            console.error('Tarif ma\'lumotlarini yuklashda xatolik:', error);
+        }
+    }
+
+    updateTariffUI() {
+        // Tariff badge
+        const tariffBadge = document.getElementById('tariffBadge');
+        const tariffText = document.getElementById('tariffText');
+        const upgradeBtn = document.getElementById('upgradeBtn');
+        
+        if (tariffText) {
+            tariffText.textContent = this.userTariff || 'FREE';
+            console.log('Tariff text yangilandi:', tariffText.textContent);
+        }
+        
+        if (this.userTariff === 'PREMIUM') {
+            if (tariffBadge) {
+                tariffBadge.classList.add('premium');
+                tariffBadge.classList.remove('free');
+            }
+            if (upgradeBtn) upgradeBtn.style.display = 'none';
+        } else {
+            if (tariffBadge) {
+                tariffBadge.classList.add('free');
+                tariffBadge.classList.remove('premium');
+            }
+            if (upgradeBtn) upgradeBtn.style.display = 'block';
+        }
+        
+        // Profile tariff
+        const profileTariff = document.getElementById('profileTariff');
+        if (profileTariff) {
+            profileTariff.textContent = this.userTariff;
+            profileTariff.className = `tariff-badge-small ${this.userTariff.toLowerCase()}`;
+        }
+        
+        // Analytics premium badge
+        const analyticsPremiumBadge = document.getElementById('analyticsPremiumBadge');
+        if (analyticsPremiumBadge) {
+            analyticsPremiumBadge.style.display = this.userTariff === 'PREMIUM' ? 'none' : 'flex';
+        }
+        
+        // Advanced analytics section
+        const advancedAnalytics = document.getElementById('advancedAnalytics');
+        if (advancedAnalytics) {
+            advancedAnalytics.style.display = this.userLimits?.advanced_analytics ? 'none' : 'block';
+        }
     }
 
     async loadAllData() {
@@ -168,16 +235,27 @@ class BalansAI {
             this.showLoading();
             
             // Ma'lumotlarni parallel yuklash
-            const [transactions, statistics] = await Promise.all([
+            const [transactions, statistics, limits, debts] = await Promise.all([
                 this.fetchData(`/api/transactions/${this.currentUser.id}`),
-                this.fetchData(`/api/statistics/${this.currentUser.id}`)
+                this.fetchData(`/api/statistics/${this.currentUser.id}`),
+                this.fetchData(`/api/check-limits/${this.currentUser.id}`),
+                this.fetchData(`/api/debts/${this.currentUser.id}`)
             ]);
 
             this.data.transactions = transactions || [];
             this.data.statistics = statistics || this.getEmptyStatistics();
+            this.userLimits = limits || {};
+            this.data.debts = debts || { debts: [], summary: { total_debts: 0, total_given: 0, total_received: 0, net_balance: 0 } };
 
             this.hideLoading();
             this.renderCurrentTab();
+            this.updateAILimitText();
+            this.updateDebtsSection();
+            
+            // Premium foydalanuvchilar uchun advanced analytics yuklash
+            if (this.userLimits?.data?.advanced_analytics) {
+                await this.loadAdvancedAnalytics();
+            }
         } catch (error) {
             console.error('Ma\'lumotlarni yuklashda xatolik:', error);
             this.showNotification('Ma\'lumotlarni yuklashda xatolik yuz berdi', 'error');
@@ -210,22 +288,22 @@ class BalansAI {
 
     renderCurrentTab() {
         switch (this.currentTab) {
-            case 'dashboard':
-                this.renderDashboard();
+            case 'home':
+                this.renderHome();
                 break;
             case 'transactions':
                 this.renderTransactions();
                 break;
-            case 'debts':
-                this.renderDebts();
-                break;
             case 'analytics':
                 this.renderAnalytics();
+                break;
+            case 'profile':
+                this.renderProfile();
                 break;
         }
     }
 
-    renderDashboard() {
+    renderHome() {
         if (!this.data.statistics) return;
 
         const stats = this.data.statistics;
@@ -234,23 +312,32 @@ class BalansAI {
         document.getElementById('mainBalance').textContent = 
             this.formatCurrency(stats.balance);
 
-        // Quick stats
-        document.getElementById('totalIncomeQuick').textContent = 
+        // Balance change calculation
+        const balanceChange = document.getElementById('balanceChange');
+        if (balanceChange) {
+            // Bu oyda o'zgarish (soddalashtirilgan)
+            const changePercent = stats.total_income > 0 ? 
+                ((stats.balance / stats.total_income) * 100).toFixed(1) : 0;
+            balanceChange.innerHTML = `
+                <span class="change-icon">${changePercent >= 0 ? '📈' : '📉'}</span>
+                <span class="change-text">Bu oyda ${changePercent >= 0 ? '+' : ''}${changePercent}%</span>
+            `;
+        }
+
+        // Home stats
+        document.getElementById('totalIncomeHome').textContent = 
             this.formatNumber(stats.total_income);
-        document.getElementById('totalExpenseQuick').textContent = 
+        document.getElementById('totalExpenseHome').textContent = 
             this.formatNumber(stats.total_expense);
-        document.getElementById('totalDebtQuick').textContent = 
+        document.getElementById('totalDebtHome').textContent = 
             this.formatNumber(stats.total_debt);
 
         // Recent transactions
         this.renderRecentTransactions(stats.recent_transactions);
-
-        // Charts
-        this.renderDashboardCharts();
     }
 
     renderRecentTransactions(transactions) {
-        const container = document.getElementById('recentTransactions');
+        const container = document.getElementById('recentTransactionsList');
         
         if (!transactions || transactions.length === 0) {
             container.innerHTML = `
@@ -263,16 +350,19 @@ class BalansAI {
         }
 
         container.innerHTML = transactions.slice(0, 5).map(transaction => `
-            <div class="data-item">
-                <div class="item-header">
-                    <div class="item-title">${this.escapeHtml(transaction.description || transaction.category)}</div>
-                    <div class="item-amount ${transaction.transaction_type}">
+            <div class="transaction-item">
+                <div class="transaction-icon ${transaction.transaction_type}">
+                    ${this.getTransactionIcon(transaction.transaction_type)}
+                </div>
+                <div class="transaction-info">
+                    <div class="transaction-title">${this.escapeHtml(transaction.description || transaction.category)}</div>
+                    <div class="transaction-category">${this.escapeHtml(transaction.category)}</div>
+                </div>
+                <div class="transaction-right">
+                    <div class="transaction-amount ${transaction.transaction_type}">
                         ${transaction.transaction_type === 'expense' ? '-' : '+'}${this.formatCurrency(transaction.amount)}
                     </div>
-                </div>
-                <div class="item-meta">
-                    <span class="item-category">${this.escapeHtml(transaction.category)}</span>
-                    <span>${this.formatDate(transaction.created_at)}</span>
+                    <div class="transaction-date">${this.formatDate(transaction.created_at)}</div>
                 </div>
             </div>
         `).join('');
@@ -298,65 +388,26 @@ class BalansAI {
         }
 
         container.innerHTML = transactions.map(transaction => `
-            <div class="data-item">
-                <div class="item-header">
-                    <div class="item-title">${this.escapeHtml(transaction.description || transaction.category)}</div>
-                    <div class="item-amount ${transaction.transaction_type}">
+            <div class="transaction-item">
+                <div class="transaction-icon ${transaction.transaction_type}">
+                    ${this.getTransactionIcon(transaction.transaction_type)}
+                </div>
+                <div class="transaction-info">
+                    <div class="transaction-title">${this.escapeHtml(transaction.description || transaction.category)}</div>
+                    <div class="transaction-category">${this.escapeHtml(transaction.category)}</div>
+                </div>
+                <div class="transaction-right">
+                    <div class="transaction-amount ${transaction.transaction_type}">
                         ${transaction.transaction_type === 'expense' ? '-' : '+'}${this.formatCurrency(transaction.amount)}
                     </div>
+                    <div class="transaction-date">${this.formatDate(transaction.created_at)}</div>
                 </div>
-                ${transaction.description ? `<div class="item-description">${this.escapeHtml(transaction.description)}</div>` : ''}
-                <div class="item-meta">
-                    <span class="item-category">${this.escapeHtml(transaction.category)}</span>
-                    <span>${this.formatDate(transaction.created_at)}</span>
-                </div>
-                <div class="item-actions">
+                <div class="transaction-actions">
                     <button class="btn-secondary btn-small" onclick="app.editTransaction(${transaction.id})">
-                        ✏️ Tahrirlash
+                        ✏️
                     </button>
                     <button class="btn-danger btn-small" onclick="app.deleteTransaction(${transaction.id})">
-                        🗑️ O'chirish
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    renderDebts() {
-        const debts = this.data.transactions.filter(t => t.transaction_type === 'debt');
-        const totalDebt = debts.reduce((sum, debt) => sum + parseFloat(debt.amount), 0);
-        
-        document.getElementById('totalDebtAmount').textContent = this.formatCurrency(totalDebt);
-
-        const container = document.getElementById('debtsList');
-        
-        if (debts.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">🏦</div>
-                    <p>Qarzlar yo'q</p>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = debts.map(debt => `
-            <div class="data-item">
-                <div class="item-header">
-                    <div class="item-title">${this.escapeHtml(debt.description || debt.category)}</div>
-                    <div class="item-amount debt">${this.formatCurrency(debt.amount)}</div>
-                </div>
-                ${debt.description ? `<div class="item-description">${this.escapeHtml(debt.description)}</div>` : ''}
-                <div class="item-meta">
-                    <span class="item-category">${this.escapeHtml(debt.category)}</span>
-                    <span>${this.formatDate(debt.created_at)}</span>
-                </div>
-                <div class="item-actions">
-                    <button class="btn-secondary btn-small" onclick="app.editTransaction(${debt.id})">
-                        ✏️ Tahrirlash
-                    </button>
-                    <button class="btn-danger btn-small" onclick="app.deleteTransaction(${debt.id})">
-                        🗑️ O'chirish
+                        🗑️
                     </button>
                 </div>
             </div>
@@ -364,37 +415,37 @@ class BalansAI {
     }
 
     renderAnalytics() {
-        if (!this.data.statistics) return;
-
-        const stats = this.data.statistics;
-
-        // Analytics cards
-        if (stats.category_data && stats.category_data.length > 0) {
-            const maxIncomeCategory = stats.category_data.reduce((max, cat) => 
-                cat.income > max.income ? cat : max, stats.category_data[0]);
-            const maxExpenseCategory = stats.category_data.reduce((max, cat) => 
-                cat.expense > max.expense ? cat : max, stats.category_data[0]);
-
-            document.getElementById('maxIncomeCategory').textContent = 
-                `${maxIncomeCategory.category} (${this.formatCurrency(maxIncomeCategory.income)})`;
-            document.getElementById('maxExpenseCategory').textContent = 
-                `${maxExpenseCategory.category} (${this.formatCurrency(maxExpenseCategory.expense)})`;
-        }
-
-        // O'rtacha hisoblar
-        const transactionCount = this.data.transactions.length;
-        if (transactionCount > 0) {
-            document.getElementById('avgIncome').textContent = 
-                this.formatCurrency(stats.total_income / transactionCount);
-            document.getElementById('avgExpense').textContent = 
-                this.formatCurrency(stats.total_expense / transactionCount);
-        }
-
-        // Yillik chart
-        this.renderYearlyChart();
+        this.renderCharts();
+        this.updateAILimitText();
     }
 
-    renderDashboardCharts() {
+    renderProfile() {
+        // Tariff details
+        const tariffDetails = document.getElementById('tariffDetails');
+        if (tariffDetails && this.userLimits) {
+            const limits = this.userLimits.limits || {};
+            tariffDetails.innerHTML = `
+                <div class="tariff-feature">
+                    <span>Oylik tranzaksiyalar:</span>
+                    <span>${limits.transactions_per_month === -1 ? 'Cheksiz' : limits.transactions_per_month}</span>
+                </div>
+                <div class="tariff-feature">
+                    <span>Kunlik AI so'rovlar:</span>
+                    <span>${limits.ai_requests_per_day === -1 ? 'Cheksiz' : limits.ai_requests_per_day}</span>
+                </div>
+                <div class="tariff-feature">
+                    <span>Kengaytirilgan tahlil:</span>
+                    <span>${limits.advanced_analytics ? '✅' : '❌'}</span>
+                </div>
+                <div class="tariff-feature">
+                    <span>Ma'lumot eksporti:</span>
+                    <span>${limits.export_data ? '✅' : '❌'}</span>
+                </div>
+            `;
+        }
+    }
+
+    renderCharts() {
         this.renderMonthlyChart();
         this.renderCategoryChart();
     }
@@ -493,57 +544,28 @@ class BalansAI {
         });
     }
 
-    renderYearlyChart() {
-        const ctx = document.getElementById('yearlyChart');
-        if (!ctx || !this.data.statistics) return;
-
-        if (this.charts.yearly) {
-            this.charts.yearly.destroy();
-        }
-
-        const monthlyData = this.data.statistics.monthly_data || [];
-        
-        this.charts.yearly = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: monthlyData.map(d => this.formatMonth(d.month)),
-                datasets: [
-                    {
-                        label: 'Daromad',
-                        data: monthlyData.map(d => d.income),
-                        backgroundColor: this.chartColors.income
-                    },
-                    {
-                        label: 'Xarajat',
-                        data: monthlyData.map(d => d.expense),
-                        backgroundColor: this.chartColors.expense
-                    },
-                    {
-                        label: 'Qarz',
-                        data: monthlyData.map(d => d.debt),
-                        backgroundColor: this.chartColors.debt
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: value => this.formatNumber(value)
-                        }
-                    }
-                }
+    updateAILimitText() {
+        const aiLimitText = document.getElementById('aiLimitText');
+        if (aiLimitText && this.userLimits) {
+            const limits = this.userLimits.limits || {};
+            const usage = this.userLimits.usage || {};
+            
+            if (limits.ai_requests_per_day === -1) {
+                aiLimitText.textContent = 'Cheksiz AI so\'rovlar';
+            } else {
+                const remaining = limits.ai_requests_per_day - (usage.daily_ai_requests || 0);
+                aiLimitText.textContent = `Qolgan: ${remaining}/${limits.ai_requests_per_day}`;
             }
-        });
+        }
+    }
+
+    getTransactionIcon(type) {
+        const icons = {
+            income: '📥',
+            expense: '📤',
+            debt: '🏦'
+        };
+        return icons[type] || '💰';
     }
 
     selectTransactionType(type) {
@@ -555,8 +577,8 @@ class BalansAI {
 
         // Modal title ni yangilash
         const titles = {
-            income: '📈 Daromad qo\'shish',
-            expense: '📉 Xarajat qo\'shish',
+            income: '📥 Daromad qo\'shish',
+            expense: '📤 Xarajat qo\'shish',
             debt: '🏦 Qarz qo\'shish'
         };
         document.getElementById('transactionModalTitle').textContent = titles[type] || '💰 Tranzaksiya qo\'shish';
@@ -584,36 +606,27 @@ class BalansAI {
         }
     }
 
-    // CRUD Operations
-    async addTransaction() {
-        const type = document.getElementById('transactionType').value;
-        if (!type) {
-            this.showNotification('Iltimos, tranzaksiya turini tanlang', 'warning');
-            return;
-        }
+    showUpgradeModal() {
+        this.showModal('upgradeModal');
+    }
 
-        const data = {
-            user_id: this.currentUser.id,
-            amount: parseFloat(document.getElementById('transactionAmount').value),
-            category: document.getElementById('transactionCategory').value,
-            description: document.getElementById('transactionDescription').value,
-            transaction_type: type
-        };
+    async upgradeToPremium() {
+        if (!this.currentUser) return;
 
         try {
-            const response = await fetch('/api/transactions', {
+            const response = await fetch('/api/user/upgrade', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ user_id: this.currentUser.id })
             });
 
             const result = await response.json();
             if (result.success) {
-                this.closeModal('addTransactionModal');
+                this.closeModal('upgradeModal');
+                await this.loadUserTariff();
                 await this.loadAllData();
-                this.showNotification('Tranzaksiya qo\'shildi', 'success');
+                this.showNotification('Premium tarifga muvaffaqiyatli o\'tdingiz!', 'success');
                 
-                // Haptic feedback
                 if (window.Telegram?.WebApp) {
                     window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
                 }
@@ -624,6 +637,295 @@ class BalansAI {
             this.showNotification('Xatolik yuz berdi', 'error');
         }
     }
+
+    async showAIAnalysis() {
+        if (!this.userLimits?.data?.can_use_ai) {
+            this.showNotification(this.userLimits?.data?.ai_message || 'AI limit tugagan', 'warning');
+            this.showUpgradeModal();
+            return;
+        }
+        
+        this.requestAIAnalysis();
+    }
+
+    async getAIReport() {
+        try {
+            this.showLoading();
+            const response = await this.fetchData(`/api/ai/report/${this.currentUser.id}`);
+            
+            if (response && response.success) {
+                // AI hisobotni modal da ko'rsatish
+                this.showAIReportModal(response.report);
+            } else {
+                if (response.limit_exceeded) {
+                    this.showNotification(response.message, 'warning');
+                    this.showUpgradeModal();
+                } else {
+                    this.showNotification(response.message || 'Xatolik yuz berdi', 'error');
+                }
+            }
+        } catch (error) {
+            this.showNotification('AI hisobotida xatolik yuz berdi', 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    showAIReportModal(report) {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content ai-report-modal">
+                <div class="modal-header">
+                    <h3>🤖 AI Moliyaviy Hisobot</h3>
+                    <span class="close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</span>
+                </div>
+                <div class="ai-report-content">
+                    <div class="report-text">${report}</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-primary" onclick="this.parentElement.parentElement.parentElement.remove()">
+                        Yopish
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Modal tashqarisiga bosilganda yopish
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    async requestAIAnalysis() {
+        if (!this.currentUser) return;
+
+        this.showModal('aiAnalysisModal');
+        const content = document.getElementById('aiAnalysisContent');
+        content.innerHTML = `
+            <div class="ai-loading">
+                <div class="loading-spinner"></div>
+                <p>AI tahlil qilmoqda...</p>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`/api/ai/analysis/${this.currentUser.id}`);
+            const result = await response.json();
+
+            if (result.success) {
+                content.innerHTML = `
+                    <div class="ai-result-content">
+                        ${result.analysis.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+                
+                // AI limit ni yangilash
+                await this.loadAllData();
+            } else {
+                content.innerHTML = `
+                    <div class="ai-error">
+                        <p>❌ ${result.message}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            content.innerHTML = `
+                <div class="ai-error">
+                    <p>❌ AI tahlil qilishda xatolik yuz berdi</p>
+                </div>
+            `;
+        }
+    }
+
+    async exportData() {
+        if (!this.userLimits?.export_data) {
+            this.showNotification('Ma\'lumotlar eksporti Premium tarifida mavjud', 'warning');
+            return;
+        }
+
+        // Bu yerda eksport funksiyasini qo'shish mumkin
+        this.showNotification('Eksport funksiyasi tez orada qo\'shiladi', 'info');
+    }
+
+    // Qarzlar bo'limini yangilash
+    updateDebtsSection() {
+        if (!this.data.debts) return;
+
+        const { debts, summary } = this.data.debts;
+
+        // Xulosani yangilash
+        document.getElementById('totalDebts').textContent = `${summary.total_debts || 0} ta`;
+        document.getElementById('totalGiven').textContent = this.formatCurrency(summary.total_given || 0);
+        document.getElementById('totalReceived').textContent = this.formatCurrency(summary.total_received || 0);
+        document.getElementById('netBalance').textContent = this.formatCurrency(summary.net_balance || 0);
+
+        // Qarzlar ro'yxatini yangilash
+        const debtItems = document.getElementById('debtItems');
+        if (!debts || debts.length === 0) {
+            debtItems.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">💰</div>
+                    <h4>Qarzlar yo'q</h4>
+                    <p>Hali hech qanday qarz ma'lumoti kiritilmagan</p>
+                </div>
+            `;
+            return;
+        }
+
+        debtItems.innerHTML = debts.map(debt => `
+            <div class="debt-item ${debt.debt_type}">
+                <div class="debt-icon">
+                    ${debt.debt_type === 'bergan' ? '📤' : '📥'}
+                </div>
+                <div class="debt-content">
+                    <div class="debt-header">
+                        <span class="debt-category">${debt.category}</span>
+                        <span class="debt-amount ${debt.debt_type}">
+                            ${debt.debt_type === 'bergan' ? '+' : '-'}${this.formatCurrency(debt.debt_amount)}
+                        </span>
+                    </div>
+                    <div class="debt-description">${debt.description || 'Tavsif yo\'q'}</div>
+                    <div class="debt-date">${this.formatDate(debt.created_at)}</div>
+                </div>
+                <button class="debt-delete-btn" onclick="app.deleteTransaction(${debt.id})">
+                    🗑️
+                </button>
+            </div>
+        `).join('');
+    }
+
+    // Kengaytirilgan tahlillarni yuklash
+    async loadAdvancedAnalytics() {
+        if (!this.currentUser) return;
+
+        try {
+            const response = await this.fetchData(`/api/advanced-stats/${this.currentUser.id}`);
+            if (response) {
+                this.updateAdvancedAnalytics(response);
+            }
+        } catch (error) {
+            console.error('Advanced analytics yuklashda xatolik:', error);
+        }
+    }
+
+    // Kengaytirilgan tahlillarni yangilash
+    updateAdvancedAnalytics(data) {
+        const { highest_expense, lowest_expense, most_expensive_day, daily_stats, category_breakdown } = data;
+
+        // Premium foydalanuvchilar uchun ko'rsatish
+        const analyticsLock = document.getElementById('analyticsLock');
+        const analyticsContent = document.getElementById('advancedAnalyticsContent');
+        
+        if (this.userLimits?.data?.advanced_analytics) {
+            analyticsLock.style.display = 'none';
+            analyticsContent.style.display = 'block';
+
+            // Eng yuqori xarajat
+            if (highest_expense) {
+                document.getElementById('highestExpense').textContent = this.formatCurrency(highest_expense.amount);
+                document.getElementById('highestExpenseDetail').textContent = 
+                    `${highest_expense.category} - ${highest_expense.date}`;
+            }
+
+            // Eng kam xarajat
+            if (lowest_expense) {
+                document.getElementById('lowestExpense').textContent = this.formatCurrency(lowest_expense.amount);
+                document.getElementById('lowestExpenseDetail').textContent = 
+                    `${lowest_expense.category} - ${lowest_expense.date}`;
+            }
+
+            // Eng qimmat kun
+            if (most_expensive_day) {
+                document.getElementById('mostExpensiveDay').textContent = most_expensive_day.date;
+                document.getElementById('mostExpensiveDayAmount').textContent = 
+                    this.formatCurrency(most_expensive_day.amount);
+            }
+
+            // Top kategoriyalar
+            const topCategories = document.getElementById('topCategories');
+            if (category_breakdown && category_breakdown.length > 0) {
+                topCategories.innerHTML = category_breakdown.map((cat, index) => `
+                    <div class="category-item">
+                        <div class="category-rank">${index + 1}</div>
+                        <div class="category-info">
+                            <div class="category-name">${cat.category}</div>
+                            <div class="category-amount">${this.formatCurrency(cat.amount)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Kunlik grafik
+            if (daily_stats && daily_stats.length > 0) {
+                this.createDailyChart(daily_stats);
+            }
+        } else {
+            analyticsLock.style.display = 'block';
+            analyticsContent.style.display = 'none';
+        }
+    }
+
+    // Kunlik grafik yaratish
+    createDailyChart(dailyStats) {
+        const ctx = document.getElementById('dailyChart');
+        if (!ctx) return;
+
+        // Eski grafikni yo'q qilish
+        if (this.dailyChart) {
+            this.dailyChart.destroy();
+        }
+
+        const labels = dailyStats.map(d => d.day_name.substring(0, 3));
+        const expensesData = dailyStats.map(d => d.expenses);
+        const incomeData = dailyStats.map(d => d.income);
+
+        this.dailyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Xarajatlar',
+                    data: expensesData,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Daromadlar',
+                    data: incomeData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + ' so\'m';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // CRUD Operations - Faqat o'chirish va ko'rish
 
     async deleteTransaction(id) {
         if (!await this.confirmAction('Tranzaksiyani o\'chirmoqchimisiz?')) return;
@@ -660,8 +962,7 @@ class BalansAI {
         const date = new Date(dateString);
         return date.toLocaleDateString('uz-UZ', {
             day: 'numeric',
-            month: 'short',
-            year: 'numeric'
+            month: 'short'
         });
     }
 
@@ -669,8 +970,7 @@ class BalansAI {
         const [year, month] = monthString.split('-');
         const date = new Date(year, month - 1);
         return date.toLocaleDateString('uz-UZ', {
-            month: 'short',
-            year: 'numeric'
+            month: 'short'
         });
     }
 
@@ -700,10 +1000,11 @@ class BalansAI {
 
     showLoading() {
         // Loading indikatorini ko'rsatish
-        document.querySelectorAll('.data-list').forEach(list => {
+        document.querySelectorAll('.transaction-list').forEach(list => {
             list.innerHTML = `
                 <div class="loading">
-                    Ma'lumotlar yuklanmoqda...
+                    <div class="loading-spinner"></div>
+                    <p>Ma'lumotlar yuklanmoqda...</p>
                 </div>
             `;
         });
@@ -718,12 +1019,7 @@ class BalansAI {
 }
 
 // Global functions for HTML onclick events
-function showAddTransactionModal(type = null) {
-    app.showModal('addTransactionModal');
-    if (type) {
-        setTimeout(() => app.selectTransactionType(type), 100);
-    }
-}
+// showAddTransactionModal funksiyasi olib tashlandi
 
 function closeModal(modalId) {
     app.closeModal(modalId);
@@ -737,7 +1033,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // Handle page visibility changes
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && window.app) {
-        // Sahifa ko'rinadigan bo'lganda ma'lumotlarni yangilash
         window.app.loadAllData();
     }
 });

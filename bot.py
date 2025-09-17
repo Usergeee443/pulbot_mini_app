@@ -27,31 +27,12 @@ async def start_handler(message: types.Message):
         existing_user = db.get_user_data(user.id)
         
         if not existing_user:
-            # Yangi foydalanuvchi qo'shish
-            query = """
-            INSERT INTO users (user_id, username, first_name, last_name)
-            VALUES (%s, %s, %s, %s)
-            """
-            db.execute_query(query, (
-                user.id,
-                user.username,
-                user.first_name,
-                user.last_name
-            ))
+            # Yangi foydalanuvchi qo'shish (default PREMIUM tarif bilan)
+            db.add_user(user.id, user.username, user.first_name, user.last_name)
             logger.info(f"Yangi foydalanuvchi qo'shildi: {user.id}")
         else:
             # Mavjud foydalanuvchi ma'lumotlarini yangilash
-            query = """
-            UPDATE users 
-            SET username = %s, first_name = %s, last_name = %s
-            WHERE user_id = %s
-            """
-            db.execute_query(query, (
-                user.username,
-                user.first_name,
-                user.last_name,
-                user.id
-            ))
+            db.update_user_info(user.id, user.username, user.first_name, user.last_name)
             logger.info(f"Foydalanuvchi ma'lumotlari yangilandi: {user.id}")
     
     except Exception as e:
@@ -59,23 +40,30 @@ async def start_handler(message: types.Message):
 
     # Mini App tugmasini yaratish
     webapp_button = InlineKeyboardButton(
-        text="📊 Hisobotlarni ochish",
+        text="💰 Balans AI ni ochish",
         web_app=WebAppInfo(url=MINI_APP_URL)
     )
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[webapp_button]])
     
+    # Foydalanuvchi tarifini olish
+    tariff = db.get_user_tariff(user.id)
+    tariff_emoji = "⭐" if tariff == "PREMIUM" else "🆓"
+    
     welcome_text = f"""
 🎉 Assalomu alaykum, {user.first_name}!
 
-📊 **Balans AI** ga xush kelibsiz!
+💰 **Balans AI** ga xush kelibsiz!
+
+{tariff_emoji} **Sizning tarifingiz:** {tariff}
 
 Bu yerda siz:
-💰 Tranzaksiyalaringizni boshqarishingiz
-✅ Vazifalaringizni kuzatishingiz  
-🎯 Maqsadlaringizni rejalashtirish va kuzatishingiz mumkin
+💰 Moliyaviy hisobotlaringizni boshqarishingiz
+📊 AI tahlillar va maslahatlar olishingiz
+📈 Batafsil statistikalarni ko'rishingiz
+🏦 Qarzlaringizni kuzatishingiz mumkin
 
-Hisobotlarni ko'rish uchun pastdagi tugmani bosing 👇
+Ilovani ochish uchun pastdagi tugmani bosing 👇
 """
     
     await message.answer(
@@ -170,7 +158,7 @@ async def stats_handler(message: types.Message):
         
         # Mini App tugmasi
         webapp_button = InlineKeyboardButton(
-            text="📊 Batafsil hisobotlar",
+            text="💰 Balans AI ochish",
             web_app=WebAppInfo(url=MINI_APP_URL)
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[webapp_button]])
@@ -187,13 +175,13 @@ async def stats_handler(message: types.Message):
 async def echo_handler(message: types.Message):
     """Boshqa xabarlar uchun javob"""
     webapp_button = InlineKeyboardButton(
-        text="📊 Hisobotlarni ochish",
+        text="💰 Balans AI ochish",
         web_app=WebAppInfo(url=MINI_APP_URL)
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[webapp_button]])
     
     await message.answer(
-        "📊 Hisobotlaringizni ko'rish uchun pastdagi tugmani bosing:",
+        "💰 Moliyaviy hisobotlaringizni ko'rish uchun pastdagi tugmani bosing:",
         reply_markup=keyboard
     )
 
