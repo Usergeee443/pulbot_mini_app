@@ -12,51 +12,96 @@ class BalansAI {
         };
         this.charts = {
             monthly: null,
-            category: null
+            category: null,
+            weekly: null,
+            incomeExpense: null,
+            daily: null
         };
+        this.goals = [];
         this.currentFilter = 'all';
         
         this.init();
     }
 
     async init() {
-        // Telegram WebApp sozlash
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            tg.enableClosingConfirmation();
-            
-            // Full screen va Wallet style
-            tg.setHeaderColor('#007aff');
-            tg.setBackgroundColor('#ffffff');
-            
-            // Main button ni yashirish
-            tg.MainButton.hide();
-            tg.BackButton.hide();
-            
-            // Foydalanuvchi ma'lumotlari
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                this.currentUser = tg.initDataUnsafe.user;
-                this.updateUserInfo();
+        try {
+            // Telegram WebApp sozlash
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                tg.enableClosingConfirmation();
+                
+                // Full screen va Wallet style
+                tg.setHeaderColor('#007aff');
+                tg.setBackgroundColor('#ffffff');
+                
+                // Main button ni yashirish
+                tg.MainButton.hide();
+                tg.BackButton.hide();
+                
+                // Foydalanuvchi ma'lumotlari
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    this.currentUser = tg.initDataUnsafe.user;
+                    await this.updateUserInfo();
+                } else {
+                    // Test uchun
+                    this.currentUser = { id: 123456789, first_name: 'Test User' };
+                    await this.updateUserInfo();
+                }
+                
+                // Tema sozlash
+                this.setTheme(tg.colorScheme || 'light');
             } else {
-                // Test uchun
+                // Test rejimi
                 this.currentUser = { id: 123456789, first_name: 'Test User' };
-                this.updateUserInfo();
+                await this.updateUserInfo();
+                console.log('Telegram WebApp mavjud emas, test rejimida ishlayapti');
             }
             
-            // Tema sozlash
-            this.setTheme(tg.colorScheme || 'light');
-        } else {
-            // Test rejimi
-            this.currentUser = { id: 123456789, first_name: 'Test User' };
-            this.updateUserInfo();
-            console.log('Telegram WebApp mavjud emas, test rejimida ishlayapti');
+            // Barcha ma'lumotlar yuklangandan keyin loading ni yashirish
+            await this.loadAllData();
+            
+            // Event listeners sozlash
+            this.setupEventListeners();
+            
+        } catch (error) {
+            console.error('Init xatoligi:', error);
         }
+    }
 
-        this.setupEventListeners();
-        await this.loadUserTariff();
-        await this.loadAllData();
+    showLoading() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const app = document.getElementById('app');
+        if (loadingScreen) loadingScreen.style.display = 'flex';
+        if (app) app.style.display = 'none';
+    }
+
+    hideLoading() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const app = document.getElementById('app');
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (app) app.style.display = 'block';
+    }
+
+    async loadAllData() {
+        try {
+            console.log('Ma\'lumotlar yuklash boshlandi...');
+            
+            // Barcha asosiy ma'lumotlarni parallel yuklash
+            await Promise.all([
+                this.loadUserTariff(),
+                this.loadTransactions(),
+                this.loadStatistics(),
+                this.loadDebts(),
+                this.loadChartsData(),
+                this.loadGoals()
+            ]);
+            
+            console.log('Barcha ma\'lumotlar yuklandi');
+        } catch (error) {
+            console.error('Ma\'lumotlar yuklashda xatolik:', error);
+        }
     }
 
     updateUserInfo() {
@@ -135,17 +180,31 @@ class BalansAI {
     }
 
     switchTab(tabName) {
+        console.log('Switching to tab:', tabName);
+        
         // Update active nav item
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
         });
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        
+        const navItem = document.querySelector(`[data-tab="${tabName}"]`);
+        if (navItem) {
+            navItem.classList.add('active');
+        } else {
+            console.error('Nav item not found for tab:', tabName);
+        }
 
         // Show corresponding content
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
         });
-        document.getElementById(tabName).classList.add('active');
+        
+        const tabContent = document.getElementById(tabName);
+        if (tabContent) {
+            tabContent.classList.add('active');
+        } else {
+            console.error('Tab content not found for tab:', tabName);
+        }
 
         this.currentTab = tabName;
         this.renderCurrentTab();
@@ -1015,6 +1074,372 @@ class BalansAI {
         document.querySelectorAll('.loading').forEach(loading => {
             loading.remove();
         });
+    }
+
+    async loadChartsData() {
+        try {
+            console.log('Charts data yuklash boshlandi...');
+            const response = await fetch(`/api/charts/${this.currentUser.id}`);
+            
+            if (!response.ok) {
+                console.log('Charts API xatoligi:', response.status);
+                return;
+            }
+            
+            const data = await response.json();
+            console.log('Charts data yuklandi:', data);
+            
+            if (data.monthly) {
+                this.createMonthlyChart(data.monthly);
+            }
+            if (data.weekly) {
+                this.createWeeklyChart(data.weekly);
+            }
+            if (data.daily) {
+                this.createDailyChart(data.daily);
+            }
+            if (data.categories) {
+                this.createCategoryChart(data.categories);
+                this.createIncomeExpenseChart(data.categories);
+            }
+        } catch (error) {
+            console.error('Charts data yuklashda xatolik:', error);
+        }
+    }
+
+    createWeeklyChart(data) {
+        const ctx = document.getElementById('weeklyChart');
+        if (!ctx || !data.length) return;
+
+        if (this.charts.weekly) {
+            this.charts.weekly.destroy();
+        }
+
+        const labels = data.map(item => `Hafta ${item.week}`);
+        const incomeData = data.map(item => parseFloat(item.income) || 0);
+        const expenseData = data.map(item => parseFloat(item.expense) || 0);
+
+        this.charts.weekly = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daromad',
+                    data: incomeData,
+                    borderColor: '#34c759',
+                    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Xarajat',
+                    data: expenseData,
+                    borderColor: '#ff3b30',
+                    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + ' so\'m';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    createIncomeExpenseChart(data) {
+        const ctx = document.getElementById('incomeExpenseChart');
+        if (!ctx || !data.length) return;
+
+        if (this.charts.incomeExpense) {
+            this.charts.incomeExpense.destroy();
+        }
+
+        const totalIncome = data.reduce((sum, item) => sum + (parseFloat(item.income) || 0), 0);
+        const totalExpense = data.reduce((sum, item) => sum + (parseFloat(item.expense) || 0), 0);
+
+        this.charts.incomeExpense = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Daromad', 'Xarajat'],
+                datasets: [{
+                    data: [totalIncome, totalExpense],
+                    backgroundColor: ['#34c759', '#ff3b30'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
+
+    createDailyChart(data) {
+        const ctx = document.getElementById('dailyChart');
+        if (!ctx || !data.length) return;
+
+        if (this.charts.daily) {
+            this.charts.daily.destroy();
+        }
+
+        const labels = data.map(item => {
+            const date = new Date(item.date);
+            return date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short' });
+        });
+        const incomeData = data.map(item => parseFloat(item.income) || 0);
+        const expenseData = data.map(item => parseFloat(item.expense) || 0);
+
+        this.charts.daily = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daromad',
+                    data: incomeData,
+                    backgroundColor: 'rgba(52, 199, 89, 0.8)',
+                    borderColor: '#34c759',
+                    borderWidth: 1
+                }, {
+                    label: 'Xarajat',
+                    data: expenseData,
+                    backgroundColor: 'rgba(255, 59, 48, 0.8)',
+                    borderColor: '#ff3b30',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + ' so\'m';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Goals functions
+    async loadGoals() {
+        try {
+            const response = await fetch(`/api/goals/${this.currentUser.id}`);
+            if (response.ok) {
+                const data = await response.json();
+                this.goals = data.goals || [];
+                this.updateGoalsDisplay();
+            }
+        } catch (error) {
+            console.error('Goals yuklashda xatolik:', error);
+        }
+    }
+
+    updateGoalsDisplay() {
+        const goalItems = document.getElementById('goalItems');
+        if (!goalItems) return;
+
+        if (this.goals.length === 0) {
+            goalItems.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🎯</div>
+                    <h4>Maqsadlar yo'q</h4>
+                    <p>Birinchi maqsadingizni qo'shing</p>
+                </div>
+            `;
+            return;
+        }
+
+        const activeGoals = this.goals.filter(goal => goal.status === 'active').length;
+        const completedGoals = this.goals.filter(goal => goal.status === 'completed').length;
+        const totalSaved = this.goals.reduce((sum, goal) => sum + (parseFloat(goal.current_amount) || 0), 0);
+
+        // Update summary
+        document.getElementById('activeGoals').textContent = `${activeGoals} ta`;
+        document.getElementById('completedGoals').textContent = `${completedGoals} ta`;
+        document.getElementById('totalSaved').textContent = `${totalSaved.toLocaleString()} so'm`;
+
+        // Render goals
+        goalItems.innerHTML = this.goals.map(goal => this.renderGoal(goal)).join('');
+    }
+
+    renderGoal(goal) {
+        const progress = (parseFloat(goal.current_amount) / parseFloat(goal.target_amount)) * 100;
+        const isUrgent = new Date(goal.deadline) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        
+        return `
+            <div class="goal-item ${isUrgent ? 'urgent' : ''}">
+                <div class="goal-header">
+                    <h3 class="goal-title">${this.escapeHtml(goal.name)}</h3>
+                    <span class="goal-category">${this.escapeHtml(goal.category)}</span>
+                </div>
+                
+                <div class="goal-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min(progress, 100)}%"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span>${progress.toFixed(1)}%</span>
+                        <span>${this.formatDate(goal.deadline)}</span>
+                    </div>
+                </div>
+                
+                <div class="goal-amount">
+                    <span class="goal-current">${parseFloat(goal.current_amount).toLocaleString()} so'm</span>
+                    <span class="goal-target">/ ${parseFloat(goal.target_amount).toLocaleString()} so'm</span>
+                </div>
+                
+                <div class="goal-deadline">
+                    <span>📅</span>
+                    <span>Muddat: ${this.formatDate(goal.deadline)}</span>
+                </div>
+                
+                <div class="goal-actions">
+                    <button class="goal-btn primary" onclick="app.addToGoal(${goal.id})">
+                        Qo'shish
+                    </button>
+                    <button class="goal-btn secondary" onclick="app.editGoal(${goal.id})">
+                        Tahrirlash
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    showAddGoalModal() {
+        this.openModal('addGoalModal');
+        
+        // Set default deadline to 1 month from now
+        const deadline = new Date();
+        deadline.setMonth(deadline.getMonth() + 1);
+        document.getElementById('goalDeadline').value = deadline.toISOString().split('T')[0];
+    }
+
+    async addGoal(goalData) {
+        try {
+            const response = await fetch(`/api/goals/${this.currentUser.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(goalData)
+            });
+
+            if (response.ok) {
+                this.closeModal('addGoalModal');
+                await this.loadGoals();
+                this.showNotification('Maqsad muvaffaqiyatli qo\'shildi!', 'success');
+            } else {
+                this.showNotification('Maqsad qo\'shishda xatolik!', 'error');
+            }
+        } catch (error) {
+            console.error('Add goal xatoligi:', error);
+            this.showNotification('Maqsad qo\'shishda xatolik!', 'error');
+        }
+    }
+
+    async addToGoal(goalId) {
+        const amount = prompt('Qancha pul qo\'shmoqchisiz?');
+        if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
+
+        try {
+            const response = await fetch(`/api/goals/${goalId}/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ amount: parseFloat(amount) })
+            });
+
+            if (response.ok) {
+                await this.loadGoals();
+                this.showNotification('Pul muvaffaqiyatli qo\'shildi!', 'success');
+            } else {
+                this.showNotification('Pul qo\'shishda xatolik!', 'error');
+            }
+        } catch (error) {
+            console.error('Add to goal xatoligi:', error);
+            this.showNotification('Pul qo\'shishda xatolik!', 'error');
+        }
+    }
+
+    async editGoal(goalId) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal) return;
+
+        const newName = prompt('Yangi nom:', goal.name);
+        if (!newName) return;
+
+        try {
+            const response = await fetch(`/api/goals/${goalId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name: newName })
+            });
+
+            if (response.ok) {
+                await this.loadGoals();
+                this.showNotification('Maqsad muvaffaqiyatli yangilandi!', 'success');
+            } else {
+                this.showNotification('Maqsad yangilashda xatolik!', 'error');
+            }
+        } catch (error) {
+            console.error('Edit goal xatoligi:', error);
+            this.showNotification('Maqsad yangilashda xatolik!', 'error');
+        }
+    }
+
+    // Notifications
+    showNotifications() {
+        this.openModal('notificationsModal');
+    }
+
+    // Form handlers
+    setupFormHandlers() {
+        // Goal form
+        const goalForm = document.getElementById('goalForm');
+        if (goalForm) {
+            goalForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const formData = {
+                    name: document.getElementById('goalName').value,
+                    target_amount: parseFloat(document.getElementById('goalAmount').value),
+                    deadline: document.getElementById('goalDeadline').value,
+                    category: document.getElementById('goalCategory').value
+                };
+
+                this.addGoal(formData);
+            });
+        }
     }
 }
 

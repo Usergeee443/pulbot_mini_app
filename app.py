@@ -429,9 +429,235 @@ def get_advanced_statistics(user_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/api/charts/<int:user_id>')
+def get_charts_data(user_id):
+    """Grafiklar uchun ma'lumotlar"""
+    try:
+        # Oylik statistika (oxirgi 6 oy)
+        monthly_query = """
+        SELECT 
+            DATE_FORMAT(created_at, '%Y-%m') as month,
+            SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
+            SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
+        FROM transactions 
+        WHERE user_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+        ORDER BY month
+        """
+        monthly_data = db.execute_query(monthly_query, (user_id,))
+        
+        # Haftalik statistika (oxirgi 4 hafta)
+        weekly_query = """
+        SELECT 
+            YEARWEEK(created_at) as week,
+            SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
+            SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
+        FROM transactions 
+        WHERE user_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 4 WEEK)
+        GROUP BY YEARWEEK(created_at)
+        ORDER BY week
+        """
+        weekly_data = db.execute_query(weekly_query, (user_id,))
+        
+        # Kunlik statistika (oxirgi 30 kun)
+        daily_query = """
+        SELECT 
+            DATE(created_at) as date,
+            SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
+            SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
+        FROM transactions 
+        WHERE user_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY date
+        """
+        daily_data = db.execute_query(daily_query, (user_id,))
+        
+        # Kategoriyalar bo'yicha taqsimot
+        category_query = """
+        SELECT 
+            category,
+            SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
+            SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense,
+            COUNT(*) as count
+        FROM transactions 
+        WHERE user_id = %s
+        GROUP BY category
+        ORDER BY expense DESC
+        LIMIT 10
+        """
+        category_data = db.execute_query(category_query, (user_id,))
+        
+        return jsonify({
+            'monthly': monthly_data,
+            'weekly': weekly_data,
+            'daily': daily_data,
+            'categories': category_data
+        })
+        
+    except Exception as e:
+        print(f"Charts data xatoligi: {e}")
+        return jsonify({'error': 'Grafik ma\'lumotlari yuklanmadi'}), 500
+
+@app.route('/add-test-data/<int:user_id>')
+def add_test_data(user_id):
+    """Test ma'lumotlari qo'shish"""
+    try:
+        # Test tranzaksiyalar qo'shish
+        test_transactions = [
+            (user_id, 'income', 500000, 'Ish haqi', 'Ish', '2024-09-20 10:00:00'),
+            (user_id, 'expense', 50000, 'Oziq-ovqat', 'Oziq-ovqat', '2024-09-20 12:00:00'),
+            (user_id, 'expense', 30000, 'Transport', 'Transport', '2024-09-20 18:00:00'),
+            (user_id, 'income', 100000, 'Qo\'shimcha daromad', 'Qo\'shimcha', '2024-09-21 14:00:00'),
+            (user_id, 'expense', 150000, 'Kiyim-kechak', 'Kiyim', '2024-09-21 16:00:00'),
+            (user_id, 'expense', 25000, 'Internet', 'Kommunal', '2024-09-22 09:00:00'),
+            (user_id, 'income', 75000, 'Freelance', 'Qo\'shimcha', '2024-09-22 20:00:00'),
+            (user_id, 'expense', 80000, 'Restoran', 'Oziq-ovqat', '2024-09-23 19:00:00'),
+            (user_id, 'expense', 40000, 'Benzin', 'Transport', '2024-09-23 21:00:00'),
+            (user_id, 'income', 200000, 'Bonus', 'Ish', '2024-09-24 11:00:00')
+        ]
+        
+        for transaction in test_transactions:
+            query = """
+            INSERT INTO transactions (user_id, type, amount, description, category, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            db.execute_query(query, transaction)
+        
+        # Test qarzlar qo'shish
+        test_debts = [
+            (user_id, 'Ahmad', 'Bergan qarz', 100000, '2024-09-25', '2024-10-25'),
+            (user_id, 'Sardor', 'Olgan qarz', 50000, '2024-09-20', '2024-10-20')
+        ]
+        
+        for debt in test_debts:
+            query = """
+            INSERT INTO debts (user_id, person_name, debt_type, amount, due_date, created_at)
+            VALUES (%s, %s, %s, %s, %s, NOW())
+            """
+            db.execute_query(query, debt)
+        
+        return jsonify({'success': True, 'message': 'Test ma\'lumotlari qo\'shildi'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+# Goals API endpoints
+@app.route('/api/goals/<int:user_id>')
+def get_goals(user_id):
+    """Foydalanuvchi maqsadlarini olish"""
+    try:
+        query = """
+        SELECT id, name, target_amount, current_amount, deadline, category, status, created_at
+        FROM goals 
+        WHERE user_id = %s 
+        ORDER BY created_at DESC
+        """
+        goals = db.execute_query(query, (user_id,))
+        
+        return jsonify({
+            'success': True,
+            'goals': goals or []
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/goals/<int:user_id>', methods=['POST'])
+def create_goal(user_id):
+    """Yangi maqsad yaratish"""
+    try:
+        data = request.get_json()
+        
+        query = """
+        INSERT INTO goals (user_id, name, target_amount, current_amount, deadline, category, status)
+        VALUES (%s, %s, %s, 0, %s, %s, 'active')
+        """
+        db.execute_query(query, (
+            user_id,
+            data['name'],
+            data['target_amount'],
+            data['deadline'],
+            data['category']
+        ))
+        
+        return jsonify({'success': True, 'message': 'Maqsad yaratildi'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/goals/<int:goal_id>', methods=['PUT'])
+def update_goal(goal_id):
+    """Maqsadni yangilash"""
+    try:
+        data = request.get_json()
+        
+        query = """
+        UPDATE goals 
+        SET name = %s, target_amount = %s, deadline = %s, category = %s
+        WHERE id = %s
+        """
+        db.execute_query(query, (
+            data['name'],
+            data['target_amount'],
+            data['deadline'],
+            data['category'],
+            goal_id
+        ))
+        
+        return jsonify({'success': True, 'message': 'Maqsad yangilandi'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/goals/<int:goal_id>/add', methods=['POST'])
+def add_to_goal(goal_id):
+    """Maqsadga pul qo'shish"""
+    try:
+        data = request.get_json()
+        amount = data['amount']
+        
+        # Maqsadga pul qo'shish
+        query = """
+        UPDATE goals 
+        SET current_amount = current_amount + %s
+        WHERE id = %s
+        """
+        db.execute_query(query, (amount, goal_id))
+        
+        # Maqsad yakunlanganligini tekshirish
+        check_query = """
+        SELECT target_amount, current_amount 
+        FROM goals 
+        WHERE id = %s
+        """
+        result = db.execute_query(check_query, (goal_id,))
+        
+        if result and result[0]['current_amount'] >= result[0]['target_amount']:
+            # Maqsadni yakunlangan deb belgilash
+            complete_query = """
+            UPDATE goals 
+            SET status = 'completed' 
+            WHERE id = %s
+            """
+            db.execute_query(complete_query, (goal_id,))
+        
+        return jsonify({'success': True, 'message': 'Pul qo\'shildi'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/goals/<int:goal_id>', methods=['DELETE'])
+def delete_goal(goal_id):
+    """Maqsadni o'chirish"""
+    try:
+        query = "DELETE FROM goals WHERE id = %s"
+        db.execute_query(query, (goal_id,))
+        
+        return jsonify({'success': True, 'message': 'Maqsad o\'chirildi'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
 if __name__ == '__main__':
     # Ma'lumotlar bazasiga ulanish
     if db.connect():
+        # Goals jadvalini yaratish
+        db.create_goals_table()
         app.run(host=FLASK_HOST, port=FLASK_PORT, debug=True)
     else:
         print("Ma'lumotlar bazasiga ulanib bo'lmadi!")

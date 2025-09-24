@@ -203,6 +203,27 @@ class Database:
         """
         return self.execute_query(query)
     
+    def create_goals_table(self):
+        """Maqsadlar jadvalini yaratish"""
+        query = """
+        CREATE TABLE IF NOT EXISTS goals (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            target_amount DECIMAL(15,2) NOT NULL,
+            current_amount DECIMAL(15,2) DEFAULT 0,
+            deadline DATE NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            status ENUM('active', 'completed', 'cancelled') DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_status (status),
+            INDEX idx_deadline (deadline)
+        )
+        """
+        return self.execute_query(query)
+    
     def get_user_tariff(self, user_id):
         """Foydalanuvchi tarifini olish"""
         query = "SELECT tariff FROM users WHERE user_id = %s"

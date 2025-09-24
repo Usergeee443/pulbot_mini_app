@@ -170,6 +170,24 @@
                             <canvas id="categoryChart"></canvas>
                         </div>
                     </div>
+                    
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>📈 Haftalik trend</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="weeklyChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>💰 Daromad vs Xarajat</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="incomeExpenseChart"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Advanced Analytics (Premium) -->
@@ -235,6 +253,56 @@
                 </div>
             </section>
 
+            <!-- Goals Tab -->
+            <section id="goals" class="tab-content">
+                <div class="page-header">
+                    <h1>Maqsadlar</h1>
+                    <button class="header-btn" onclick="app.showAddGoalModal()">
+                        <span class="btn-icon">➕</span>
+                    </button>
+                </div>
+
+                <!-- Goals Summary -->
+                <div class="goals-summary">
+                    <div class="summary-card active">
+                        <div class="summary-icon">🎯</div>
+                        <div class="summary-content">
+                            <h4>Faol maqsadlar</h4>
+                            <div class="summary-value" id="activeGoals">0 ta</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card completed">
+                        <div class="summary-icon">✅</div>
+                        <div class="summary-content">
+                            <h4>Yakunlangan</h4>
+                            <div class="summary-value" id="completedGoals">0 ta</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card total">
+                        <div class="summary-icon">💰</div>
+                        <div class="summary-content">
+                            <h4>Jami jamg'arilgan</h4>
+                            <div class="summary-value" id="totalSaved">0 so'm</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Goals List -->
+                <div class="goals-list">
+                    <h3>📋 Mening maqsadlarim</h3>
+                    <div class="goal-items" id="goalItems">
+                        <!-- Goals will be loaded here -->
+                        <div class="empty-state">
+                            <div class="empty-icon">🎯</div>
+                            <h4>Maqsadlar yo'q</h4>
+                            <p>Birinchi maqsadingizni qo'shing</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Debts Tab -->
             <section id="debts" class="tab-content">
                 <div class="page-header">
@@ -290,49 +358,6 @@
                 </div>
             </section>
 
-            <!-- Profile Tab -->
-            <section id="profile" class="tab-content">
-                <div class="page-header">
-                    <h1>Profil</h1>
-                </div>
-
-                <!-- User Info -->
-                <div class="profile-card">
-                    <div class="profile-avatar" id="profileAvatar">👤</div>
-                    <div class="profile-info">
-                        <h2 id="profileName">Foydalanuvchi</h2>
-                        <div class="profile-tariff">
-                            <span class="tariff-badge-small" id="profileTariff">FREE</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tariff Info -->
-                <div class="tariff-info">
-                    <h3>Sizning tarifingiz</h3>
-                    <div class="tariff-details" id="tariffDetails">
-                        <!-- Tariff details here -->
-                    </div>
-                </div>
-
-                <!-- Settings -->
-                <div class="settings-section">
-                    <h3>Sozlamalar</h3>
-                    <div class="setting-item">
-                        <span>Bildirishnomalar</span>
-                        <label class="switch">
-                            <input type="checkbox" id="notificationsSwitch" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <span>Ma'lumotlarni eksport qilish</span>
-                        <button class="setting-btn" onclick="app.exportData()">
-                            Eksport
-                        </button>
-                    </div>
-                </div>
-            </section>
         </main>
 
         <!-- Bottom Navigation -->
@@ -345,6 +370,10 @@
                 <div class="nav-icon">💳</div>
                 <div class="nav-label">Tranzaksiyalar</div>
             </button>
+            <button class="nav-item" data-tab="goals">
+                <div class="nav-icon">🎯</div>
+                <div class="nav-label">Maqsadlar</div>
+            </button>
             <button class="nav-item" data-tab="analytics">
                 <div class="nav-icon">📊</div>
                 <div class="nav-label">Tahlillar</div>
@@ -352,10 +381,6 @@
             <button class="nav-item" data-tab="debts">
                 <div class="nav-icon">🏦</div>
                 <div class="nav-label">Qarzlar</div>
-            </button>
-            <button class="nav-item" data-tab="profile">
-                <div class="nav-icon">👤</div>
-                <div class="nav-label">Profil</div>
             </button>
         </nav>
     </div>
@@ -425,6 +450,81 @@
                 <div class="ai-loading">
                     <div class="loading-spinner"></div>
                     <p>AI tahlil qilmoqda...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Goal Modal -->
+    <div id="addGoalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🎯 Yangi maqsad</h3>
+                <span class="close" onclick="closeModal('addGoalModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="goalForm">
+                    <div class="form-group">
+                        <label>Maqsad nomi</label>
+                        <input type="text" id="goalName" placeholder="Masalan: iPhone 15" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Maqsad summasi</label>
+                        <input type="number" id="goalAmount" placeholder="1000000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Muddat</label>
+                        <input type="date" id="goalDeadline" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Kategoriya</label>
+                        <select id="goalCategory">
+                            <option value="Texnika">📱 Texnika</option>
+                            <option value="Uy">🏠 Uy</option>
+                            <option value="Transport">🚗 Transport</option>
+                            <option value="Ta'lim">📚 Ta'lim</option>
+                            <option value="Sog'liq">🏥 Sog'liq</option>
+                            <option value="Sayohat">✈️ Sayohat</option>
+                            <option value="Boshqa">📦 Boshqa</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="closeModal('addGoalModal')">
+                            Bekor qilish
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <span class="btn-icon">🎯</span>
+                            Maqsad qo'shish
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔔 Bildirishnomalar</h3>
+                <span class="close" onclick="closeModal('notificationsModal')">&times;</span>
+            </div>
+            <div class="notifications-content" id="notificationsContent">
+                <div class="notification-item">
+                    <div class="notification-icon">💰</div>
+                    <div class="notification-text">
+                        <h4>Maqsadga yaqinlashdingiz!</h4>
+                        <p>iPhone 15 maqsadingizning 80% ga yetdingiz</p>
+                        <span class="notification-time">2 soat oldin</span>
+                    </div>
+                </div>
+                <div class="notification-item">
+                    <div class="notification-icon">⚠️</div>
+                    <div class="notification-text">
+                        <h4>Qarz eslatmasi</h4>
+                        <p>Ahmadga bergan qarzingiz 3 kundan keyin muddati tugaydi</p>
+                        <span class="notification-time">1 kun oldin</span>
+                    </div>
                 </div>
             </div>
         </div>
