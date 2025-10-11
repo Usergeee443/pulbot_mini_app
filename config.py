@@ -29,17 +29,27 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'sk-proj-BiPjPM7V7E_3ZZOCEhidGkA6ie
 TARIFF_LIMITS = {
     'FREE': {
         'transactions_per_month': 50,
-        'ai_requests_per_day': 3,
+        'ai_requests_per_day': 0,
         'advanced_analytics': False,
         'export_data': False,
-        'custom_categories': 5
+        'custom_categories': 5,
+        'charts_count': 1
     },
     'PREMIUM': {
         'transactions_per_month': -1,  # Unlimited
-        'ai_requests_per_day': 50,
+        'ai_requests_per_day': 0,
         'advanced_analytics': True,
         'export_data': True,
-        'custom_categories': -1  # Unlimited
+        'custom_categories': -1,  # Unlimited
+        'charts_count': 5
+    },
+    'MAX': {
+        'transactions_per_month': -1,  # Unlimited
+        'ai_requests_per_day': -1,  # Unlimited
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1,  # Unlimited
+        'charts_count': 10
     }
 }
 
