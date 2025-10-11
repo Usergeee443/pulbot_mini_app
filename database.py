@@ -19,7 +19,13 @@ class Database:
     def connect(self):
         """Ma'lumotlar bazasiga ulanish imkoniyatini tekshirish"""
         try:
-            connection = pymysql.connect(**self.connection_config)
+            # Render.com uchun max_connections ni kamaytiramiz
+            config = self.connection_config.copy()
+            config['connect_timeout'] = 10
+            config['read_timeout'] = 10
+            config['write_timeout'] = 10
+            
+            connection = pymysql.connect(**config)
             connection.close()
             logging.info("Ma'lumotlar bazasiga ulanish muvaffaqiyatli")
             return True

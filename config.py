@@ -6,11 +6,11 @@ load_dotenv()
 
 # Ma'lumotlar bazasi sozlamalari
 DB_CONFIG = {
-    'host': os.getenv('DB_HOST'),
-    'port': int(os.getenv('DB_PORT')),
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASSWORD'),
-    'database': os.getenv('DB_NAME')
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'port': int(os.getenv('DB_PORT', 3306)),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'database': os.getenv('DB_NAME', 'pulbot_mini_app')
 }
 
 # Bot sozlamalari
@@ -18,9 +18,9 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 
 # Flask sozlamalari
-FLASK_HOST = os.getenv('FLASK_HOST')
-FLASK_PORT = int(os.getenv('FLASK_PORT'))
-SECRET_KEY = os.getenv('SECRET_KEY')
+FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
+FLASK_PORT = int(os.getenv('FLASK_PORT', 8080))
+SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # OpenAI sozlamalari
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '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')
