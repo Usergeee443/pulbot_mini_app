@@ -525,7 +525,7 @@ class BalansAI {
         const data = this.generateTopExpensesData();
         
         this.charts.topExpenses = new Chart(ctx, {
-            type: 'horizontalBar',
+            type: 'bar',
             data: {
                 labels: data.labels,
                 datasets: [{
@@ -708,90 +708,324 @@ class BalansAI {
 
     // Data generators
     generateMonthlyData() {
+        // Haqiqiy ma'lumotlardan oylik statistikani olish
         const months = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun'];
+        const currentMonth = new Date().getMonth();
+        
+        // Oxirgi 6 oy uchun ma'lumotlar
+        const monthlyData = months.map((month, index) => {
+            const monthTransactions = this.data.transactions.filter(t => {
+                const transactionDate = new Date(t.created_at);
+                const transactionMonth = transactionDate.getMonth();
+                return transactionMonth === (currentMonth - 5 + index + 12) % 12;
+            });
+            
+            const income = monthTransactions
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            const expense = monthTransactions
+                .filter(t => t.type === 'expense')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            return { income, expense };
+        });
+        
         return {
             labels: months,
-            income: months.map(() => Math.floor(Math.random() * 1000000) + 500000),
-            expense: months.map(() => Math.floor(Math.random() * 800000) + 300000)
+            income: monthlyData.map(d => d.income),
+            expense: monthlyData.map(d => d.expense)
         };
     }
 
     generateCategoryData() {
+        // Haqiqiy ma'lumotlardan kategoriya statistikani olish
+        const categoryStats = {};
+        
+        this.data.transactions.forEach(transaction => {
+            if (transaction.type === 'expense') {
+                const category = transaction.category || 'Boshqalar';
+                categoryStats[category] = (categoryStats[category] || 0) + transaction.amount;
+            }
+        });
+        
+        // Kategoriyalarni miqdor bo'yicha tartiblash
+        const sortedCategories = Object.entries(categoryStats)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5); // Faqat top 5
+        
+        if (sortedCategories.length === 0) {
+            return {
+                labels: ['Ma\'lumot yo\'q'],
+                values: [100]
+            };
+        }
+        
+        const total = sortedCategories.reduce((sum, [, amount]) => sum + amount, 0);
+        
         return {
-            labels: ['Oziq-ovqat', 'Transport', 'Kiyim', 'O\'yin-kulgi', 'Boshqalar'],
-            values: [35, 25, 20, 15, 5]
+            labels: sortedCategories.map(([category]) => category),
+            values: sortedCategories.map(([, amount]) => Math.round((amount / total) * 100))
         };
     }
 
     generateDailyData() {
+        // Haqiqiy ma'lumotlardan kunlik statistikani olish
         const days = ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak'];
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Dushanbadan boshlash
+        
+        const dailyData = days.map((day, index) => {
+            const dayDate = new Date(startOfWeek);
+            dayDate.setDate(startOfWeek.getDate() + index);
+            
+            const dayTransactions = this.data.transactions.filter(t => {
+                const transactionDate = new Date(t.created_at);
+                return transactionDate.toDateString() === dayDate.toDateString();
+            });
+            
+            return dayTransactions.reduce((sum, t) => sum + t.amount, 0);
+        });
+        
         return {
             labels: days,
-            values: days.map(() => Math.floor(Math.random() * 100000) + 50000)
+            values: dailyData
         };
     }
 
     generateWeeklyData() {
+        // Haqiqiy ma'lumotlardan haftalik statistikani olish
         const weeks = ['1-hafta', '2-hafta', '3-hafta', '4-hafta'];
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        const weeklyData = weeks.map((week, index) => {
+            const weekStart = new Date(currentYear, currentMonth, index * 7 + 1);
+            const weekEnd = new Date(currentYear, currentMonth, (index + 1) * 7);
+            
+            const weekTransactions = this.data.transactions.filter(t => {
+                const transactionDate = new Date(t.created_at);
+                return transactionDate >= weekStart && transactionDate <= weekEnd;
+            });
+            
+            const income = weekTransactions
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            const expense = weekTransactions
+                .filter(t => t.type === 'expense')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            return { income, expense };
+        });
+        
         return {
             labels: weeks,
-            income: weeks.map(() => Math.floor(Math.random() * 500000) + 200000),
-            expense: weeks.map(() => Math.floor(Math.random() * 400000) + 150000)
+            income: weeklyData.map(d => d.income),
+            expense: weeklyData.map(d => d.expense)
         };
     }
 
     generateIncomeExpenseData() {
+        // Haqiqiy ma'lumotlardan kirim-chiqim statistikani olish
+        const categoryStats = {};
+        
+        this.data.transactions.forEach(transaction => {
+            const category = transaction.category || 'Boshqalar';
+            if (!categoryStats[category]) {
+                categoryStats[category] = { income: 0, expense: 0 };
+            }
+            
+            if (transaction.type === 'income') {
+                categoryStats[category].income += transaction.amount;
+            } else if (transaction.type === 'expense') {
+                categoryStats[category].expense += transaction.amount;
+            }
+        });
+        
+        // Kategoriyalarni umumiy miqdor bo'yicha tartiblash
+        const sortedCategories = Object.entries(categoryStats)
+            .sort(([,a], [,b]) => (b.income + b.expense) - (a.income + a.expense))
+            .slice(0, 5); // Faqat top 5
+        
+        if (sortedCategories.length === 0) {
+            return {
+                labels: ['Ma\'lumot yo\'q'],
+                income: [0],
+                expense: [0]
+            };
+        }
+        
         return {
-            labels: ['Oziq-ovqat', 'Transport', 'Kiyim', 'O\'yin-kulgi', 'Boshqalar'],
-            income: [80, 60, 40, 30, 50],
-            expense: [70, 50, 60, 40, 30]
+            labels: sortedCategories.map(([category]) => category),
+            income: sortedCategories.map(([, data]) => data.income),
+            expense: sortedCategories.map(([, data]) => data.expense)
         };
     }
 
     generateTopExpensesData() {
+        // Haqiqiy ma'lumotlardan eng katta xarajatlarni olish
+        const expenseStats = {};
+        
+        this.data.transactions.forEach(transaction => {
+            if (transaction.type === 'expense') {
+                const category = transaction.category || 'Boshqalar';
+                expenseStats[category] = (expenseStats[category] || 0) + transaction.amount;
+            }
+        });
+        
+        // Xarajatlarni miqdor bo'yicha tartiblash
+        const sortedExpenses = Object.entries(expenseStats)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5); // Faqat top 5
+        
+        if (sortedExpenses.length === 0) {
+            return {
+                labels: ['Ma\'lumot yo\'q'],
+                values: [0]
+            };
+        }
+        
         return {
-            labels: ['Oziq-ovqat', 'Transport', 'Kiyim', 'O\'yin-kulgi', 'Boshqalar'],
-            values: [500000, 300000, 200000, 150000, 100000]
+            labels: sortedExpenses.map(([category]) => category),
+            values: sortedExpenses.map(([, amount]) => amount)
         };
     }
 
     generateMonthlyTrendData() {
+        // Haqiqiy ma'lumotlardan oylik tendensiyani olish
         const months = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun'];
+        const currentMonth = new Date().getMonth();
+        
+        const monthlyData = months.map((month, index) => {
+            const monthTransactions = this.data.transactions.filter(t => {
+                const transactionDate = new Date(t.created_at);
+                const transactionMonth = transactionDate.getMonth();
+                return transactionMonth === (currentMonth - 5 + index + 12) % 12;
+            });
+            
+            return monthTransactions.reduce((sum, t) => sum + t.amount, 0);
+        });
+        
         return {
             labels: months,
-            values: months.map(() => Math.floor(Math.random() * 200000) + 100000)
+            values: monthlyData
         };
     }
 
     generateCategoryDistributionData() {
+        // Haqiqiy ma'lumotlardan kategoriya taqsimotini olish
+        const categoryStats = {};
+        
+        this.data.transactions.forEach(transaction => {
+            if (transaction.type === 'expense') {
+                const category = transaction.category || 'Boshqalar';
+                categoryStats[category] = (categoryStats[category] || 0) + transaction.amount;
+            }
+        });
+        
+        // Kategoriyalarni miqdor bo'yicha tartiblash
+        const sortedCategories = Object.entries(categoryStats)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 8); // Top 8 kategoriya
+        
+        if (sortedCategories.length === 0) {
+            return {
+                labels: ['Ma\'lumot yo\'q'],
+                values: [100]
+            };
+        }
+        
+        const total = sortedCategories.reduce((sum, [, amount]) => sum + amount, 0);
+        
         return {
-            labels: ['Oziq-ovqat', 'Transport', 'Kiyim', 'O\'yin-kulgi', 'Boshqalar', 'Sog\'liq', 'Ta\'lim', 'Uy'],
-            values: [25, 20, 15, 10, 8, 7, 8, 7]
+            labels: sortedCategories.map(([category]) => category),
+            values: sortedCategories.map(([, amount]) => Math.round((amount / total) * 100))
         };
     }
 
     generateYearlyData() {
+        // Haqiqiy ma'lumotlardan yillik statistikani olish
         const years = ['2021', '2022', '2023', '2024'];
+        const currentYear = new Date().getFullYear();
+        
+        const yearlyData = years.map((year, index) => {
+            const yearTransactions = this.data.transactions.filter(t => {
+                const transactionDate = new Date(t.created_at);
+                const transactionYear = transactionDate.getFullYear();
+                return transactionYear === (currentYear - 3 + index);
+            });
+            
+            const income = yearTransactions
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            const expense = yearTransactions
+                .filter(t => t.type === 'expense')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            return { income, expense };
+        });
+        
         return {
             labels: years,
-            income: years.map(() => Math.floor(Math.random() * 5000000) + 2000000),
-            expense: years.map(() => Math.floor(Math.random() * 4000000) + 1500000)
+            income: yearlyData.map(d => d.income),
+            expense: yearlyData.map(d => d.expense)
         };
     }
 
     generateDebtsData() {
+        // Haqiqiy ma'lumotlardan qarzlar statistikani olish
         const months = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun'];
+        const currentMonth = new Date().getMonth();
+        
+        const monthlyDebts = months.map((month, index) => {
+            const monthDebts = this.data.debts.filter(d => {
+                const debtDate = new Date(d.created_at);
+                const debtMonth = debtDate.getMonth();
+                return debtMonth === (currentMonth - 5 + index + 12) % 12;
+            });
+            
+            return monthDebts.reduce((sum, d) => sum + d.amount, 0);
+        });
+        
         return {
             labels: months,
-            values: months.map(() => Math.floor(Math.random() * 500000) + 100000)
+            values: monthlyDebts
         };
     }
 
     generateBalanceChangeData() {
+        // Haqiqiy ma'lumotlardan balans o'zgarishini olish
         const days = ['1', '2', '3', '4', '5', '6', '7'];
+        const today = new Date();
+        
+        const dailyBalance = days.map((day, index) => {
+            const dayDate = new Date(today);
+            dayDate.setDate(today.getDate() - 6 + index);
+            
+            const dayTransactions = this.data.transactions.filter(t => {
+                const transactionDate = new Date(t.created_at);
+                return transactionDate.toDateString() === dayDate.toDateString();
+            });
+            
+            let balanceChange = 0;
+            dayTransactions.forEach(t => {
+                if (t.type === 'income') {
+                    balanceChange += t.amount;
+                } else if (t.type === 'expense') {
+                    balanceChange -= t.amount;
+                }
+            });
+            
+            return balanceChange;
+        });
+        
         return {
             labels: days,
-            values: days.map(() => Math.floor(Math.random() * 200000) - 100000)
+            values: dailyBalance
         };
     }
 
