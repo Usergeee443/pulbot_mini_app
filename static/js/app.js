@@ -19,25 +19,81 @@ class BalansAI {
         try {
             console.log('BalansAI initializing...');
             
+            // Loading ko'rsatish
+            this.showLoading();
+            
             // Telegram WebApp tekshirish
             if (window.Telegram && window.Telegram.WebApp) {
+                console.log('Telegram WebApp detected');
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
                 
-                const user = window.Telegram.WebApp.initDataUnsafe?.user;
-                if (user) {
+                // Init data ni tekshirish
+                const initData = window.Telegram.WebApp.initData;
+                const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
+                
+                console.log('Init data:', initData);
+                console.log('Init data unsafe:', initDataUnsafe);
+                
+                if (initDataUnsafe && initDataUnsafe.user) {
+                    const user = initDataUnsafe.user;
                     this.currentUser = {
                         id: user.id,
                         first_name: user.first_name,
                         last_name: user.last_name,
                         username: user.username
                     };
-                    console.log('Telegram user:', this.currentUser);
+                    console.log('Telegram user found:', this.currentUser);
+                } else {
+                    // window.USER_ID dan olish
+                    if (window.USER_ID) {
+                        this.currentUser = { 
+                            id: parseInt(window.USER_ID), 
+                            first_name: 'User' 
+                        };
+                        console.log('User ID from window.USER_ID:', this.currentUser);
+                    } else {
+                        // URL dan user ID ni olish
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const userId = urlParams.get('user_id') || urlParams.get('user');
+                        if (userId) {
+                            this.currentUser = { 
+                                id: parseInt(userId), 
+                                first_name: 'User' 
+                            };
+                            console.log('User ID from URL:', this.currentUser);
+                        } else {
+                            // Test rejimi
+                            this.currentUser = { id: 123456789, first_name: 'Test User' };
+                            console.log('Test mode activated');
+                        }
+                    }
                 }
             } else {
-                // Test rejimi
-                this.currentUser = { id: 123456789, first_name: 'Test User' };
-                console.log('Test mode activated');
+                console.log('Telegram WebApp not detected, using test mode');
+                // window.USER_ID dan olish
+                if (window.USER_ID) {
+                    this.currentUser = { 
+                        id: parseInt(window.USER_ID), 
+                        first_name: 'User' 
+                    };
+                    console.log('User ID from window.USER_ID:', this.currentUser);
+                } else {
+                    // URL dan user ID ni olish
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const userId = urlParams.get('user_id') || urlParams.get('user');
+                    if (userId) {
+                        this.currentUser = { 
+                            id: parseInt(userId), 
+                            first_name: 'User' 
+                        };
+                        console.log('User ID from URL:', this.currentUser);
+                    } else {
+                        // Test rejimi
+                        this.currentUser = { id: 123456789, first_name: 'Test User' };
+                        console.log('Test mode activated');
+                    }
+                }
             }
 
             // Ma'lumotlarni yuklash

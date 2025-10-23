@@ -30,6 +30,11 @@ def index():
 
 @app.route('/miniapp')
 def miniapp():
+    # URL dan user_id ni olish
+    user_id = request.args.get('user_id')
+    if user_id:
+        # User ID ni template ga uzatish
+        return render_template('index.html', user_id=user_id)
     return render_template('index.html')
 
 # Asosiy API endpoints
