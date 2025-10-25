@@ -9,10 +9,21 @@ class BalansAI {
             debt: 0,
             transactions: [],
             debts: [],
-            tariff: 'FREE',
+            tariff: 'Bepul',
             limits: {}
         };
         this.charts = {};
+        this.isRealTimeMode = false;
+        this.realTimeRecognition = null;
+        this.isVoiceChatActive = false;
+        this.voiceChatRecognition = null;
+        this.audioStream = null;
+        this.realtimeWS = null;
+        
+        // Configuration (will be set from server)
+        this.config = {
+            openaiApiKey: null
+        };
     }
 
     async init() {
@@ -97,13 +108,25 @@ class BalansAI {
             }
 
             // Ma'lumotlarni yuklash
-            await this.loadAllData();
+            try {
+                await this.loadAllData();
+            } catch (error) {
+                console.error('Load data error:', error);
+            }
             
             // UI ni yangilash
-            this.updateUI();
+            try {
+                this.updateUI();
+            } catch (error) {
+                console.error('Update UI error:', error);
+            }
             
             // Event listeners
-            this.setupEventListeners();
+            try {
+                this.setupEventListeners();
+            } catch (error) {
+                console.error('Setup event listeners error:', error);
+            }
             
             // Loading ni yashirish
             this.hideLoading();
@@ -123,11 +146,17 @@ class BalansAI {
             const userId = this.currentUser.id;
             
             // Parallel ma'lumotlar yuklash
-            const [statistics, debts, tariff] = await Promise.all([
+            const [statistics, debts, tariff, config] = await Promise.all([
                 this.fetchData(`/api/statistics/${userId}`),
                 this.fetchData(`/api/debts/${userId}`),
-                this.fetchData(`/api/user/tariff/${userId}`)
+                this.fetchData(`/api/user/tariff/${userId}`),
+                this.fetchData(`/api/config`).catch(() => ({ success: false }))
             ]);
+            
+            // Config ni yuklash
+            if (config.success && config.data) {
+                this.config = config.data;
+            }
 
             // Ma'lumotlarni saqlash
             if (statistics.success) {
@@ -145,11 +174,13 @@ class BalansAI {
             }
 
             if (tariff.success) {
-                this.data.tariff = tariff.data.tariff || 'FREE';
+                this.data.tariff = tariff.data.tariff || 'Bepul';
                 this.data.limits = tariff.data.limits || {};
+                console.log('Tariff loaded:', this.data.tariff);
             }
 
             console.log('Data loaded:', this.data);
+            console.log('Current tariff:', this.data.tariff);
             
         } catch (error) {
             console.error('Load data error:', error);
@@ -282,16 +313,48 @@ class BalansAI {
     updateTariffLimits() {
         const analyticsLock = document.getElementById('analyticsLock');
         const aiLock = document.getElementById('aiLock');
+        const aiChatTariff = document.getElementById('aiChatTariff');
+        const tariff = this.data.tariff || 'Bepul';
         
-        if (this.data.tariff === 'FREE') {
+        // AI Chat tarif ko'rsatkichi
+        if (aiChatTariff) {
+            aiChatTariff.textContent = tariff.toUpperCase();
+        }
+        
+        // AI input va buttonlarni yaratish
+        const aiInput = document.getElementById('aiInput');
+        const aiSendBtn = document.getElementById('aiSendBtn');
+        const aiVoiceBtn = document.getElementById('aiVoiceBtn');
+        const aiRealTimeBtn = document.getElementById('aiRealTimeBtn');
+        
+        // Bepul tarif
+        if (tariff === 'Bepul' || tariff === 'FREE') {
             if (analyticsLock) analyticsLock.style.display = 'block';
             if (aiLock) aiLock.style.display = 'block';
-        } else if (this.data.tariff === 'PREMIUM') {
-            if (analyticsLock) analyticsLock.style.display = 'none';
-            if (aiLock) aiLock.style.display = 'block';
-        } else if (this.data.tariff === 'MAX') {
+            
+            // AI inputlarni disable qilish
+            if (aiInput) aiInput.disabled = true;
+            if (aiSendBtn) aiSendBtn.disabled = true;
+            if (aiVoiceBtn) aiVoiceBtn.disabled = true;
+            if (aiRealTimeBtn) aiRealTimeBtn.disabled = true;
+        } 
+        // Plus, Biznes, Oila tariflar
+        else if (tariff === 'Plus' || tariff === 'PLUS' || 
+                 tariff === 'Biznes' || tariff === 'BIZNES' ||
+                 tariff === 'Oila' || tariff === 'OILA' ||
+                 tariff === 'Max' || tariff === 'MAX' ||
+                 tariff === 'Biznes Plus' || tariff === 'BIZNES PLUS' ||
+                 tariff === 'Biznes Max' || tariff === 'BIZNES MAX' ||
+                 tariff === 'Oila Plus' || tariff === 'OILA PLUS' ||
+                 tariff === 'Oila Max' || tariff === 'OILA MAX') {
             if (analyticsLock) analyticsLock.style.display = 'none';
             if (aiLock) aiLock.style.display = 'none';
+            
+            // AI inputlarni enable qilish
+            if (aiInput) aiInput.disabled = false;
+            if (aiSendBtn) aiSendBtn.disabled = false;
+            if (aiVoiceBtn) aiVoiceBtn.disabled = false;
+            if (aiRealTimeBtn) aiRealTimeBtn.disabled = false;
         }
     }
 
@@ -320,19 +383,70 @@ class BalansAI {
     }
 
     updateCharts() {
-        if (this.data.tariff === 'FREE') {
-            this.createBasicChart();
-            this.lockPremiumCharts();
-        } else if (this.data.tariff === 'PREMIUM') {
-            this.createPremiumCharts();
-            this.lockMaxCharts();
-        } else if (this.data.tariff === 'MAX') {
-            this.createMaxCharts();
+        console.log('Updating charts for tariff:', this.data.tariff);
+        
+        // Chart.js yuklanganligini tekshirish
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded!');
+            return;
         }
+        
+        // Eski grafiklarni tozalash
+        if (this.charts) {
+            Object.keys(this.charts).forEach(key => {
+                if (this.charts[key]) {
+                    this.charts[key].destroy();
+                }
+            });
+        }
+        this.charts = {};
+        
+        // Kichik kechikish - grafiklarni render qilish uchun
+        setTimeout(() => {
+            const tariff = this.data.tariff || 'Bepul';
+            
+            // Bepul tarifida faqat asosiy grafik
+            if (tariff === 'Bepul' || tariff === 'FREE') {
+                console.log('Creating basic chart for Bepul tariff');
+                this.createBasicChart();
+                // Plus/Biznes/Oila grafiklarni qulf qilish
+                this.lockPremiumCharts();
+            } 
+            // Plus, Biznes, Oila - 5 ta grafik (katta/kichik harflar bilan)
+            else if (tariff === 'Plus' || tariff === 'PLUS' || 
+                     tariff === 'Biznes' || tariff === 'BIZNES' ||
+                     tariff === 'Oila' || tariff === 'OILA') {
+                console.log('Creating plus/business/family charts for tariff:', tariff);
+                this.createPremiumCharts();
+                
+                // Max grafiklarni qulf qilish
+                setTimeout(() => {
+                    console.log('Locking max charts after creating premium charts');
+                    this.lockMaxCharts();
+                }, 200);
+            }
+            // Max, Biznes Plus, Biznes Max, Oila Plus, Oila Max - 10 ta grafik
+            else if (tariff === 'Max' || tariff === 'MAX' || 
+                     tariff === 'Biznes Plus' || tariff === 'BIZNES PLUS' ||
+                     tariff === 'Biznes Max' || tariff === 'BIZNES MAX' ||
+                     tariff === 'Oila Plus' || tariff === 'OILA PLUS' ||
+                     tariff === 'Oila Max' || tariff === 'OILA MAX') {
+                console.log('Creating max charts for tariff:', tariff);
+                this.createMaxCharts();
+            }
+            else {
+                // Default - asosiy grafik (noma'lum tarif)
+                console.log('Unknown tariff:', tariff, '- creating default basic chart');
+                this.createBasicChart();
+                this.lockPremiumCharts();
+            }
+            
+            console.log('Charts created:', Object.keys(this.charts));
+        }, 100);
     }
 
     lockPremiumCharts() {
-        // Premium grafiklarni qulf qilish
+        // Plus/Biznes/Oila grafiklarni qulf qilish (Bepul uchun)
         const premiumCharts = [
             'categoryChart', 'dailyChart', 'weeklyChart', 'incomeExpenseChart',
             'topExpensesChart', 'monthlyTrendChart', 'categoryDistributionChart',
@@ -345,9 +459,8 @@ class BalansAI {
                 container.innerHTML = `
                     <div class="chart-locked">
                         <div class="lock-icon">🔒</div>
-                        <h4>Premium kerak</h4>
-                        <p>Bu grafikni ko'rish uchun Premium tarifni sotib oling</p>
-                        <button class="btn-primary" onclick="app.upgradeToPremium()">Premium sotib olish</button>
+                        <h4>Plus, Biznes yoki Oila kerak</h4>
+                        <p>Bu grafikni ko'rish uchun tarifni yangilang</p>
                     </div>
                 `;
             }
@@ -355,25 +468,37 @@ class BalansAI {
     }
 
     lockMaxCharts() {
-        // MAX grafiklarni qulf qilish
+        // MAX grafiklarni qulf qilish (Plus/Biznes/Oila uchun)
+        // Faqat 6-11 grafiklarni qulf qilish (1-5 ochiq bo'ladi)
         const maxCharts = [
             'topExpensesChart', 'monthlyTrendChart', 'categoryDistributionChart',
             'yearlyChart', 'debtsChart', 'balanceChangeChart'
         ];
         
+        console.log('Locking max charts:', maxCharts);
+        
         maxCharts.forEach(chartId => {
-            const container = document.getElementById(chartId)?.parentElement;
-            if (container) {
-                container.innerHTML = `
+            const container = document.getElementById(chartId);
+            if (!container) {
+                console.log(`Chart not found: ${chartId}`);
+                return;
+            }
+            
+            // Canvas elementni yashirish va qulf qilish
+            const parentContainer = container.parentElement;
+            if (parentContainer) {
+                console.log(`Locking chart: ${chartId}`);
+                parentContainer.innerHTML = `
                     <div class="chart-locked">
                         <div class="lock-icon">🔒</div>
-                        <h4>MAX kerak</h4>
-                        <p>Bu grafikni ko'rish uchun MAX tarifni sotib oling</p>
-                        <button class="btn-primary" onclick="app.upgradeToMax()">MAX sotib olish</button>
+                        <h4>Max, Biznes Plus yoki Oila Max kerak</h4>
+                        <p>Bu grafikni ko'rish uchun yuqori tarifni sotib oling</p>
                     </div>
                 `;
             }
         });
+        
+        console.log('Max charts locked successfully');
     }
 
     createBasicChart() {
@@ -382,12 +507,20 @@ class BalansAI {
     }
 
     createPremiumCharts() {
-        // Premium grafiklar
+        // Plus/Biznes/Oila grafiklar (5 ta)
+        console.log('Creating premium charts (5 charts for Plus/Biznes/Oila)');
+        console.log('Current tariff:', this.data.tariff);
+        console.log('Transactions:', this.data.transactions);
+        
+        // 5 ta grafikni yaratish
         this.createMonthlyChart();
         this.createCategoryChart();
         this.createDailyChart();
         this.createWeeklyChart();
         this.createIncomeExpenseChart();
+        
+        // Qolgan grafiklarni qulf qilish
+        console.log('Locking max charts (6-11)');
     }
 
     createMaxCharts() {
@@ -777,11 +910,11 @@ class BalansAI {
             });
             
             const income = monthTransactions
-                .filter(t => t.type === 'income')
+                .filter(t => t.transaction_type === 'income' || t.type === 'income')
                 .reduce((sum, t) => sum + t.amount, 0);
             
             const expense = monthTransactions
-                .filter(t => t.type === 'expense')
+                .filter(t => t.transaction_type === 'expense' || t.type === 'expense')
                 .reduce((sum, t) => sum + t.amount, 0);
             
             return { income, expense };
@@ -799,7 +932,8 @@ class BalansAI {
         const categoryStats = {};
         
         this.data.transactions.forEach(transaction => {
-            if (transaction.type === 'expense') {
+            const type = transaction.transaction_type || transaction.type;
+        if (type === 'expense') {
                 const category = transaction.category || 'Boshqalar';
                 categoryStats[category] = (categoryStats[category] || 0) + transaction.amount;
             }
@@ -867,11 +1001,11 @@ class BalansAI {
             });
             
             const income = weekTransactions
-                .filter(t => t.type === 'income')
+                .filter(t => t.transaction_type === 'income' || t.type === 'income')
                 .reduce((sum, t) => sum + t.amount, 0);
             
             const expense = weekTransactions
-                .filter(t => t.type === 'expense')
+                .filter(t => t.transaction_type === 'expense' || t.type === 'expense')
                 .reduce((sum, t) => sum + t.amount, 0);
             
             return { income, expense };
@@ -894,9 +1028,10 @@ class BalansAI {
                 categoryStats[category] = { income: 0, expense: 0 };
             }
             
-            if (transaction.type === 'income') {
+            const type = transaction.transaction_type || transaction.type;
+            if (type === 'income') {
                 categoryStats[category].income += transaction.amount;
-            } else if (transaction.type === 'expense') {
+            } else if (type === 'expense') {
                 categoryStats[category].expense += transaction.amount;
             }
         });
@@ -926,7 +1061,8 @@ class BalansAI {
         const expenseStats = {};
         
         this.data.transactions.forEach(transaction => {
-            if (transaction.type === 'expense') {
+            const type = transaction.transaction_type || transaction.type;
+            if (type === 'expense') {
                 const category = transaction.category || 'Boshqalar';
                 expenseStats[category] = (expenseStats[category] || 0) + transaction.amount;
             }
@@ -976,7 +1112,8 @@ class BalansAI {
         const categoryStats = {};
         
         this.data.transactions.forEach(transaction => {
-            if (transaction.type === 'expense') {
+            const type = transaction.transaction_type || transaction.type;
+        if (type === 'expense') {
                 const category = transaction.category || 'Boshqalar';
                 categoryStats[category] = (categoryStats[category] || 0) + transaction.amount;
             }
@@ -1110,7 +1247,7 @@ class BalansAI {
             });
         }
 
-        // AI chat
+        // AI chat (old)
         const aiInput = document.getElementById('aiInput');
         const aiSendBtn = document.getElementById('aiSendBtn');
         
@@ -1125,10 +1262,75 @@ class BalansAI {
                 this.sendAIMessage();
             });
         }
+        
+        // AI Chat (new fullscreen) - Send button
+        const aiInputChat = document.getElementById('aiInputChat');
+        const aiSendBtnChat = document.getElementById('aiSendBtnChat');
+        const aiVoiceBtnChat = document.getElementById('aiVoiceBtnChat');
+        
+        if (aiInputChat && aiSendBtnChat) {
+            aiInputChat.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendAIMessage();
+                }
+            });
+            
+            aiSendBtnChat.addEventListener('click', () => {
+                this.sendAIMessage();
+            });
+            
+            // Auto-resize textarea
+            aiInputChat.addEventListener('input', () => {
+                aiInputChat.style.height = 'auto';
+                aiInputChat.style.height = aiInputChat.scrollHeight + 'px';
+            });
+        }
+        
+        // Voice button (Chat)
+        if (aiVoiceBtnChat) {
+            aiVoiceBtnChat.addEventListener('click', () => {
+                this.startVoiceRecognitionChat();
+            });
+        }
+
+        // Voice button
+        const aiVoiceBtn = document.getElementById('aiVoiceBtn');
+        if (aiVoiceBtn) {
+            aiVoiceBtn.addEventListener('click', () => {
+                this.startVoiceRecognition();
+            });
+        }
+
+        // Voice chat control button
+        const voiceControlBtn = document.getElementById('voiceControlBtn');
+        if (voiceControlBtn) {
+            voiceControlBtn.addEventListener('click', () => {
+                this.toggleVoiceChat();
+            });
+        }
     }
 
     switchTab(tabName) {
         console.log('Switching to tab:', tabName);
+        
+        // AI Chat - fullscreen mode
+        if (tabName === 'ai-chat') {
+            this.openAiChat();
+            return;
+        }
+        
+        // Close AI Chat if it's open
+        const aiChat = document.getElementById('ai-chat');
+        if (aiChat && aiChat.style.display !== 'none') {
+            aiChat.style.display = 'none';
+        }
+        
+        // Show bottom navigation
+        const bottomNav = document.querySelector('.bottom-nav');
+        if (bottomNav) {
+            bottomNav.style.display = 'flex';
+        }
         
         // Update active nav item
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -1143,14 +1345,79 @@ class BalansAI {
         // Show corresponding content
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
+            if (content.id === 'ai-chat') {
+                content.style.display = 'none';
+            } else {
+                content.style.display = 'none';
+            }
         });
         
         const tabContent = document.getElementById(tabName);
         if (tabContent) {
             tabContent.classList.add('active');
+            tabContent.style.display = 'block';
         }
 
         this.currentTab = tabName;
+    }
+    
+    openAiChat() {
+        // Hide all other tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            if (tab.id !== 'ai-chat') {
+                tab.style.display = 'none';
+            }
+        });
+        
+        // Hide bottom navigation
+        const bottomNav = document.querySelector('.bottom-nav');
+        if (bottomNav) {
+            bottomNav.style.display = 'none';
+        }
+        
+        // Show AI Chat fullscreen
+        const aiChat = document.getElementById('ai-chat');
+        if (aiChat) {
+            aiChat.style.cssText = 'display: flex !important; visibility: visible !important;';
+            
+            console.log('AI Chat opened, scrolling to bottom...');
+            
+            // Scroll to bottom to show welcome message
+            setTimeout(() => {
+                const messagesContainer = document.getElementById('aiMessages');
+                if (messagesContainer) {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    console.log('Scrolled to:', messagesContainer.scrollHeight);
+                }
+            }, 200);
+            
+            // Focus input
+            setTimeout(() => {
+                const input = document.getElementById('aiInputChat');
+                if (input) {
+                    input.focus();
+                }
+            }, 300);
+        }
+        
+        this.currentTab = 'ai-chat';
+    }
+    
+    closeAiChat() {
+        // Hide AI Chat
+        const aiChat = document.getElementById('ai-chat');
+        if (aiChat) {
+            aiChat.style.cssText = 'display: none !important; visibility: hidden !important;';
+        }
+        
+        // Show bottom navigation
+        const bottomNav = document.querySelector('.bottom-nav');
+        if (bottomNav) {
+            bottomNav.style.display = 'flex';
+        }
+        
+        // Show home tab
+        this.switchTab('home');
     }
 
     setFilter(filter) {
@@ -1205,20 +1472,26 @@ class BalansAI {
     }
 
     async sendAIMessage() {
-        // MAX tarif tekshirish
-        if (this.data.tariff !== 'MAX') {
-            alert('AI suhbat faqat MAX tarifda mavjud. MAX tarifni sotib oling!');
+        // Tarif tekshirish
+        const allowedTariffs = ['Plus', 'PLUS', 'Max', 'MAX', 'Biznes', 'BIZNES', 'Oila', 'OILA',
+                               'Biznes Plus', 'BIZNES PLUS', 'Biznes Max', 'BIZNES MAX',
+                               'Oila Plus', 'OILA PLUS', 'Oila Max', 'OILA MAX'];
+        if (!allowedTariffs.includes(this.data.tariff)) {
+            alert('AI suhbat faqat Plus, Biznes, Oila yoki MAX tarifda mavjud!');
             return;
         }
 
-        const input = document.getElementById('aiInput');
+        const input = document.getElementById('aiInputChat') || document.getElementById('aiInput');
         const message = input.value.trim();
         
         if (!message) return;
         
         // Disable input
         input.disabled = true;
-        document.getElementById('aiSendBtn').disabled = true;
+        const sendBtn = document.getElementById('aiSendBtnChat') || document.getElementById('aiSendBtn');
+        if (sendBtn) {
+            sendBtn.disabled = true;
+        }
         
         // Add user message
         this.addAIMessage(message, 'user');
@@ -1226,9 +1499,10 @@ class BalansAI {
         
         // Send to AI
         try {
-            const response = await this.fetchData(`/api/ai/advice?prompt=${encodeURIComponent(message)}`);
+            const userId = this.currentUser.id;
+            const response = await this.fetchData(`/api/ai/advice?prompt=${encodeURIComponent(message)}&user_id=${userId}`);
             
-            if (response.success) {
+            if (response && response.success) {
                 this.addAIMessage(response.data.response, 'ai');
             } else {
                 this.addAIMessage('Kechirasiz, xatolik yuz berdi. Qayta urinib ko\'ring.', 'ai');
@@ -1240,28 +1514,160 @@ class BalansAI {
         
         // Enable input
         input.disabled = false;
-        document.getElementById('aiSendBtn').disabled = false;
+        if (sendBtn) {
+            sendBtn.disabled = false;
+        }
+    }
+    
+    async startVoiceRecognitionChat() {
+        // Tarif tekshirish
+        const allowedTariffs = ['Plus', 'PLUS', 'Max', 'MAX', 'Biznes', 'BIZNES', 'Oila', 'OILA', 
+                               'Biznes Plus', 'BIZNES PLUS', 'Biznes Max', 'BIZNES MAX',
+                               'Oila Plus', 'OILA PLUS', 'Oila Max', 'OILA MAX'];
+        
+        if (!allowedTariffs.includes(this.data.tariff)) {
+            alert('Ovozli suhbat faqat Plus, Biznes, Oila yoki MAX tarifda mavjud!');
+            return;
+        }
+
+        const voiceBtnChat = document.getElementById('aiVoiceBtnChat');
+        const voiceStatusChat = document.getElementById('aiVoiceStatusChat');
+        const inputChat = document.getElementById('aiInputChat');
+
+        // SpeechRecognition tekshirish
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            alert('Kechirasiz, sizning brauzeringiz ovozni tanib olshni qo\'llab-quvvatlamaydi.');
+            return;
+        }
+
+        // Mikrofon ruxsatini tekshirish va so'rash
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (error) {
+            alert('Mikrofon ruxsati rad etilgan. Brauzer sozlamalaridan mikrofon ruxsatini bering.');
+            return;
+        }
+
+        let Recognition;
+        try {
+            Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!Recognition) {
+                alert('Speech recognition mavjud emas!');
+                return;
+            }
+        } catch (error) {
+            console.error('Recognition yaratishda xatolik:', error);
+            alert('Ovoz tanib olish funksiyasi ishlamayapti.');
+            return;
+        }
+
+        // Agar allaqachon active bo'lsa, to'xtatish
+        if (this.recognition && this.recognition.isRecording) {
+            this.recognition.stop();
+            this.recognition.isRecording = false;
+            voiceBtnChat.classList.remove('recording');
+            voiceStatusChat.style.display = 'none';
+            return;
+        }
+
+        const recognition = new Recognition();
+        
+        recognition.lang = 'ru-RU';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        voiceBtnChat.classList.add('recording');
+        voiceStatusChat.style.display = 'block';
+
+        recognition.onstart = () => {
+            console.log('Speech recognition started');
+            this.recognition = recognition;
+            this.recognition.isRecording = true;
+        };
+
+        recognition.onresult = (event) => {
+            console.log('Speech recognition result:', event);
+            const transcript = event.results[0][0].transcript;
+            
+            if (transcript) {
+                inputChat.value = transcript;
+                
+                // Avtomatik ravishda yuborish
+                setTimeout(() => {
+                    this.sendAIMessage();
+                }, 500);
+            }
+            
+            voiceBtnChat.classList.remove('recording');
+            voiceStatusChat.style.display = 'none';
+            this.recognition.isRecording = false;
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            
+            let errorMessage = 'Ovoz eshitishda xatolik yuz berdi.';
+            
+            if (event.error === 'no-speech') {
+                errorMessage = 'Ovoz topilmadi.';
+            } else if (event.error === 'not-allowed') {
+                errorMessage = 'Mikrofon ruxsati rad etilgan.';
+            }
+            
+            alert(errorMessage);
+            
+            voiceBtnChat.classList.remove('recording');
+            voiceStatusChat.style.display = 'none';
+            if (this.recognition) {
+                this.recognition.isRecording = false;
+            }
+        };
+
+        recognition.onend = () => {
+            if (this.recognition && this.recognition.isRecording) {
+                voiceBtnChat.classList.remove('recording');
+                voiceStatusChat.style.display = 'none';
+                this.recognition.isRecording = false;
+            }
+        };
+
+        try {
+            recognition.start();
+        } catch (error) {
+            console.error('Recognition start error:', error);
+            alert('Ovozni boshlashda xatolik.');
+            voiceBtnChat.classList.remove('recording');
+            voiceStatusChat.style.display = 'none';
+        }
     }
 
     addAIMessage(message, sender) {
         const messagesContainer = document.getElementById('aiMessages');
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'ai-message';
+        if (!messagesContainer) return;
         
-        if (sender === 'user') {
-            messageDiv.innerHTML = `
-                <div class="ai-avatar">👤</div>
-                <div class="ai-text">${message}</div>
-            `;
-        } else {
-            messageDiv.innerHTML = `
-                <div class="ai-avatar">🤖</div>
-                <div class="ai-text">${message}</div>
-            `;
-        }
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender === 'user' ? 'user-message' : 'ai-message'}`;
+        
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+        
+        messageDiv.innerHTML = `
+            <div class="message-avatar">${sender === 'user' ? '👤' : '🤖'}</div>
+            <div class="message-content">
+                <div class="message-text">${this.escapeHtml(message)}</div>
+                <div class="message-time">${timeStr}</div>
+            </div>
+        `;
         
         messagesContainer.appendChild(messageDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     getTransactionIcon(type) {
@@ -1364,6 +1770,676 @@ class BalansAI {
 
     upgradeToMax() {
         alert('MAX tarifni sotib olish uchun botga murojaat qiling!');
+    }
+
+    // Voice recognition functions
+    async startVoiceRecognition() {
+        // Tarif tekshirish
+        const allowedTariffs = ['Plus', 'PLUS', 'Max', 'MAX', 'Biznes', 'BIZNES', 'Oila', 'OILA', 
+                               'Biznes Plus', 'BIZNES PLUS', 'Biznes Max', 'BIZNES MAX',
+                               'Oila Plus', 'OILA PLUS', 'Oila Max', 'OILA MAX'];
+        
+        if (!allowedTariffs.includes(this.data.tariff)) {
+            alert('Ovozli suhbat faqat Plus, Biznes, Oila yoki MAX tarifda mavjud!');
+            return;
+        }
+
+        const voiceBtn = document.getElementById('aiVoiceBtn');
+        const voiceStatus = document.getElementById('aiVoiceStatus');
+        const input = document.getElementById('aiInput');
+
+        // SpeechRecognition tekshirish
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            alert('Kechirasiz, sizning brauzeringiz ovozni tanib olshni qo\'llab-quvvatlamaydi.\n\nOvoz funksiyasini ishlatish uchun Chrome yoki Edge brauzeridan foydalaning.');
+            return;
+        }
+
+        // Mikrofon ruxsatini tekshirish va so'rash
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (error) {
+            alert('Mikrofon ruxsati rad etilgan. Iltimos, brauzer sozlamalaridan mikrofon ruxsatini bering.');
+            return;
+        }
+
+        // Recognition qurish
+        let Recognition;
+        try {
+            Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!Recognition) {
+                alert('Speech recognition mavjud emas!');
+                return;
+            }
+        } catch (error) {
+            console.error('Recognition yaratishda xatolik:', error);
+            alert('Ovoz tanib olish funksiyasi ishlamayapti. Qayta urinib ko\'ring.');
+            return;
+        }
+
+        // Agar allaqachon active bo'lsa, to'xtatish
+        if (this.recognition && this.recognition.isRecording) {
+            this.recognition.stop();
+            this.recognition.isRecording = false;
+            voiceBtn.classList.remove('recording');
+            voiceStatus.style.display = 'none';
+            return;
+        }
+
+        const recognition = new Recognition();
+        
+        recognition.lang = 'ru-RU'; // O'zbek tili yo'q, rus tilidan foydalanamiz
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        voiceBtn.classList.add('recording');
+        voiceStatus.style.display = 'block';
+
+        recognition.onstart = () => {
+            console.log('Speech recognition started');
+            this.recognition = recognition;
+            this.recognition.isRecording = true;
+        };
+
+        recognition.onresult = (event) => {
+            console.log('Speech recognition result:', event);
+            const transcript = event.results[0][0].transcript;
+            
+            if (transcript) {
+                input.value = transcript;
+                
+                // Avtomatik ravishda yuborish
+                setTimeout(() => {
+                    this.sendAIMessage();
+                }, 500);
+            }
+            
+            voiceBtn.classList.remove('recording');
+            voiceStatus.style.display = 'none';
+            this.recognition.isRecording = false;
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            
+            let errorMessage = 'Ovoz eshitishda xatolik yuz berdi.';
+            
+            switch(event.error) {
+                case 'no-speech':
+                    errorMessage = 'Ovoz topilmadi. Mikrofoningizni tekshiring.';
+                    break;
+                case 'audio-capture':
+                    errorMessage = 'Mikrofonga kirish imkoni yo\'q. Ruxsatlarni tekshiring.';
+                    break;
+                case 'not-allowed':
+                    errorMessage = 'Mikrofon ruxsati rad etilgan. Brauzer sozlamalaridan ruxsat bering.';
+                    break;
+                case 'network':
+                    errorMessage = 'Tarmoq xatoligi. Internet bilan bog\'lanishni tekshiring.';
+                    break;
+            }
+            
+            voiceBtn.classList.remove('recording');
+            voiceStatus.style.display = 'none';
+            this.recognition.isRecording = false;
+            
+            // Xatolik haqida foydalanuvchiga ma\'lumot berish
+            const messagesContainer = document.getElementById('aiMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'ai-message';
+            messageDiv.innerHTML = `
+                <div class="ai-avatar">⚠️</div>
+                <div class="ai-text">${errorMessage}</div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+        };
+
+        recognition.onend = () => {
+            console.log('Speech recognition ended');
+            voiceBtn.classList.remove('recording');
+            voiceStatus.style.display = 'none';
+            if (this.recognition) {
+                this.recognition.isRecording = false;
+            }
+        };
+
+        try {
+            recognition.start();
+        } catch (error) {
+            console.error('Recognition start error:', error);
+            voiceBtn.classList.remove('recording');
+            voiceStatus.style.display = 'none';
+            alert('Ovozni boshlashda xatolik yuz berdi. Qayta urinib ko\'ring.');
+        }
+    }
+
+    // Real time chat
+    toggleRealTimeChat() {
+        // Tarif tekshirish
+        const allowedTariffs = ['Plus', 'PLUS', 'Max', 'MAX', 'Biznes', 'BIZNES', 'Oila', 'OILA',
+                               'Biznes Plus', 'BIZNES PLUS', 'Biznes Max', 'BIZNES MAX',
+                               'Oila Plus', 'OILA PLUS', 'Oila Max', 'OILA MAX'];
+        
+        if (!allowedTariffs.includes(this.data.tariff)) {
+            alert('Real vaqt suhbat faqat Plus, Biznes, Oila yoki MAX tarifda mavjud!');
+            return;
+        }
+
+        const realTimeBtn = document.getElementById('aiRealTimeBtn');
+        const realTimeStatus = document.getElementById('aiRealTimeStatus');
+        
+        // Real time rejim yoqilganmi tekshirish
+        if (this.isRealTimeMode) {
+            // Real time rejimni o'chirish
+            this.isRealTimeMode = false;
+            realTimeBtn.classList.remove('active');
+            realTimeStatus.style.display = 'none';
+            
+            // Recognition to'xtatish
+            if (this.recognition && this.recognition.isRecording) {
+                this.recognition.stop();
+            }
+            
+            this.addAIMessage('Real vaqt suhbat rejimi o\'chirildi.', 'ai');
+        } else {
+            // Real time rejimni yoqish
+            this.isRealTimeMode = true;
+            realTimeBtn.classList.add('active');
+            realTimeStatus.style.display = 'block';
+            
+            this.addAIMessage('Real vaqt suhbat rejimi yoqildi. Gapirishingiz mumkin.', 'ai');
+            
+            // Avtomatik ravishda ovozni eshitishni boshlash
+            this.startContinuousListening();
+        }
+    }
+
+    startContinuousListening() {
+        if (!this.isRealTimeMode) return;
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            this.addAIMessage('Ovoz tanib olish funksiyasi mavjud emas.', 'ai');
+            this.isRealTimeMode = false;
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.continuous = true;
+        recognition.interimResults = false;
+
+        recognition.onresult = async (event) => {
+            const transcript = event.results[event.results.length - 1][0].transcript;
+            
+            if (transcript && this.isRealTimeMode) {
+                // Foydalanuvchi savolini ko'rsatish
+                this.addAIMessage(transcript, 'user');
+                
+                // AI javob olish
+                const aiResponse = await this.getAIResponseVoice(transcript);
+                
+                // AI javobini ko'rsatish
+                this.addAIMessage(aiResponse, 'ai');
+                
+                // AI javobini ovozga o'tkazish
+                this.speakText(aiResponse);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Real time recognition error:', event.error);
+            if (this.isRealTimeMode) {
+                this.isRealTimeMode = false;
+                document.getElementById('aiRealTimeBtn').classList.remove('active');
+                document.getElementById('aiRealTimeStatus').style.display = 'none';
+            }
+        };
+
+        recognition.onend = () => {
+            // Agar real time rejim yoqilgan bo'lsa, qayta boshlash
+            if (this.isRealTimeMode) {
+                recognition.start();
+            }
+        };
+
+        recognition.start();
+        this.realTimeRecognition = recognition;
+    }
+
+    async getAIResponseVoice(prompt) {
+        try {
+            const userId = this.currentUser.id;
+            const response = await this.fetchData(`/api/ai/advice?prompt=${encodeURIComponent(prompt)}&user_id=${userId}`);
+            
+            if (response.success) {
+                return response.data.response;
+            } else {
+                // OpenAI quota tugagan bo'lsa, oddiy javob
+                if (response.error && response.error.includes('quota')) {
+                    return 'Assalomu alaykum! Men sizning moliyaviy yordamchiingizman. Balansingiz va statistikangiz haqida ma\'lumot berishga tayyorman.';
+                }
+                return 'Kechirasiz, javob berishda xatolik yuz berdi.';
+            }
+        } catch (error) {
+            console.error('AI voice error:', error);
+            return 'Kechirasiz, xatolik yuz berdi.';
+        }
+    }
+
+    async speakText(text) {
+        // Speech synthesis ni tozalash
+        speechSynthesis.cancel();
+        
+        try {
+            // Server-side OpenAI TTS API
+            const response = await fetch("/api/tts", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text: text })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.audio) {
+                    // Base64 audio ni qayta qurish
+                    const audioBlob = this.base64ToBlob(data.audio, 'audio/mpeg');
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    
+                    return new Promise((resolve, reject) => {
+                        audio.onended = () => {
+                            URL.revokeObjectURL(audioUrl);
+                            resolve();
+                        };
+                        audio.onerror = reject;
+                        audio.play();
+                    });
+                }
+            }
+        } catch (error) {
+            console.log('OpenAI TTS failed, falling back to Web Speech API:', error);
+        }
+        
+        // Fallback to Web Speech API
+        if ('speechSynthesis' in window) {
+            // Voices yuklanishini kutish
+            return new Promise((resolve, reject) => {
+                const speak = () => {
+                    let lang = 'ru-RU'; // Use Russian for better voice quality
+                    
+                    const voices = speechSynthesis.getVoices();
+                    const ruVoice = voices.find(v => v.lang.includes('ru'));
+                    
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = lang;
+                    
+                    // Tabiiy ovoz parametrlari
+                    utterance.rate = 0.9;  // Slightly slower for naturalness
+                    utterance.pitch = 1.1;  // Slightly higher pitch
+                    utterance.volume = 1.0;
+                    
+                    // Ovozni tanlash
+                    if (ruVoice) {
+                        utterance.voice = ruVoice;
+                    }
+                    
+                    utterance.onend = () => resolve();
+                    utterance.onerror = reject;
+                    
+                    speechSynthesis.speak(utterance);
+                };
+                
+                // Voices yuklanmagan bo'lsa, kutish
+                if (speechSynthesis.getVoices().length === 0) {
+                    speechSynthesis.onvoiceschanged = speak;
+                } else {
+                    speak();
+                }
+            });
+        }
+        
+        return Promise.resolve();
+    }
+    
+    // Helper function to convert base64 to blob
+    base64ToBlob(base64, mimeType) {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+    }
+    
+    // WebRTC orqali audio streaming (future implementation)
+    async setupAudioStream() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 44100
+                }
+            });
+            return stream;
+        } catch (error) {
+            console.error('Audio stream error:', error);
+            return null;
+        }
+    }
+
+    // New voice chat function for separate page
+    toggleVoiceChat() {
+        // Tarif tekshirish
+        const allowedTariffs = ['Plus', 'PLUS', 'Max', 'MAX', 'Biznes', 'BIZNES', 'Oila', 'OILA',
+                               'Biznes Plus', 'BIZNES PLUS', 'Biznes Max', 'BIZNES MAX',
+                               'Oila Plus', 'OILA PLUS', 'Oila Max', 'OILA MAX'];
+        
+        if (!allowedTariffs.includes(this.data.tariff)) {
+            alert('Real vaqt suhbat faqat Plus, Biznes, Oila yoki MAX tarifda mavjud!');
+            return;
+        }
+
+        const voiceControlBtn = document.getElementById('voiceControlBtn');
+        const voiceWave = document.querySelector('.voice-wave');
+        const voiceStatusText = document.getElementById('voiceStatusText');
+        
+        if (!this.isVoiceChatActive) {
+            // Voice chat ni boshlash
+            this.isVoiceChatActive = true;
+            voiceControlBtn.classList.add('active');
+            voiceControlBtn.querySelector('.control-text').textContent = 'To\'xtatish';
+            if (voiceWave) voiceWave.classList.add('active');
+            
+            // Mikrofon ruxsatini so'rash
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(() => {
+                    voiceStatusText.textContent = '🎙️ Gapirishingiz mumkin...';
+                    this.startRealTimeVoiceChat();
+                })
+                .catch((error) => {
+                    alert('Mikrofon ruxsati rad etilgan. Iltimos, brauzer sozlamalaridan ruxsat bering.');
+                    this.stopVoiceChat();
+                });
+        } else {
+            // Voice chat ni to'xtatish
+            this.stopVoiceChat();
+        }
+    }
+    
+    // Real vaqt ovozli suhbat - Web Speech API (ishlaydi!)
+    async startRealTimeVoiceChat() {
+        console.log('🎙️ Starting Voice Chat...');
+        this.startVoiceChatRecognition();
+    }
+    
+    setupRealTimeAudio() {
+        // Mikrofon streaming
+        navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 24000
+            }
+        }).then(stream => {
+            this.audioStream = stream;
+            
+            const audioContext = new AudioContext({ sampleRate: 24000 });
+            const source = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+            
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+            
+            processor.onaudioprocess = (e) => {
+                if (!this.isVoiceChatActive || !this.realtimeWS || this.realtimeWS.readyState !== WebSocket.OPEN) return;
+                
+                const inputData = e.inputBuffer.getChannelData(0);
+                const pcm16 = new Int16Array(inputData.length);
+                
+                for (let i = 0; i < inputData.length; i++) {
+                    pcm16[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7fff;
+                }
+                
+                // Base64 encode
+                const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
+                
+                // Send audio delta
+                this.realtimeWS.send(JSON.stringify({
+                    type: 'input_audio_buffer.append',
+                    audio: base64
+                }));
+                
+                // Input audio buffer commit
+                this.realtimeWS.send(JSON.stringify({
+                    type: 'input_audio_buffer.commit'
+                }));
+            };
+            
+        }).catch(error => {
+            console.error('Audio setup error:', error);
+            this.stopVoiceChat();
+        });
+    }
+    
+    handleRealtimeMessage(data) {
+        const voiceStatusText = document.getElementById('voiceStatusText');
+        
+        switch (data.type) {
+            case 'response.audio.delta':
+                if (data.delta) {
+                    this.handleAudioDelta(data.delta);
+                }
+                break;
+                
+            case 'response.audio.done':
+                if (voiceStatusText) {
+                    voiceStatusText.textContent = '🎙️ Eshitilmoqda...';
+                }
+                break;
+                
+            case 'response.created':
+                if (voiceStatusText) {
+                    voiceStatusText.textContent = '🤖 AI javob bermoqda...';
+                }
+                break;
+                
+            case 'error':
+                console.error('API error:', data.error);
+                alert('Xatolik: ' + (data.error.message || 'Noma\'lum xato'));
+                this.stopVoiceChat();
+                break;
+                
+            case 'session.updated':
+                console.log('Session updated');
+                break;
+        }
+    }
+    
+    handleAudioDelta(audioDelta) {
+        // Audio delta ni decode qilish va ijro etish
+        try {
+            // Base64 dan blob yaratish
+            const binary = atob(audioDelta);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'audio/opus' });
+            const audioUrl = URL.createObjectURL(blob);
+            
+            // Audio ijro etish
+            const audio = new Audio(audioUrl);
+            audio.play().then(() => {
+                URL.revokeObjectURL(audioUrl);
+            }).catch(e => {
+                console.error('Audio play error:', e);
+                URL.revokeObjectURL(audioUrl);
+            });
+        } catch (error) {
+            console.error('Audio delta error:', error);
+        }
+    }
+
+    stopVoiceChat() {
+        this.isVoiceChatActive = false;
+        const voiceControlBtn = document.getElementById('voiceControlBtn');
+        const voiceWave = document.querySelector('.voice-wave');
+        const voiceStatusText = document.getElementById('voiceStatusText');
+        
+        if (voiceControlBtn) {
+            voiceControlBtn.classList.remove('active');
+            voiceControlBtn.querySelector('.control-text').textContent = 'Suhbatni boshlash';
+        }
+        if (voiceWave) voiceWave.classList.remove('active');
+        if (voiceStatusText) voiceStatusText.textContent = 'Suhbatni boshlash uchun tugmani bosing';
+        
+        // WebSocket ni yopish
+        if (this.realtimeWS) {
+            this.realtimeWS.close();
+            this.realtimeWS = null;
+        }
+        
+        // Speech synthesis ni to'xtatish
+        if ('speechSynthesis' in window) {
+            speechSynthesis.cancel();
+        }
+        
+        // Audio stream ni to'xtatish
+        if (this.audioStream) {
+            this.audioStream.getTracks().forEach(track => track.stop());
+            this.audioStream = null;
+        }
+        
+        // Recognition ni to'xtatish
+        if (this.voiceChatRecognition) {
+            this.voiceChatRecognition.stop();
+            this.voiceChatRecognition = null;
+        }
+    }
+
+    async startVoiceChatRecognition() {
+        // Audio stream setup
+        const enableFilter = document.getElementById('enableVoiceFilter')?.checked;
+        
+        if (enableFilter) {
+            try {
+                const stream = await this.setupAudioStream();
+                if (stream) {
+                    this.audioStream = stream;
+                    console.log('Audio stream setup completed');
+                }
+            } catch (error) {
+                console.error('Failed to setup audio stream:', error);
+            }
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert('Ovoz tanib olish funksiyasi mavjud emas.');
+            this.stopVoiceChat();
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU'; // O'zbek tili yo'q, rus tilidan foydalanamiz
+        recognition.continuous = true; // Real vaqt uchun true
+        recognition.interimResults = false; // Final results ni olish
+        recognition.maxAlternatives = 1; // Faqat eng yaxshi natijani olish
+
+        recognition.onresult = async (event) => {
+            // Faqat eng oxirgi (yakunlangan) natijani olish
+            const lastResult = event.results[event.results.length - 1];
+            
+            if (!lastResult.isFinal || !this.isVoiceChatActive) return;
+            
+            const transcript = lastResult[0].transcript.trim();
+            
+            if (!transcript) return;
+            
+            console.log('User said:', transcript);
+            
+            // Status yangilash
+            const voiceStatusText = document.getElementById('voiceStatusText');
+            if (voiceStatusText) {
+                voiceStatusText.textContent = '🤖 AI javob berishda...';
+            }
+            
+            try {
+                // AI javob olish
+                const aiResponse = await this.getAIResponseVoice(transcript);
+                console.log('AI response:', aiResponse);
+                
+                // Status yangilash
+                if (voiceStatusText) {
+                    voiceStatusText.textContent = '🗣️ AI javob bermoqda...';
+                }
+                
+                // AI javobini ovozga o'tkazish
+                await this.speakText(aiResponse);
+            } catch (error) {
+                console.error('AI response error:', error);
+            } finally {
+                // Status qayta tiklash
+                if (voiceStatusText && this.isVoiceChatActive) {
+                    voiceStatusText.textContent = '🎙️ Gapirishingiz mumkin...';
+                }
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Voice chat recognition error:', event.error);
+            
+            // Agar no-speech bo'lsa, faqat log qiling va davom ettiring
+            if (event.error === 'no-speech') {
+                console.log('No speech detected, continuing...');
+                // Hech narsa qilmaymiz, recognition avtomatik qayta ishga tushadi
+                return;
+            }
+            
+            // Agar aborted bo'lsa, bu normal (qo'lda to'xtatilgan)
+            if (event.error === 'aborted') {
+                console.log('Recognition aborted');
+                return;
+            }
+            
+            // Boshqa xatolar uchun to'xtatish
+            const errorMessage = {
+                'not-allowed': 'Mikrofon ruxsati rad etilgan',
+                'no-speech': 'Ovoz topilmadi',
+                'audio-capture': 'Audio yozib bo\'lmadi',
+                'network': 'Tarmoq xatoligi',
+                'service-not-allowed': 'Servis rad etildi'
+            }[event.error] || `Xatolik: ${event.error}`;
+            
+            console.error(errorMessage);
+            
+            // Barcha xatolarga javoban to'xtatish
+            this.stopVoiceChat();
+        };
+
+        recognition.onend = () => {
+            // Real vaqt rejimda qayta ishga tushirish
+            if (this.isVoiceChatActive) {
+                setTimeout(() => {
+                    if (this.isVoiceChatActive) {
+                        try {
+                            recognition.start();
+                        } catch (error) {
+                            console.error('Recognition restart error:', error);
+                        }
+                    }
+                }, 100);
+            }
+        };
+
+        recognition.start();
+        this.voiceChatRecognition = recognition;
     }
 }
 

@@ -81,7 +81,7 @@ class Database:
         """Yangi foydalanuvchi qo'shish"""
         query = """
         INSERT INTO users (user_id, username, first_name, last_name, tariff, created_at) 
-        VALUES (%s, %s, %s, %s, 'PREMIUM', NOW())
+        VALUES (%s, %s, %s, %s, 'Plus', NOW())
         ON DUPLICATE KEY UPDATE 
         username = VALUES(username), 
         first_name = VALUES(first_name), 
@@ -236,8 +236,8 @@ class Database:
         result = self.execute_query(query, (user_id,))
         if result:
             user = result[0]
-            return user['tariff'] or 'FREE'
-        return 'FREE'
+            return user['tariff'] or 'Plus'  # Default: Plus
+        return 'Plus'  # Default: Plus
     
     def update_user_tariff(self, user_id, tariff, expires_at=None):
         """Foydalanuvchi tarifini yangilash"""

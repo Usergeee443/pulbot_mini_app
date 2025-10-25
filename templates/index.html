@@ -191,31 +191,59 @@
                 </div>
             </div>
 
-            <!-- AI Suhbat sahifasi -->
-            <div id="ai-chat" class="tab-content">
-                <div class="section">
-                    <div class="section-header">
-                        <h3>AI Moliyaviy Maslahatchi</h3>
-                        <div class="tariff-lock" id="aiLock" style="display: none;">
-                            <span>🔒 MAX tarif kerak</span>
+
+            <!-- Ovozli Suhbat sahifasi -->
+            <div id="voice-chat" class="tab-content">
+                <div class="voice-chat-container">
+                    <div class="voice-chat-header">
+                        <h3>🎙️ Real vaqt ovozli suhbat</h3>
+                        <div class="tariff-lock" id="voiceChatLock" style="display: none;">
+                            <span>🔒 Plus, Biznes, Oila yoki MAX kerak</span>
                         </div>
                     </div>
                     
-                    <div class="ai-chat-container">
-                        <div class="ai-messages" id="aiMessages">
-                            <div class="ai-message">
-                                <div class="ai-avatar">🤖</div>
-                                <div class="ai-text">
-                                    Salom! Men sizning moliyaviy maslahatchiingizman. 
-                                    Savollaringizni berishingiz mumkin.
-                                </div>
-                            </div>
+                    <div class="voice-visualizer" id="voiceVisualizer">
+                        <div class="voice-wave">
+                            <div class="wave-bar" style="--delay: 0ms;"></div>
+                            <div class="wave-bar" style="--delay: 100ms;"></div>
+                            <div class="wave-bar" style="--delay: 200ms;"></div>
+                            <div class="wave-bar" style="--delay: 300ms;"></div>
+                            <div class="wave-bar" style="--delay: 400ms;"></div>
                         </div>
+                        <div class="voice-status-text" id="voiceStatusText">Suhbatni boshlash uchun tugmani bosing</div>
+                    </div>
+
+                    <div class="voice-controls">
+                        <button id="voiceControlBtn" class="voice-control-button">
+                            <span class="control-icon">🎤</span>
+                            <span class="control-text">Suhbatni boshlash</span>
+                        </button>
+                    </div>
+
+                    <div class="voice-settings">
+                        <label class="voice-setting-item">
+                            <input type="checkbox" id="enableVoiceFilter" checked>
+                            <span>Tovush filtratsiyasi (real vaqt suhbat uchun)</span>
+                        </label>
                         
-                        <div class="ai-input-container">
-                            <input type="text" id="aiInput" placeholder="Savolingizni yozing..." disabled>
-                            <button id="aiSendBtn" class="btn-primary" disabled>Yuborish</button>
+                        <div class="voice-selector-container">
+                            <label class="voice-selector-label">AI Ovoz:</label>
+                            <select id="voiceSelect" class="voice-selector">
+                                <option value="marin" selected>Marin (Tabiiy Ayol) 🎭</option>
+                                <option value="ash">Ash (Neutral) 🎙️</option>
+                                <option value="verse">Verse (Professional) 🎤</option>
+                                <option value="alloy">Alloy (Balanced) 🔊</option>
+                                <option value="cove">Cove (Gentle) 💬</option>
+                                <option value="ember">Ember (Energetic) ⚡</option>
+                            </select>
                         </div>
+                    </div>
+
+                    <div class="voice-info">
+                        <p>• Real vaqtda tabiiy ovozli suhbat</p>
+                        <p>• AI sizning savollaringizga javob beradi</p>
+                        <p>• Balans va statistikangiz haqida ma'lumot beradi</p>
+                        <p>• Insonga o'xshash tabiiy ovoz bilan javob beradi</p>
                     </div>
                 </div>
             </div>
@@ -244,6 +272,66 @@
                     <!-- Tranzaksiyalar ro'yxati -->
                     <div class="transactions-list" id="allTransactions">
                         <!-- JavaScript orqali to'ldiriladi -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Chat sahifasi - Fullscreen -->
+            <div id="ai-chat" class="tab-content ai-chat-fullscreen">
+                <!-- Header -->
+                <div class="ai-chat-header">
+                    <button class="ai-chat-back" onclick="app.closeAiChat()">
+                        <span class="back-icon">✕</span>
+                    </button>
+                    <div class="ai-chat-title">
+                        <div class="ai-avatar-header">
+                            <div class="avatar-circle">B</div>
+                        </div>
+                        <div class="ai-info">
+                            <div class="ai-name-header">Balans AI</div>
+                            <div class="ai-status-header" id="aiChatTariff">PLUS</div>
+                        </div>
+                    </div>
+                    <button class="ai-chat-menu">
+                        <span>⋮</span>
+                    </button>
+                </div>
+
+                <!-- Messages container -->
+                <div class="ai-messages" id="aiMessages">
+                    <div class="message ai-message">
+                        <div class="message-avatar ai-robot-avatar">🤖</div>
+                        <div class="message-content">
+                            <div class="message-text">
+                                Salom! Men sizning moliyaviy maslahatchi. Savollaringizni yozishingiz yoki mikrofon gapirishingiz mumkin.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input area -->
+                <div class="ai-input-area">
+                    <button class="ai-voice-btn" id="aiVoiceBtnChat" title="Ovozli xabar">
+                        <span>🎤</span>
+                    </button>
+                    <div class="ai-input-wrapper">
+                        <textarea 
+                            id="aiInputChat" 
+                            class="ai-input" 
+                            placeholder="Savolingizni yozing..."
+                            rows="1"
+                        ></textarea>
+                    </div>
+                    <button class="ai-send-btn" id="aiSendBtnChat" title="Yuborish">
+                        <span>➤</span>
+                    </button>
+                </div>
+
+                <!-- Voice status -->
+                <div class="ai-voice-status" id="aiVoiceStatusChat" style="display: none;">
+                    <div class="voice-status-content">
+                        <div class="voice-status-icon">🎤</div>
+                        <div class="voice-status-text">Eshitilmoqda...</div>
                     </div>
                 </div>
             </div>
@@ -285,16 +373,20 @@
                 <div class="nav-icon">📋</div>
                 <div class="nav-label">Tranzaksiyalar</div>
             </button>
-            <button class="nav-item" data-tab="analytics">
+            <button class="nav-item" data-tab="analytics1">
                 <div class="nav-icon">📊</div>
-                <div class="nav-label">Tahlillar</div>
+                <div class="nav-label">Soon...</div>
             </button>
-            <button class="nav-item" data-tab="ai-chat">
+            <button class="nav-item" data-tab="ai-chat" id="aiChatNavBtn">
                 <div class="nav-icon">🤖</div>
-                <div class="nav-label">AI Suhbat</div>
+                <div class="nav-label">AI Chat</div>
+            </button>
+            <button class="nav-item" data-tab="voice-chat1">
+                <div class="nav-icon">🎙️</div>
+                <div class="nav-label">Soon...</div>
             </button>
             <button class="nav-item" data-tab="debts">
-                <div class="nav-icon">💳</div>
+                <div class="nav-icon">💰</div>
                 <div class="nav-label">Qarzlar</div>
             </button>
         </nav>

@@ -27,7 +27,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'sk-proj-BiPjPM7V7E_3ZZOCEhidGkA6ie
 
 # Tarif tizimi
 TARIFF_LIMITS = {
-    'FREE': {
+    'Bepul': {
         'transactions_per_month': 50,
         'ai_requests_per_day': 0,
         'advanced_analytics': False,
@@ -35,7 +35,7 @@ TARIFF_LIMITS = {
         'custom_categories': 5,
         'charts_count': 1
     },
-    'PREMIUM': {
+    'Plus': {
         'transactions_per_month': -1,  # Unlimited
         'ai_requests_per_day': 0,
         'advanced_analytics': True,
@@ -43,12 +43,60 @@ TARIFF_LIMITS = {
         'custom_categories': -1,  # Unlimited
         'charts_count': 5
     },
-    'MAX': {
+    'Max': {
         'transactions_per_month': -1,  # Unlimited
         'ai_requests_per_day': -1,  # Unlimited
         'advanced_analytics': True,
         'export_data': True,
         'custom_categories': -1,  # Unlimited
+        'charts_count': 10
+    },
+    'Biznes': {
+        'transactions_per_month': -1,
+        'ai_requests_per_day': 0,
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1,
+        'charts_count': 5
+    },
+    'Biznes Plus': {
+        'transactions_per_month': -1,
+        'ai_requests_per_day': 10,
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1,
+        'charts_count': 10
+    },
+    'Biznes Max': {
+        'transactions_per_month': -1,
+        'ai_requests_per_day': -1,
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1,
+        'charts_count': 10
+    },
+    'Oila': {
+        'transactions_per_month': -1,
+        'ai_requests_per_day': 0,
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1,
+        'charts_count': 5
+    },
+    'Oila Plus': {
+        'transactions_per_month': -1,
+        'ai_requests_per_day': 10,
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1,
+        'charts_count': 10
+    },
+    'Oila Max': {
+        'transactions_per_month': -1,
+        'ai_requests_per_day': -1,
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1,
         'charts_count': 10
     }
 }

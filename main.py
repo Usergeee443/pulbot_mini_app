@@ -1,36 +1,18 @@
-import asyncio
-import threading
-import time
-from bot import main as bot_main
-from app import app
-from config import FLASK_PORT
-
-def run_flask():
-    """Flask app ni ishga tushirish"""
-    app.run(host='0.0.0.0', port=FLASK_PORT, debug=False)
-
-def run_bot():
-    """Bot ni ishga tushirish"""
-    asyncio.run(bot_main())
+#!/usr/bin/env python3
+"""Main application entry point"""
+import os
 
 if __name__ == "__main__":
     print("🚀 Balans AI Mini App ishga tushirilmoqda...")
-    print(f"📱 Mini App URL: http://localhost:{FLASK_PORT}/miniapp")
-    print("🤖 Bot va Flask app bir vaqtda ishga tushirilmoqda...")
-    print("To'xtatish uchun Ctrl+C bosing")
-    print("=" * 50)
+    print("📱 Telegram Mini App: http://localhost:8081/miniapp")
+    print("=" * 60)
     
-    # Flask ni alohida thread da ishga tushirish
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
+    # Flask app ni ishga tushirish
+    from app import app
     
-    # Kichik kutish
-    time.sleep(2)
+    port = int(os.environ.get('PORT', 8081))
+    print(f"✅ Server ishga tushdi: http://localhost:{port}")
+    print("✅ Mini App ochib sinab ko'ring!")
+    print("=" * 60)
     
-    # Bot ni ishga tushirish
-    try:
-        run_bot()
-    except KeyboardInterrupt:
-        print("\n👋 Ilova to'xtatildi")
-    except Exception as e:
-        print(f"❌ Xatolik: {e}")
+    app.run(host='0.0.0.0', port=port, debug=False)

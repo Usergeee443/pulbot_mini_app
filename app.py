@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import os
+import requests
 from database import Database
 from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY
 
@@ -99,6 +100,12 @@ def get_statistics(user_id):
         """
         recent_transactions = db.execute_query(recent_transactions_query, (user_id,))
         
+        # transaction_type ni type ga qo'shish
+        if recent_transactions:
+            for t in recent_transactions:
+                if 'transaction_type' in t and 'type' not in t:
+                    t['type'] = t['transaction_type']
+        
         return jsonify({
             'success': True,
             'data': {
@@ -137,6 +144,12 @@ def get_debts(user_id):
         """
         debt_summary = db.execute_query(debt_summary_query, (user_id,))
         
+        # transaction_type ni type ga qo'shish
+        if debts:
+            for t in debts:
+                if 'transaction_type' in t and 'type' not in t:
+                    t['type'] = t['transaction_type']
+        
         return jsonify({
             'success': True,
             'data': {
@@ -152,7 +165,7 @@ def get_user_tariff(user_id):
     """Foydalanuvchi tarifini olish"""
     try:
         tariff = db.get_user_tariff(user_id)
-        limits = TARIFF_LIMITS.get(tariff, TARIFF_LIMITS['FREE'])
+        limits = TARIFF_LIMITS.get(tariff, TARIFF_LIMITS['Plus'])  # Default: Plus
         
         return jsonify({
             'success': True,
@@ -164,42 +177,261 @@ def get_user_tariff(user_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/api/config')
+def get_config():
+    """Frontend uchun konfiguratsiya"""
+    try:
+        # Faqat zarur konfiguratsiyalarni yuborish (API keylar secret qolishi kerak)
+        return jsonify({
+            'success': True,
+            'data': {
+                'openaiApiKey': None  # Security uchun client tarafida API key qo'llanilmaydi
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/tts', methods=['POST'])
+def text_to_speech():
+    """Text to speech (server-side)"""
+    try:
+        data = request.json
+        text = data.get('text', '')
+        
+        if not text:
+            return jsonify({'success': False, 'message': 'Text required'})
+        
+        # OpenAI client yaratish
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        # Raqamlarni yaxshiroq o'qish uchun formatlash
+        # Raqamlarni so'zga aylantirish
+        import re
+        
+        # Raqamlarni formatlash
+        def format_numbers(text):
+            # Million va ming bo'lgan raqamlarni yaxshiroq formatlash
+            text = re.sub(r'(\d+)\.(\d+)', r'\1 nuqta \2', text)  # Nuqta bilan raqamlar
+            text = re.sub(r'(\d+)%', r'\1 foiz', text)  # Foiz
+            text = re.sub(r'(\d+)\s+so\'m', r'\1 so\'m', text)  # So'm
+            text = re.sub(r'(\d{1,3})(\d{3})(\d{3})', r'\1 million \2 ming \3', text)  # Million
+            text = re.sub(r'(\d{1,3})(\d{3})', r'\1 ming \2', text)  # Ming
+            return text
+        
+        formatted_text = format_numbers(text)
+        
+        # TTS API chaqirish - o'zbek tiliga yaqin ovoz
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice="echo",  # Yaxshiroq ovoz
+            input=formatted_text,
+            speed=1.0
+        )
+        
+        # Audio faylni qaytarish
+        import base64
+        audio_base64 = base64.b64encode(response.content).decode('utf-8')
+        
+        return jsonify({
+            'success': True,
+            'audio': audio_base64
+        })
+        
+    except Exception as e:
+        print(f"TTS error: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
 @app.route('/api/ai/advice')
 def get_ai_advice():
     """AI maslahat olish"""
     try:
         prompt = request.args.get('prompt', '')
+        user_id = request.args.get('user_id')
+        
         if not prompt:
             return jsonify({'success': False, 'message': 'Prompt kiritilmagan'})
         
-        client = get_openai_client()
-        if not client:
-            return jsonify({'success': False, 'message': 'AI xizmati mavjud emas'})
+        # OpenAI API key tekshirish
+        if not OPENAI_API_KEY:
+            return jsonify({'success': False, 'message': 'AI xizmati konfiguratsiya qilinmagan'})
+        
+        # OpenAI client yaratish
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=OPENAI_API_KEY)
+        except Exception as e:
+            print(f"OpenAI client yaratishda xatolik: {e}")
+            return jsonify({'success': False, 'message': f'AI client xatoligi: {str(e)}'})
+        
+        # User statistikalarini olish
+        context = ""
+        if user_id:
+            try:
+                # Balans va statistikani olish
+                income_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'income'"
+                expense_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'expense'"
+                debt_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'debt'"
+                
+                income_result = db.execute_query(income_query, (user_id,))
+                expense_result = db.execute_query(expense_query, (user_id,))
+                debt_result = db.execute_query(debt_query, (user_id,))
+                
+                total_income = income_result[0]['total'] if income_result else 0
+                total_expense = expense_result[0]['total'] if expense_result else 0
+                total_debt = debt_result[0]['total'] if debt_result else 0
+                balance = total_income - total_expense - total_debt
+                
+                context = f"""
+Foydalanuvchi moliyaviy ma'lumotlari:
+- Joriy balans: {balance:,.0f} so'm
+- Umumiy daromad: {total_income:,.0f} so'm
+- Umumiy xarajat: {total_expense:,.0f} so'm
+- Qarzlar: {total_debt:,.0f} so'm
+"""
+            except Exception as e:
+                print(f"Statistika olishda xatolik: {e}")
+        
+        # AI so'rovi yuborish
+        full_prompt = context + "\n\nFoydalanuvchi savoli: " + prompt if context else prompt
+        
+        system_message = """Siz Balans AI — moliyaviy yordamchi. Foydalanuvchilarga o'zbek tilida moliyaviy maslahatlar bering.
+Agar foydalanuvchi balansi, statistikasi yoki moliyaviy holati haqida so'rasa, yuqorida berilgan ma'lumotlarni ishlating.
+Javobni qisqa, tushunarli va foydali qiling. Raqamlarni aniq va tushunarli ko'rsating.
+Javobni faqat o'zbek tilida bering."""
         
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
-                    "content": "Siz moliyaviy maslahatchi. Foydalanuvchilarga moliyaviy maslahatlar bering. Javobni o'zbek tilida bering."
+                    "content": system_message
                 },
                 {
                     "role": "user",
-                    "content": prompt
+                    "content": full_prompt
                 }
             ],
-            max_tokens=500,
+            max_tokens=1000,
             temperature=0.7
         )
+        
+        ai_response = response.choices[0].message.content
+        
+        print(f"AI Response: {ai_response}")
         
         return jsonify({
             'success': True,
             'data': {
-                'response': response.choices[0].message.content
+                'response': ai_response
             }
         })
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        print(f"AI advice xatolik: {e}")
+        return jsonify({'success': False, 'message': f'AI xatoligi: {str(e)}'})
+
+@app.route('/api/realtime-session', methods=['POST'])
+def create_realtime_session():
+    """OpenAI Realtime session yaratish"""
+    try:
+        # Request dan user_id va voice ni olish (optional)
+        user_id = request.json.get('user_id') if request.json else None
+        voice = request.json.get('voice', 'marin') if request.json else 'marin'  # Default voice
+        
+        # User statistikalarini olish
+        context = ""
+        if user_id:
+            try:
+                # Balans va statistikani olish
+                income_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'income'"
+                expense_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'expense'"
+                debt_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'debt'"
+                
+                income_result = db.execute_query(income_query, (user_id,))
+                expense_result = db.execute_query(expense_query, (user_id,))
+                debt_result = db.execute_query(debt_query, (user_id,))
+                
+                total_income = income_result[0]['total'] if income_result else 0
+                total_expense = expense_result[0]['total'] if expense_result else 0
+                total_debt = debt_result[0]['total'] if debt_result else 0
+                balance = total_income - total_expense - total_debt
+                
+                context = f"""
+Foydalanuvchi moliyaviy ma'lumotlari:
+- Joriy balans: {balance:,.0f} so'm
+- Umumiy daromad: {total_income:,.0f} so'm
+- Umumiy xarajat: {total_expense:,.0f} so'm
+- Qarzlar: {total_debt:,.0f} so'm
+
+Bu ma'lumotlarni foydalanuvchi so'raganda berib turing.
+"""
+            except Exception as e:
+                print(f"Statistika olishda xatolik: {e}")
+        
+        # OpenAI Realtime session yaratish
+        headers = {
+            'Authorization': f'Bearer {OPENAI_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Professional Realtime API konfiguratsiyasi
+        payload = {
+            'model': 'gpt-4o-realtime-preview',
+            'instructions': f'''Siz Balans AI — ovoz orqali jonli muloqot qiluvchi shaxsiy moliya yordamchisiz.
+Siz foydalanuvchiga daromad, xarajat, byudjet va tejash bo'yicha yo'l-yo'riq berasiz.
+Har doim tabiiy o'zbek tilida, qisqa, samimiy va ohangdor javob bering.
+Gap 5–15 so'zdan oshmasin, ohangda tabassum sezilsin.
+Kerak bo'lsa, foydalanuvchidan oddiy savol qaytaring.
+"Men AI man" yoki "sun'iy intellektman" demang.
+Sizni odam sifatida qabul qilishlari kerak.
+
+{context}
+
+Misol javoblar:
+- Salom! Qandaysiz, bugun moliya haqida gaplashamizmi?
+- Xa, tushunaman. Asosan qaysi toifadagi xarajat oshdi?
+- Ajoyib! Bugun xarajatlaringiz kamroq ekan.''',
+            'voice': voice  # Tanlangan ovoz
+        }
+        
+        response = requests.post(
+            'https://api.openai.com/v1/realtime/sessions',
+            headers=headers,
+            json=payload
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # session_id va client_secret ni qaytarish
+            session_id = data.get('id', '')
+            
+            # client_secret ni olish
+            client_secret = ''
+            if 'client_secret' in data:
+                if isinstance(data['client_secret'], dict):
+                    client_secret = data['client_secret'].get('value', '')
+                else:
+                    client_secret = str(data['client_secret'])
+            
+            return jsonify({
+                'success': True,
+                'session_id': session_id,
+                'client_secret': client_secret
+            })
+        else:
+            print(f"Session creation error: {response.text}")
+            return jsonify({
+                'success': False,
+                'error': response.text
+            }), response.status_code
+            
+    except Exception as e:
+        print(f"Realtime session error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/add-test-data/<int:user_id>')
 def add_test_data(user_id):
@@ -240,6 +472,6 @@ if __name__ == '__main__':
         print(f"Database xatoligi: {e}")
     
     # Flask app ishga tushirish
-    if __name__ == '__main__':
-        port = int(os.environ.get('PORT', 8080))
-        app.run(host='0.0.0.0', port=port, debug=False)
+    port = int(os.environ.get('PORT', 8080))
+    print(f"🚀 Flask app ishga tushmoqda: http://localhost:{port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
