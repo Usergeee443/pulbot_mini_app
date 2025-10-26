@@ -3,248 +3,488 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Balans AI - To'lov</title>
+    <title>Balans AI - Plus Tarifi</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        .payment-container {
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 20px;
-            min-height: 100vh;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #000000;
+            overflow-x: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .payment-container {
+            max-width: 100%;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Header */
         .payment-header {
             text-align: center;
-            margin-bottom: 30px;
+            padding: 20px 20px 30px;
+            position: relative;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #666;
+            cursor: pointer;
+            padding: 8px;
+            transition: transform 0.2s;
+        }
+
+        .back-btn:active {
+            transform: translateY(-50%) scale(0.95);
         }
 
         .payment-header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: var(--tg-theme-text-color, #000);
-        }
-
-        .payment-header p {
-            color: var(--tg-theme-hint-color, #999);
-            font-size: 14px;
-        }
-
-        .tariff-selection {
-            margin-bottom: 30px;
-        }
-
-        .tariff-card {
-            background: var(--tg-theme-section-bg-color, #fff);
-            border: 2px solid var(--tg-theme-hint-color, #e0e0e0);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .tariff-card:hover {
-            border-color: var(--tg-theme-button-color, #3390ec);
-        }
-
-        .tariff-card.selected {
-            border-color: var(--tg-theme-button-color, #3390ec);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .tariff-card h3 {
-            font-size: 20px;
+            font-size: 32px;
+            font-weight: 700;
             margin-bottom: 8px;
         }
 
-        .tariff-card .price {
-            font-size: 24px;
-            font-weight: bold;
-            margin: 10px 0;
+        .payment-header p {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.4;
         }
 
-        .tariff-card .features {
-            list-style: none;
-            margin-top: 15px;
+        /* Content Area */
+        .content-area {
+            padding: 20px;
+            min-height: calc(100vh - 200px);
         }
 
-        .tariff-card .features li {
-            padding: 5px 0;
-            font-size: 14px;
+        /* Step 1: Features */
+        .features-card {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .feature-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            background: #007AFF;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-
-        .tariff-card .features li:before {
-            content: "✓";
-            font-weight: bold;
-        }
-
-        .continue-btn {
-            width: 100%;
-            padding: 15px;
-            background: var(--tg-theme-button-color, #3390ec);
+            justify-content: center;
             color: white;
-            border: none;
-            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .feature-text {
+            flex: 1;
+            font-size: 15px;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        /* Step 2: Duration Options */
+        .duration-card {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .duration-card.selected {
+            border: 2px solid #007AFF;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
+        }
+
+        .duration-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .duration-label {
             font-size: 16px;
             font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.3s;
+            color: #333;
         }
 
-        .continue-btn:disabled {
+        .duration-price {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .duration-discount {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .duration-bonus {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Step 3: Payment Method Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: #ffffff;
+            border-radius: 24px 24px 0 0;
+            padding: 24px;
+            width: 100%;
+            max-width: 500px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            border: none;
+            font-size: 18px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .modal-close:active {
+            background: #e0e0e0;
+        }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .payment-method {
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .payment-method:active {
+            transform: scale(0.95);
+            border-color: #007AFF;
+        }
+
+        .payment-method img {
+            max-width: 80px;
+            height: auto;
+        }
+
+        .coming-soon {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .coming-soon-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .coming-soon-text {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        /* Button */
+        .action-btn {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #000000;
+            color: #ffffff;
+            border: none;
+            padding: 18px 24px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 100;
+            border-radius: 0;
+        }
+
+        .action-btn:active {
+            background: #333;
+            transform: scale(0.98);
+        }
+
+        .action-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
 
-        .continue-btn:hover:not(:disabled) {
-            opacity: 0.9;
+        /* Legal Text */
+        .legal-text {
+            text-align: center;
+            padding: 16px 24px 100px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
         }
 
-        .back-btn {
-            background: none;
-            border: none;
-            color: var(--tg-theme-link-color, #3390ec);
-            font-size: 16px;
-            cursor: pointer;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .legal-text a {
+            color: #333;
+            text-decoration: underline;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* Hidden */
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="payment-container">
-        <button class="back-btn" onclick="window.close()">
-            <span>←</span> Orqaga
-        </button>
-
+    <!-- Step 1: Plus Features -->
+    <div class="payment-container" id="step1">
         <div class="payment-header">
-            <h1>Tarif tanlang</h1>
-            <p>O'zingizga mos tarifni tanlang va barcha funksiyalardan foydalaning</p>
+            <h1>Plus</h1>
+            <p>Tezroq, aqlliroq va qulayroq balans yuritish.</p>
         </div>
 
-        <div class="tariff-selection" id="tariffSelection">
-            <!-- Tarif kartalar bu yerda yuklanadi -->
+        <div class="content-area">
+            <div class="features-card animate-slide-in">
+                <div class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div class="feature-text">Ovozli yoki matnli kiritish — AI avtomatik to'ldiradi</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div class="feature-text">5 xil AI asosli tahlil va xarajat grafiklari</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div class="feature-text">AI orqali aqlli xarajat va daromad eslatmalari</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div class="feature-text">Realtaym ovozli AI moliyaviy suhbat imkoniyati</div>
+                </div>
+            </div>
         </div>
 
-        <button class="continue-btn" id="continueBtn" disabled onclick="continueToPayment()">
-            Davom etish
-        </button>
+        <button class="action-btn" onclick="goToStep2()">Davom etish</button>
+
+        <div class="legal-text">
+            Tasdiqlash orqali <a href="#">Foydalanish shartlari</a> va <a href="#">Maxfiylik siyosati</a> ga rozilik bildirasiz.
+        </div>
+    </div>
+
+    <!-- Step 2: Duration Selection -->
+    <div class="payment-container hidden" id="step2">
+        <div class="payment-header">
+            <button class="back-btn" onclick="goToStep1()">‹</button>
+            <h1>Plus</h1>
+            <p>Tezroq, aqlliroq va qulayroq balans yuritish.</p>
+        </div>
+
+        <div class="content-area">
+            <div class="duration-card animate-slide-in selected" data-months="1" onclick="selectDuration(1)">
+                <div class="duration-header">
+                    <span class="duration-label">1 oy</span>
+                    <span class="duration-price">19 900 so'm</span>
+                </div>
+                <div class="duration-discount">Chegirma yo'q</div>
+            </div>
+
+            <div class="duration-card animate-slide-in" data-months="14" onclick="selectDuration(14)">
+                <div class="duration-header">
+                    <span class="duration-label">1 yil + 2 oy</span>
+                    <span class="duration-price">238 800 so'm</span>
+                </div>
+                <div class="duration-bonus">14 oy</div>
+            </div>
+        </div>
+
+        <button class="action-btn" onclick="goToStep3()">19 900 so'm evaziga yangilanish</button>
+
+        <div class="legal-text">
+            Yangilash orqali <a href="#">Foydalanish shartlari</a> va <a href="#">Maxfiylik siyosati</a> ga rozilik bildirasiz.
+        </div>
+    </div>
+
+    <!-- Step 3: Payment Method Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">To'lov usulini tanlang:</div>
+                <button class="modal-close" onclick="closePaymentModal()">✕</button>
+            </div>
+
+            <div class="coming-soon">
+                <div class="coming-soon-icon">🚧</div>
+                <div class="coming-soon-text">
+                    To'lov usullari tez orada qo'shiladi.<br>
+                    Joriy vaqtda faqat test rejimida to'lov mumkin.
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        let selectedTariff = null;
-        let userId = null;
-
-        // Telegram WebApp init
+        // Telegram WebApp
+        let tg = null;
         if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
+            tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
+        }
+
+        // Haptic feedback
+        function hapticFeedback() {
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+        }
+
+        // Step navigation
+        function goToStep2() {
+            hapticFeedback();
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+        }
+
+        function goToStep1() {
+            hapticFeedback();
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step1').classList.remove('hidden');
+        }
+
+        let selectedDuration = 1;
+
+        function selectDuration(months) {
+            hapticFeedback();
+            selectedDuration = months;
             
-            // User ID ni olish
-            const initData = tg.initData;
-            if (initData) {
-                const params = new URLSearchParams(initData);
-                const user = params.get('user');
-                if (user) {
-                    const userData = JSON.parse(decodeURIComponent(user));
-                    userId = userData.id;
-                }
-            }
-        }
-
-        // URL dan user_id ni olish
-        const urlParams = new URLSearchParams(window.location.search);
-        userId = userId || urlParams.get('user_id');
-
-        // Tariflarni yuklash
-        async function loadTariffs() {
-            try {
-                const response = await fetch('/api/tariffs');
-                const data = await response.json();
-                
-                if (data.success) {
-                    renderTariffs(data.data.tariffs);
-                }
-            } catch (error) {
-                console.error('Tariflarni yuklashda xatolik:', error);
-            }
-        }
-
-        // Tariflarni render qilish
-        function renderTariffs(tariffs) {
-            const container = document.getElementById('tariffSelection');
-            container.innerHTML = '';
-
-            tariffs.forEach(tariff => {
-                const card = document.createElement('div');
-                card.className = 'tariff-card';
-                card.onclick = () => selectTariff(tariff);
-                
-                card.innerHTML = `
-                    <h3>${tariff.name}</h3>
-                    <div class="price">
-                        ${tariff.monthly_price === 0 ? 'Bepul' : tariff.monthly_price.toLocaleString('uz-UZ') + ' so\'m/oy'}
-                    </div>
-                    <ul class="features">
-                        ${tariff.features.map(feature => `<li>${feature}</li>`).join('')}
-                    </ul>
-                `;
-                
-                container.appendChild(card);
-            });
-        }
-
-        // Tarif tanlash
-        function selectTariff(tariff) {
-            // Barcha kartalardan selected class ni olib tashlash
-            document.querySelectorAll('.tariff-card').forEach(card => {
+            // Update selected state
+            document.querySelectorAll('.duration-card').forEach(card => {
                 card.classList.remove('selected');
             });
-
-            // Tanlangan karta
             event.currentTarget.classList.add('selected');
-            selectedTariff = tariff;
 
-            // Continue tugmasini faollashtirish
-            document.getElementById('continueBtn').disabled = false;
+            // Update button text
+            const price = months === 1 ? '19 900 so\'m' : '238 800 so\'m';
+            document.querySelector('#step2 .action-btn').textContent = `${price} evaziga yangilanish`;
         }
 
-        // To'lov sahifasiga o'tish
-        function continueToPayment() {
-            if (!selectedTariff) return;
+        function goToStep3() {
+            hapticFeedback();
+            const modal = document.getElementById('paymentModal');
+            modal.classList.add('active');
+        }
 
-            // LocalStorage ga saqlash
-            localStorage.setItem('selectedTariff', JSON.stringify(selectedTariff));
-            localStorage.setItem('userId', userId);
+        function closePaymentModal() {
+            hapticFeedback();
+            const modal = document.getElementById('paymentModal');
+            modal.classList.remove('active');
+        }
 
-            // Xabar ko'rsatish
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.showAlert('Tarif tanlandi! To\'lov funksiyasi tez orada qo\'shiladi.');
-            } else {
-                alert('Tarif tanlandi: ' + selectedTariff.name);
+        // Close modal on overlay click
+        document.getElementById('paymentModal').addEventListener('click', (e) => {
+            if (e.target.id === 'paymentModal') {
+                closePaymentModal();
             }
-
-            // Sahifani yopish
-            setTimeout(() => {
-                if (window.Telegram && window.Telegram.WebApp) {
-                    window.Telegram.WebApp.close();
-                } else {
-                    window.close();
-                }
-            }, 2000);
-        }
-
-        // Sahifa yuklanganda
-        document.addEventListener('DOMContentLoaded', () => {
-            loadTariffs();
         });
     </script>
 </body>
