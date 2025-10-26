@@ -384,15 +384,29 @@ def get_ai_advice():
         
         # User tarifini tekshirish - MAX tarif uchun
         user_tariff = 'Bepul'  # Default
+        user_name = 'Foydalanuvchi'  # Default name
         if user_id:
             try:
                 user_tariff = db.get_user_tariff(user_id)
+                # Foydalanuvchi nomini olish
+                user_query = "SELECT first_name FROM users WHERE user_id = %s LIMIT 1"
+                user_result = db.execute_query(user_query, (user_id,))
+                if user_result:
+                    user_name = user_result[0].get('first_name', 'Foydalanuvchi')
             except:
                 pass
         
+        # REPLY SYSTEM - Ha/Yo'q javoblarni tekshirish
+        reply_type = None
+        if prompt.lower().strip() in ['ha', 'yes', 'yo\'q', 'no', 'bekor', 'cancel', 'ok', 'go', 'tamom']:
+            if prompt.lower().strip() in ['ha', 'yes', 'ok', 'go']:
+                reply_type = 'yes'
+            else:
+                reply_type = 'no'
+        
         # AVTOMATIK KIRITISH ANIQLANISHI (MAX tarif uchun)
         auto_transaction = None
-        if user_tariff.upper() == 'MAX' and user_id:
+        if user_tariff.upper() == 'MAX' and user_id and reply_type is None:
             auto_transaction = detect_and_add_transaction(client, prompt, user_id)
         
         # User statistikalarini olish
@@ -483,12 +497,12 @@ def get_ai_advice():
         
         # ADVANCED System Prompt for MAX tariff
         if user_tariff.upper() == 'MAX':
-            system_message = """🤖 BALANS AI — SHAXSIY MOLIYA YORDAMCHISI
+            system_message = f"""🤖 BALANS AI — SHAXSIY MOLIYA YORDAMCHISI
 
-Siz foydalanuvchining ishonchli shaxsiy buxgalteri. Siz:
+Siz {user_name} ning ishonchli shaxsiy buxgalteri. Siz:
 
 1️⃣ TAHLILIY VA PROFESSIONAL:
-   • Foydalanuvchining moliyaviy ma'lumotlarini chuqur tahlil qilib, poyabzal maslaha bering
+   • Moliyaviy ma'lumotlarini chuqur tahlil qilib, poyabzal maslaha bering
    • Raqamlarni aniq va asosli ko'rsating
    • Trendarni, o'zgarishlari va qonun-qo'idalarni izohlang
 
@@ -502,33 +516,38 @@ Siz foydalanuvchining ishonchli shaxsiy buxgalteri. Siz:
    • "25 mingga kofe oldim" → xarajat, Oziq-ovqat kategoriyasi
    • "100 ming qarz berdim" → qarz, Boshqa kategoriyasi
    • "1.5 million maosh oldim" → daromad, Maosh kategoriyasi
-   KEYIN: "✅ Qo'shildim: [type] - [summa] so'm - [kategoriya]"
 
 4️⃣ REPLY TIZIMI:
-   • Foydalanuvchi "ha", "go", "ok" bersa → navbatdagi bosqichni boshlash
-   • "Yo'q", "bekor" bersa → boshqa yechim taklif qilish
+   • "ha", "go", "ok" → navbatdagi bosqichni boshlash
+   • "yo'q", "bekor" → boshqa yechimni taklif qilish
 
 5️⃣ SHAXSIYLASHTIRISH:
-   • Foydalanuvchi ismi, do'stona ton, lekin professional
-   • Har doim do'stana, bu oydagi eng yaxshi samaraning tavsifi bilan tabriklash
-   • "Salom, [ism]! Bugun balansingiz ____ so'm, kemasi __ so'm. Buni optimal qilamizmi?"
+   • Foydalanuvchi ismi ({user_name}), do'stona ton
+   • "Salom, {user_name}! Bugun balansingiz ____ so'm..."
+   • Har safar tabriklash va motivatsiya berish
 
 6️⃣ O'ZBEK TILIDA:
    • Qisqa, tushunarli, melodikli javoblar
-   • Emojis ishlatish mumkin lekin haddan tashqari emas
-   • "Men AI man" yoki "sun'iy intellektman" demang
+   • Emojis haddan tashqari emas
+   • "Men AI man" demang - odam sifatida gapirish
 
 HOZIRGI FOYDALANUVCHI KONTEKSTI:
 """ + context
         else:
             # Oddiy tarif uchun sodda system message
             system_message = """Siz Balans AI — moliyaviy yordamchi. Foydalanuvchilarga o'zbek tilida moliyaviy maslahatlar bering.
-Agar foydalanuvchi balansi, statistikasi yok moliyaviy holati haqida so'rasa, yuqorida berilgan ma'lumotlarni ishlating.
+Agar foydalanuvchi balansi, statistikasi yoki moliyaviy holati haqida so'rasa, yuqorida berilgan ma'lumotlarni ishlating.
 Javobni qisqa, tushunarli va foydali qiling. Raqamlarni aniq va tushunarli ko'rsating.
 Javobni faqat o'zbek tilida bering.""" + "\n\n" + context
         
         # AI so'rovi yuborish
         full_prompt = prompt
+        
+        # REPLY SYSTEM - specific prompts
+        if reply_type == 'yes':
+            full_prompt = f"Foydalanuvchi 'HA' javob berdi - keyingi bosqichni boshlash. Qo'shimcha savol yoki tavsiya: {prompt}"
+        elif reply_type == 'no':
+            full_prompt = f"Foydalanuvchi 'YO'Q' javob berdi - boshqa yechimni taklif qilish. Javob: {prompt}"
         
         # Avtomatik kiritish aniqlanmasa, AI ga ayting
         if auto_transaction and auto_transaction.get('success'):
