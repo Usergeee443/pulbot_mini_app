@@ -97,7 +97,7 @@
         .feature-icon {
             width: 24px;
             height: 24px;
-            background: #007AFF;
+            background: #5A8EF4;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -108,11 +108,18 @@
             flex-shrink: 0;
         }
 
+        .feature-icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: white;
+            stroke-width: 2.5;
+        }
+
         .feature-text {
             flex: 1;
             font-size: 15px;
-            color: #333;
-            line-height: 1.4;
+            color: rgba(0, 0, 0, 0.8);
+            line-height: 1.5;
         }
 
         /* Step 2: Duration Options */
@@ -128,8 +135,8 @@
         }
 
         .duration-card.selected {
-            border: 2px solid #007AFF;
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
+            border: 2px solid #5A8EF4;
+            box-shadow: 0 4px 12px rgba(90, 142, 244, 0.15);
         }
 
         .duration-header {
@@ -142,23 +149,23 @@
         .duration-label {
             font-size: 16px;
             font-weight: 600;
-            color: #333;
+            color: rgba(0, 0, 0, 0.8);
         }
 
         .duration-price {
             font-size: 24px;
             font-weight: 700;
-            color: #333;
+            color: rgba(0, 0, 0, 0.8);
         }
 
         .duration-discount {
             font-size: 14px;
-            color: #666;
+            color: rgba(0, 0, 0, 0.6);
         }
 
         .duration-bonus {
             font-size: 14px;
-            color: #666;
+            color: rgba(0, 0, 0, 0.6);
         }
 
         /* Step 3: Payment Method Modal */
@@ -207,7 +214,7 @@
         .modal-title {
             font-size: 18px;
             font-weight: 600;
-            color: #333;
+            color: rgba(0, 0, 0, 0.8);
         }
 
         .modal-close {
@@ -247,7 +254,7 @@
 
         .payment-method:active {
             transform: scale(0.95);
-            border-color: #007AFF;
+            border-color: #5A8EF4;
         }
 
         .payment-method img {
@@ -346,19 +353,35 @@
         <div class="content-area">
             <div class="features-card animate-slide-in">
                 <div class="feature-item">
-                    <div class="feature-icon">✓</div>
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
                     <div class="feature-text">Ovozli yoki matnli kiritish — AI avtomatik to'ldiradi</div>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-icon">✓</div>
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
                     <div class="feature-text">5 xil AI asosli tahlil va xarajat grafiklari</div>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-icon">✓</div>
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
                     <div class="feature-text">AI orqali aqlli xarajat va daromad eslatmalari</div>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-icon">✓</div>
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
                     <div class="feature-text">Realtaym ovozli AI moliyaviy suhbat imkoniyati</div>
                 </div>
             </div>
@@ -367,7 +390,7 @@
         <button class="action-btn" onclick="goToStep2()">Davom etish</button>
 
         <div class="legal-text">
-            Tasdiqlash orqali <a href="#">Foydalanish shartlari</a> va <a href="#">Maxfiylik siyosati</a> ga rozilik bildirasiz.
+            Tasdiqlash orqali <a href="/terms">Foydalanish shartlari</a> va <a href="/privacy">Maxfiylik siyosati</a> ga rozilik bildirasiz.
         </div>
     </div>
 
@@ -400,7 +423,7 @@
         <button class="action-btn" onclick="goToStep3()">19 900 so'm evaziga yangilanish</button>
 
         <div class="legal-text">
-            Yangilash orqali <a href="#">Foydalanish shartlari</a> va <a href="#">Maxfiylik siyosati</a> ga rozilik bildirasiz.
+            Yangilash orqali <a href="/terms">Foydalanish shartlari</a> va <a href="/privacy">Maxfiylik siyosati</a> ga rozilik bildirasiz.
         </div>
     </div>
 
@@ -409,7 +432,12 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title">To'lov usulini tanlang:</div>
-                <button class="modal-close" onclick="closePaymentModal()">✕</button>
+                <button class="modal-close" onclick="closePaymentModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
             <div class="coming-soon">

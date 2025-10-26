@@ -44,6 +44,16 @@ def payment():
     """To'lov sahifasi"""
     return render_template('payment.html')
 
+@app.route('/terms')
+def terms():
+    """Foydalanish shartlari"""
+    return render_template('terms.html')
+
+@app.route('/privacy')
+def privacy():
+    """Maxfiylik siyosati"""
+    return render_template('privacy.html')
+
 # Asosiy API endpoints
 @app.route('/api/statistics/<int:user_id>')
 def get_statistics(user_id):
