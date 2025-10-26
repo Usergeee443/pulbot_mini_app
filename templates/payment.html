@@ -288,18 +288,19 @@
             background: #000000;
             color: #ffffff;
             border: none;
-            padding: 18px 24px;
+            padding: 16px 20px;
             font-size: 17px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: opacity 0.2s;
             z-index: 100;
-            border-radius: 0;
+            border-radius: 14px;
+            margin: 16px 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .action-btn:active {
-            background: #1a1a1a;
-            transform: scale(0.99);
+            opacity: 0.8;
         }
 
         .action-btn:disabled {
@@ -310,16 +311,16 @@
         /* Legal Text */
         .legal-text {
             text-align: center;
-            padding: 16px 24px 100px;
-            font-size: 13px;
+            padding: 8px 20px 90px;
+            font-size: 12px;
             color: rgba(0, 0, 0, 0.6);
-            line-height: 1.5;
+            line-height: 1.4;
             font-weight: 400;
         }
 
         .legal-text a {
             color: #5A8EF4;
-            text-decoration: none;
+            text-decoration: underline;
         }
 
         /* Animations */
