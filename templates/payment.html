@@ -5,15 +5,247 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Balans AI - To'lov</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .payment-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .payment-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .payment-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--tg-theme-text-color, #000);
+        }
+
+        .payment-header p {
+            color: var(--tg-theme-hint-color, #999);
+            font-size: 14px;
+        }
+
+        .tariff-selection {
+            margin-bottom: 30px;
+        }
+
+        .tariff-card {
+            background: var(--tg-theme-section-bg-color, #fff);
+            border: 2px solid var(--tg-theme-hint-color, #e0e0e0);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tariff-card:hover {
+            border-color: var(--tg-theme-button-color, #3390ec);
+        }
+
+        .tariff-card.selected {
+            border-color: var(--tg-theme-button-color, #3390ec);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tariff-card h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .tariff-card .price {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .tariff-card .features {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .tariff-card .features li {
+            padding: 5px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tariff-card .features li:before {
+            content: "✓";
+            font-weight: bold;
+        }
+
+        .continue-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--tg-theme-button-color, #3390ec);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .continue-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .continue-btn:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--tg-theme-link-color, #3390ec);
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Balans AI - To'lov</h1>
-            <p>Tarif va muddatni tanlang</p>
+    <div class="payment-container">
+        <button class="back-btn" onclick="window.close()">
+            <span>←</span> Orqaga
+        </button>
+
+        <div class="payment-header">
+            <h1>Tarif tanlang</h1>
+            <p>O'zingizga mos tarifni tanlang va barcha funksiyalardan foydalaning</p>
         </div>
-        <div id="app"></div>
+
+        <div class="tariff-selection" id="tariffSelection">
+            <!-- Tarif kartalar bu yerda yuklanadi -->
+        </div>
+
+        <button class="continue-btn" id="continueBtn" disabled onclick="continueToPayment()">
+            Davom etish
+        </button>
     </div>
-    <script src="{{ url_for('static', filename='js/payment.js') }}"></script>
+
+    <script>
+        let selectedTariff = null;
+        let userId = null;
+
+        // Telegram WebApp init
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            // User ID ni olish
+            const initData = tg.initData;
+            if (initData) {
+                const params = new URLSearchParams(initData);
+                const user = params.get('user');
+                if (user) {
+                    const userData = JSON.parse(decodeURIComponent(user));
+                    userId = userData.id;
+                }
+            }
+        }
+
+        // URL dan user_id ni olish
+        const urlParams = new URLSearchParams(window.location.search);
+        userId = userId || urlParams.get('user_id');
+
+        // Tariflarni yuklash
+        async function loadTariffs() {
+            try {
+                const response = await fetch('/api/tariffs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderTariffs(data.data.tariffs);
+                }
+            } catch (error) {
+                console.error('Tariflarni yuklashda xatolik:', error);
+            }
+        }
+
+        // Tariflarni render qilish
+        function renderTariffs(tariffs) {
+            const container = document.getElementById('tariffSelection');
+            container.innerHTML = '';
+
+            tariffs.forEach(tariff => {
+                const card = document.createElement('div');
+                card.className = 'tariff-card';
+                card.onclick = () => selectTariff(tariff);
+                
+                card.innerHTML = `
+                    <h3>${tariff.name}</h3>
+                    <div class="price">
+                        ${tariff.monthly_price === 0 ? 'Bepul' : tariff.monthly_price.toLocaleString('uz-UZ') + ' so\'m/oy'}
+                    </div>
+                    <ul class="features">
+                        ${tariff.features.map(feature => `<li>${feature}</li>`).join('')}
+                    </ul>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Tarif tanlash
+        function selectTariff(tariff) {
+            // Barcha kartalardan selected class ni olib tashlash
+            document.querySelectorAll('.tariff-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Tanlangan karta
+            event.currentTarget.classList.add('selected');
+            selectedTariff = tariff;
+
+            // Continue tugmasini faollashtirish
+            document.getElementById('continueBtn').disabled = false;
+        }
+
+        // To'lov sahifasiga o'tish
+        function continueToPayment() {
+            if (!selectedTariff) return;
+
+            // LocalStorage ga saqlash
+            localStorage.setItem('selectedTariff', JSON.stringify(selectedTariff));
+            localStorage.setItem('userId', userId);
+
+            // Xabar ko'rsatish
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.showAlert('Tarif tanlandi! To\'lov funksiyasi tez orada qo\'shiladi.');
+            } else {
+                alert('Tarif tanlandi: ' + selectedTariff.name);
+            }
+
+            // Sahifani yopish
+            setTimeout(() => {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.close();
+                } else {
+                    window.close();
+                }
+            }, 2000);
+        }
+
+        // Sahifa yuklanganda
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTariffs();
+        });
+    </script>
 </body>
 </html>
