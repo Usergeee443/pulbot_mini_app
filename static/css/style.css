@@ -280,6 +280,40 @@ input, textarea, [contenteditable] {
     color: var(--balance-warning);
 }
 
+/* Buy Tariff Button */
+.buy-tariff-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 20px;
+    margin-top: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.buy-tariff-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.buy-tariff-btn .btn-icon {
+    font-size: 20px;
+}
+
+.buy-tariff-btn .btn-text {
+    font-size: 16px;
+    font-weight: 600;
+}
+
 /* Stats Grid */
 .stats-grid {
     display: grid;
