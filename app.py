@@ -382,8 +382,22 @@ def get_ai_advice():
             print(f"OpenAI client yaratishda xatolik: {e}")
             return jsonify({'success': False, 'message': f'AI client xatoligi: {str(e)}'})
         
+        # User tarifini tekshirish - MAX tarif uchun
+        user_tariff = 'Bepul'  # Default
+        if user_id:
+            try:
+                user_tariff = db.get_user_tariff(user_id)
+            except:
+                pass
+        
+        # AVTOMATIK KIRITISH ANIQLANISHI (MAX tarif uchun)
+        auto_transaction = None
+        if user_tariff.upper() == 'MAX' and user_id:
+            auto_transaction = detect_and_add_transaction(client, prompt, user_id)
+        
         # User statistikalarini olish
         context = ""
+        recent_transactions = []
         if user_id:
             try:
                 # Balans va statistikani olish
@@ -400,23 +414,125 @@ def get_ai_advice():
                 total_debt = debt_result[0]['total'] if debt_result else 0
                 balance = total_income - total_expense - total_debt
                 
+                # Oylik statistika
+                monthly_income_query = """
+                SELECT COALESCE(SUM(amount), 0) as total 
+                FROM transactions 
+                WHERE user_id = %s AND transaction_type = 'income' 
+                AND MONTH(created_at) = MONTH(CURRENT_DATE()) 
+                AND YEAR(created_at) = YEAR(CURRENT_DATE())
+                """
+                monthly_expense_query = """
+                SELECT COALESCE(SUM(amount), 0) as total 
+                FROM transactions 
+                WHERE user_id = %s AND transaction_type = 'expense' 
+                AND MONTH(created_at) = MONTH(CURRENT_DATE()) 
+                AND YEAR(created_at) = YEAR(CURRENT_DATE())
+                """
+                
+                monthly_income_result = db.execute_query(monthly_income_query, (user_id,))
+                monthly_expense_result = db.execute_query(monthly_expense_query, (user_id,))
+                
+                monthly_income = monthly_income_result[0]['total'] if monthly_income_result else 0
+                monthly_expense = monthly_expense_result[0]['total'] if monthly_expense_result else 0
+                
+                # Kategoriya ma'lumotlari
+                category_query = """
+                SELECT category, COALESCE(SUM(amount), 0) as total 
+                FROM transactions 
+                WHERE user_id = %s AND transaction_type = 'expense' 
+                GROUP BY category 
+                ORDER BY total DESC 
+                LIMIT 10
+                """
+                category_result = db.execute_query(category_query, (user_id,))
+                
+                # So'nggi tranzaksiyalar
+                recent_query = """
+                SELECT * FROM transactions 
+                WHERE user_id = %s 
+                ORDER BY created_at DESC 
+                LIMIT 20
+                """
+                recent_transactions = db.execute_query(recent_query, (user_id,))
+                
+                # Context shunaslantirish
                 context = f"""
-Foydalanuvchi moliyaviy ma'lumotlari:
-- Joriy balans: {balance:,.0f} so'm
-- Umumiy daromad: {total_income:,.0f} so'm
-- Umumiy xarajat: {total_expense:,.0f} so'm
-- Qarzlar: {total_debt:,.0f} so'm
+📊 FOYDALANUVCHI MOLIYAVIY MA'LUMOTLARI:
+
+💰 Balans: {balance:,.0f} so'm
+📈 Umumiy daromad: {total_income:,.0f} so'm
+📉 Umumiy xarajat: {total_expense:,.0f} so'm
+💳 Qarzlar: {total_debt:,.0f} so'm
+
+📅 BU OY:
+📈 Oylik daromad: {monthly_income:,.0f} so'm
+📉 Oylik xarajat: {monthly_expense:,.0f} so'm
+💾 Bu oy tejash: {monthly_income - monthly_expense:,.0f} so'm
+
+📋 XARAJATLAR BO'YICHA KATEGORIYA:
 """
+                if category_result:
+                    for i, cat in enumerate(category_result[:5], 1):
+                        context += f"{i}. {cat['category']}: {cat['total']:,.0f} so'm\n"
+                else:
+                    context += "- Ma'lumot yo'q\n"
+                
             except Exception as e:
                 print(f"Statistika olishda xatolik: {e}")
         
-        # AI so'rovi yuborish
-        full_prompt = context + "\n\nFoydalanuvchi savoli: " + prompt if context else prompt
-        
-        system_message = """Siz Balans AI — moliyaviy yordamchi. Foydalanuvchilarga o'zbek tilida moliyaviy maslahatlar bering.
-Agar foydalanuvchi balansi, statistikasi yoki moliyaviy holati haqida so'rasa, yuqorida berilgan ma'lumotlarni ishlating.
+        # ADVANCED System Prompt for MAX tariff
+        if user_tariff.upper() == 'MAX':
+            system_message = """🤖 BALANS AI — SHAXSIY MOLIYA YORDAMCHISI
+
+Siz foydalanuvchining ishonchli shaxsiy buxgalteri. Siz:
+
+1️⃣ TAHLILIY VA PROFESSIONAL:
+   • Foydalanuvchining moliyaviy ma'lumotlarini chuqur tahlil qilib, poyabzal maslaha bering
+   • Raqamlarni aniq va asosli ko'rsating
+   • Trendarni, o'zgarishlari va qonun-qo'idalarni izohlang
+
+2️⃣ MULTI-STEP JAVOBLAR (4 BOSQICH):
+   1. Asosiy javob: moliyaviy tahlil (statistika, trend bilan)
+   2. Tahliliy izoh: aniqlanmish muammolar, o'nersiz xarajatlar
+   3. Tavsilot: ruhlantiruvchi gap, ijobiy natijalar
+   4. Rekomendatsiya: konkret harakat yoki tavsiya
+
+3️⃣ AVTOMATIK KIRITISH ANIQLANISHI:
+   • "25 mingga kofe oldim" → xarajat, Oziq-ovqat kategoriyasi
+   • "100 ming qarz berdim" → qarz, Boshqa kategoriyasi
+   • "1.5 million maosh oldim" → daromad, Maosh kategoriyasi
+   KEYIN: "✅ Qo'shildim: [type] - [summa] so'm - [kategoriya]"
+
+4️⃣ REPLY TIZIMI:
+   • Foydalanuvchi "ha", "go", "ok" bersa → navbatdagi bosqichni boshlash
+   • "Yo'q", "bekor" bersa → boshqa yechim taklif qilish
+
+5️⃣ SHAXSIYLASHTIRISH:
+   • Foydalanuvchi ismi, do'stona ton, lekin professional
+   • Har doim do'stana, bu oydagi eng yaxshi samaraning tavsifi bilan tabriklash
+   • "Salom, [ism]! Bugun balansingiz ____ so'm, kemasi __ so'm. Buni optimal qilamizmi?"
+
+6️⃣ O'ZBEK TILIDA:
+   • Qisqa, tushunarli, melodikli javoblar
+   • Emojis ishlatish mumkin lekin haddan tashqari emas
+   • "Men AI man" yoki "sun'iy intellektman" demang
+
+HOZIRGI FOYDALANUVCHI KONTEKSTI:
+""" + context
+        else:
+            # Oddiy tarif uchun sodda system message
+            system_message = """Siz Balans AI — moliyaviy yordamchi. Foydalanuvchilarga o'zbek tilida moliyaviy maslahatlar bering.
+Agar foydalanuvchi balansi, statistikasi yok moliyaviy holati haqida so'rasa, yuqorida berilgan ma'lumotlarni ishlating.
 Javobni qisqa, tushunarli va foydali qiling. Raqamlarni aniq va tushunarli ko'rsating.
-Javobni faqat o'zbek tilida bering."""
+Javobni faqat o'zbek tilida bering.""" + "\n\n" + context
+        
+        # AI so'rovi yuborish
+        full_prompt = prompt
+        
+        # Avtomatik kiritish aniqlanmasa, AI ga ayting
+        if auto_transaction and auto_transaction.get('success'):
+            full_prompt += f"\n\n(Avtomatik aniqlangan: {auto_transaction.get('message')})"
         
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -430,11 +546,16 @@ Javobni faqat o'zbek tilida bering."""
                     "content": full_prompt
                 }
             ],
-            max_tokens=1000,
-            temperature=0.7
+            max_tokens=1500,
+            temperature=0.8,
+            top_p=0.9
         )
         
         ai_response = response.choices[0].message.content
+        
+        # Avtomatik kiritish natijasini javobga qo'shish
+        if auto_transaction and auto_transaction.get('success'):
+            ai_response = f"✅ {auto_transaction.get('message')}\n\n{ai_response}"
         
         print(f"AI Response: {ai_response}")
         
@@ -447,6 +568,73 @@ Javobni faqat o'zbek tilida bering."""
     except Exception as e:
         print(f"AI advice xatolik: {e}")
         return jsonify({'success': False, 'message': f'AI xatoligi: {str(e)}'})
+
+def detect_and_add_transaction(client, text, user_id):
+    """Avtomatik kiritish aniqlanishi va qo'shilishi"""
+    try:
+        # GPT-o'zi multi-langual parse qilishi uchun
+        import re
+        
+        # So'mli raqamlarni qidirish
+        amount_patterns = [
+            r'(\d+)\s*(?:ming|миң)',  # ming (1000)
+            r'(\d+)\s*(?:million|миллион)',  # million
+            r'(\d+)',  # ordinary numbers
+        ]
+        
+        # Kategoriyalar
+        categories = {
+            'oziq': ['kofe', 'ovqat', 'restoran', 'supermarket', 'bazaar'],
+            'transport': ['metro', 'taxi', 'transport', 'benzin'],
+            'kiyim': ['kiyim', 'kiyinish', 'do\'kon'],
+            'entertainment': ['kino', 'o\'yin', 'kulgi', 'sport'],
+            'utilities': ['su', 'elektr', 'gaz', 'internet', 'telefon'],
+            'health': ['doktor', 'dori', 'shifoxona'],
+            'education': ['ta\'lim', 'kurs', 'kitob'],
+        }
+        
+        # Kiritish tipa aniqlanishi
+        transaction_type = 'expense'
+        if any(word in text.lower() for word in ['daromad', 'maosh', 'oylik', 'pul', 'qarz berdi']):
+            transaction_type = 'income' if 'daromad' in text.lower() or 'maosh' in text.lower() else 'debt'
+        
+        # Summa qidirish
+        amount = 0
+        for pattern in amount_patterns:
+            match = re.search(pattern, text)
+            if match:
+                amount = int(match.group(1))
+                if 'million' in pattern:
+                    amount *= 1000000
+                elif 'ming' in pattern:
+                    amount *= 1000
+                break
+        
+        if amount == 0:
+            return {'success': False, 'message': 'Summa aniqlanmadi'}
+        
+        # Kategoriya aniqlanishi
+        category = 'Boshqa'
+        text_lower = text.lower()
+        for cat, keywords in categories.items():
+            if any(kw in text_lower for kw in keywords):
+                category = cat.capitalize()
+                break
+        
+        # Tavsif
+        description = f"AI orqali qo'shilgan: {text[:50]}"
+        
+        # Database ga qo'shish
+        db.add_transaction(user_id, amount, category, description, transaction_type)
+        
+        return {
+            'success': True,
+            'message': f"{transaction_type.capitalize()} - {amount:,} so'm - {category}"
+        }
+        
+    except Exception as e:
+        print(f"Auto-detect error: {e}")
+        return {'success': False, 'message': 'Aniqlab bo\'lmadi'}
 
 @app.route('/api/realtime-session', methods=['POST'])
 def create_realtime_session():

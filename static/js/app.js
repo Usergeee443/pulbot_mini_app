@@ -1504,6 +1504,11 @@ class BalansAI {
             
             if (response && response.success) {
                 this.addAIMessage(response.data.response, 'ai');
+                
+                // MAX tarif uchun keyboard hint
+                if (this.data.tariff.toUpperCase() === 'MAX') {
+                    console.log('🤖 MAX tariff - Advanced AI engaged!');
+                }
             } else {
                 this.addAIMessage('Kechirasiz, xatolik yuz berdi. Qayta urinib ko\'ring.', 'ai');
             }
@@ -1517,6 +1522,11 @@ class BalansAI {
         if (sendBtn) {
             sendBtn.disabled = false;
         }
+        
+        // Auto-focus input
+        setTimeout(() => {
+            input.focus();
+        }, 100);
     }
     
     async startVoiceRecognitionChat() {
