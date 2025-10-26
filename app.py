@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import os
 import requests
+from datetime import datetime, timedelta
 from database import Database
 from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY
 
@@ -37,6 +38,11 @@ def miniapp():
         # User ID ni template ga uzatish
         return render_template('index.html', user_id=user_id)
     return render_template('index.html')
+
+@app.route('/payment')
+def payment():
+    """To'lov sahifasi"""
+    return render_template('payment.html')
 
 # Asosiy API endpoints
 @app.route('/api/statistics/<int:user_id>')
@@ -176,6 +182,108 @@ def get_user_tariff(user_id):
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/tariffs')
+def get_tariffs():
+    """Barcha tariflarni olish"""
+    try:
+        tariffs = [
+            {
+                'code': 'Bepul',
+                'name': 'Bepul',
+                'monthly_price': 0,
+                'features': [
+                    '50 ta tranzaksiya/oy',
+                    '1 ta grafik',
+                    'Oddiy statistika',
+                    'AI yordamchisi yo\'q'
+                ]
+            },
+            {
+                'code': 'Plus',
+                'name': 'Plus',
+                'monthly_price': 99900,
+                'features': [
+                    'Cheksiz tranzaksiya',
+                    '5 ta grafik',
+                    'Batafsil statistika',
+                    'Eksport funksiyasi',
+                    'AI yordamchisi yo\'q'
+                ]
+            },
+            {
+                'code': 'Max',
+                'name': 'Max',
+                'monthly_price': 199900,
+                'features': [
+                    'Cheksiz tranzaksiya',
+                    '10 ta grafik',
+                    'Batafsil statistika',
+                    'Eksport funksiyasi',
+                    'AI yordamchisi bilan',
+                    'Ovozli suhbat'
+                ]
+            }
+        ]
+        
+        discount_rates = {
+            1: 0,   # 1 oy: chegirma yo'q
+            3: 5,   # 3 oy: 5% chegirma
+            6: 10,  # 6 oy: 10% chegirma
+            12: 20  # 12 oy: 20% chegirma
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'tariffs': tariffs,
+                'discount_rates': discount_rates
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/payment/process', methods=['POST'])
+def process_payment():
+    """To'lovni amalga oshirish (webhook)"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        tariff = data.get('tariff')
+        months = data.get('months', 1)
+        amount = data.get('amount')
+        payment_method = data.get('payment_method', 'test')
+        
+        if not user_id or not tariff or not amount:
+            return jsonify({
+                'success': False,
+                'message': 'Ma\'lumotlar to\'liq emas'
+            }), 400
+        
+        # Muddati hisoblash
+        expires_at = datetime.now() + timedelta(days=30 * months)
+        
+        # Tarifni yangilash
+        db.update_user_tariff(user_id, tariff)
+        
+        # To'lov tarixini saqlash (agar kerak bo'lsa)
+        # payment_history jadvalini yaratishingiz kerak
+        
+        return jsonify({
+            'success': True,
+            'message': 'To\'lov muvaffaqiyatli amalga oshirildi',
+            'data': {
+                'tariff': tariff,
+                'expires_at': expires_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'months': months
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
 @app.route('/api/config')
 def get_config():
