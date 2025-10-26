@@ -45,10 +45,10 @@
             background: none;
             border: none;
             font-size: 20px;
-            color: #666;
+            color: rgba(0, 0, 0, 0.6);
             cursor: pointer;
             padding: 8px;
-            transition: transform 0.2s;
+            transition: all 0.15s;
         }
 
         .back-btn:active {
@@ -56,15 +56,17 @@
         }
 
         .payment-header h1 {
-            font-size: 32px;
+            font-size: 34px;
             font-weight: 700;
             margin-bottom: 8px;
+            color: #000;
         }
 
         .payment-header p {
             font-size: 16px;
-            color: #666;
-            line-height: 1.4;
+            color: rgba(0, 0, 0, 0.6);
+            line-height: 1.5;
+            font-weight: 400;
         }
 
         /* Content Area */
@@ -76,11 +78,10 @@
         /* Step 1: Features */
         .features-card {
             background: #ffffff;
-            border: 1px solid #e0e0e0;
-            border-radius: 16px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
         .feature-item {
@@ -120,23 +121,23 @@
             font-size: 15px;
             color: rgba(0, 0, 0, 0.8);
             line-height: 1.5;
+            font-weight: 400;
         }
 
         /* Step 2: Duration Options */
         .duration-card {
             background: #ffffff;
-            border: 1px solid #e0e0e0;
-            border-radius: 16px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             position: relative;
         }
 
         .duration-card.selected {
-            border: 2px solid #5A8EF4;
-            box-shadow: 0 4px 12px rgba(90, 142, 244, 0.15);
+            border: 1px solid #5A8EF4;
         }
 
         .duration-header {
@@ -149,23 +150,25 @@
         .duration-label {
             font-size: 16px;
             font-weight: 600;
-            color: rgba(0, 0, 0, 0.8);
+            color: #000;
         }
 
         .duration-price {
             font-size: 24px;
             font-weight: 700;
-            color: rgba(0, 0, 0, 0.8);
+            color: #000;
         }
 
         .duration-discount {
             font-size: 14px;
             color: rgba(0, 0, 0, 0.6);
+            font-weight: 400;
         }
 
         .duration-bonus {
             font-size: 14px;
             color: rgba(0, 0, 0, 0.6);
+            font-weight: 400;
         }
 
         /* Step 3: Payment Method Modal */
@@ -192,12 +195,12 @@
 
         .modal-content {
             background: #ffffff;
-            border-radius: 24px 24px 0 0;
+            border-radius: 20px 20px 0 0;
             padding: 24px;
             width: 100%;
             max-width: 500px;
             transform: translateY(100%);
-            transition: transform 0.3s ease;
+            transition: transform 0.25s ease;
         }
 
         .modal-overlay.active .modal-content {
@@ -214,7 +217,7 @@
         .modal-title {
             font-size: 18px;
             font-weight: 600;
-            color: rgba(0, 0, 0, 0.8);
+            color: #000;
         }
 
         .modal-close {
@@ -276,6 +279,8 @@
         .coming-soon-text {
             font-size: 16px;
             line-height: 1.5;
+            font-weight: 400;
+            color: rgba(0, 0, 0, 0.6);
         }
 
         /* Button */
@@ -291,14 +296,14 @@
             font-size: 17px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
             z-index: 100;
             border-radius: 0;
         }
 
         .action-btn:active {
-            background: #333;
-            transform: scale(0.98);
+            background: #1a1a1a;
+            transform: scale(0.99);
         }
 
         .action-btn:disabled {
@@ -311,13 +316,14 @@
             text-align: center;
             padding: 16px 24px 100px;
             font-size: 13px;
-            color: #666;
+            color: rgba(0, 0, 0, 0.6);
             line-height: 1.5;
+            font-weight: 400;
         }
 
         .legal-text a {
-            color: #333;
-            text-decoration: underline;
+            color: #5A8EF4;
+            text-decoration: none;
         }
 
         /* Animations */
