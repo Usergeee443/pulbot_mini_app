@@ -79,7 +79,7 @@
         .features-card {
             background: #ffffff;
             border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 12px;
+            border-radius: 24px;
             padding: 20px;
             margin-bottom: 20px;
         }
@@ -96,32 +96,28 @@
         }
 
         .feature-icon {
-            width: 24px;
-            height: 24px;
-            background: #5A8EF4;
-            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
             font-size: 14px;
             font-weight: bold;
             flex-shrink: 0;
         }
 
         .feature-icon svg {
-            width: 16px;
-            height: 16px;
-            stroke: white;
+            width: 24px;
+            height: 24px;
+            stroke: #5A8EF4;
             stroke-width: 2.5;
         }
 
         .feature-text {
             flex: 1;
-            font-size: 15px;
+            font-size: 12px;
             color: rgba(0, 0, 0, 0.8);
             line-height: 1.5;
-            font-weight: 400;
+            font-weight: 700;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
         }
 
         /* Step 2: Duration Options */
@@ -327,20 +323,7 @@
         }
 
         /* Animations */
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
 
-        .animate-slide-in {
-            animation: slideIn 0.3s ease-out;
-        }
 
         /* Hidden */
         .hidden {
@@ -357,7 +340,7 @@
         </div>
 
         <div class="content-area">
-            <div class="features-card animate-slide-in">
+            <div class="features-card">
                 <div class="feature-item">
                     <div class="feature-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -409,7 +392,7 @@
         </div>
 
         <div class="content-area">
-            <div class="duration-card animate-slide-in selected" data-months="1" onclick="selectDuration(1)">
+            <div class="duration-card selected" data-months="1" onclick="selectDuration(1)">
                 <div class="duration-header">
                     <span class="duration-label">1 oy</span>
                     <span class="duration-price">19 900 so'm</span>
@@ -417,7 +400,7 @@
                 <div class="duration-discount">Chegirma yo'q</div>
             </div>
 
-            <div class="duration-card animate-slide-in" data-months="14" onclick="selectDuration(14)">
+            <div class="duration-card" data-months="14" onclick="selectDuration(14)">
                 <div class="duration-header">
                     <span class="duration-label">1 yil + 2 oy</span>
                     <span class="duration-price">238 800 so'm</span>
