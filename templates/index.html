@@ -118,75 +118,46 @@
                 <div class="section">
                     <div class="section-header">
                         <h3>Tahlillar</h3>
-                        <div class="tariff-lock" id="analyticsLock" style="display: none;">
-                            <span>🔒 Premium kerak</span>
-                        </div>
                     </div>
                     
-                    <!-- Oylik grafik -->
-                    <div class="chart-container">
-                        <h4>Oylik tranzaksiyalar</h4>
-                        <canvas id="monthlyChart"></canvas>
+                    <!-- FREE: Xarajat va Daromad o'sishi -->
+                    <div class="analytics-card">
+                        <h4>Xarajat va Daromad o'sishi</h4>
+                        <canvas id="incomeExpenseGrowthChart"></canvas>
                     </div>
 
-                    <!-- Kategoriya grafigi -->
-                    <div class="chart-container">
+                    <!-- PLUS: Eng ko'p xarajatlar -->
+                    <div class="analytics-card premium-feature">
+                        <h4>Eng ko'p xarajatlar (Top 5)</h4>
+                        <div id="topExpensesTable" class="analytics-table">
+                            <!-- Dinamikasi to'ldiriladi -->
+                        </div>
+                    </div>
+
+                    <!-- PLUS: Daromad Topligi -->
+                    <div class="analytics-card premium-feature">
+                        <h4>Daromad Topligi</h4>
+                        <div id="topIncomeSources" class="analytics-table">
+                            <!-- Dinamikasi to'ldiriladi -->
+                        </div>
+                    </div>
+
+                    <!-- PLUS: Butun umurdagi Daromad o'sishi -->
+                    <div class="analytics-card premium-feature">
+                        <h4>Barcha vaqt bo'yicha Daromad o'sishi</h4>
+                        <canvas id="lifetimeIncomeChart"></canvas>
+                    </div>
+
+                    <!-- Xarajatlar kategoriyasi -->
+                    <div class="analytics-card">
                         <h4>Xarajatlar kategoriyasi</h4>
                         <canvas id="categoryChart"></canvas>
                     </div>
 
-                    <!-- Kunlik tranzaksiyalar -->
-                    <div class="chart-container">
-                        <h4>Kunlik tranzaksiyalar</h4>
-                        <canvas id="dailyChart"></canvas>
-                    </div>
-
-                    <!-- Haftalik tranzaksiyalar -->
-                    <div class="chart-container">
-                        <h4>Haftalik tranzaksiyalar</h4>
-                        <canvas id="weeklyChart"></canvas>
-                    </div>
-
-                    <!-- Daromad vs Xarajat -->
-                    <div class="chart-container">
-                        <h4>Daromad vs Xarajat</h4>
-                        <canvas id="incomeExpenseChart"></canvas>
-                    </div>
-
-                    <!-- Top 5 xarajatlar -->
-                    <div class="chart-container">
-                        <h4>Eng katta xarajatlar</h4>
-                        <canvas id="topExpensesChart"></canvas>
-                    </div>
-
                     <!-- Oylik tendensiya -->
-                    <div class="chart-container">
+                    <div class="analytics-card">
                         <h4>Oylik tendensiya</h4>
                         <canvas id="monthlyTrendChart"></canvas>
-                    </div>
-
-                    <!-- Kategoriya taqsimoti -->
-                    <div class="chart-container">
-                        <h4>Kategoriya taqsimoti</h4>
-                        <canvas id="categoryDistributionChart"></canvas>
-                    </div>
-
-                    <!-- Yillik grafik -->
-                    <div class="chart-container">
-                        <h4>Yillik grafik</h4>
-                        <canvas id="yearlyChart"></canvas>
-                    </div>
-
-                    <!-- Qarzlar grafigi -->
-                    <div class="chart-container">
-                        <h4>Qarzlar grafigi</h4>
-                        <canvas id="debtsChart"></canvas>
-                    </div>
-
-                    <!-- Balans o'zgarishi -->
-                    <div class="chart-container">
-                        <h4>Balans o'zgarishi</h4>
-                        <canvas id="balanceChangeChart"></canvas>
                     </div>
                 </div>
             </div>
