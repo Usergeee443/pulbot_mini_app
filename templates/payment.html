@@ -42,10 +42,10 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 40%;
+            height: 50%;
             z-index: 0;
             transition: opacity 0.5s ease;
-            background: linear-gradient(180deg, #7CB3FF 0%, rgba(255, 255, 255, 0) 100%);
+            background: linear-gradient(180deg, #7CB3FF 10%, #ffffff 100%);
         }
 
         /* Header */
@@ -88,7 +88,7 @@
         /* Feature list - card with border, qoq o'rtada */
         .features-list {
             width: 100%;
-            width: 420px;
+            max-width: 420px;
             display: flex;
             flex-direction: column;
             gap: 16px;
@@ -132,7 +132,7 @@
         /* Price selection buttons - rasmdagidek slider effect */
         .price-selector {
             position: fixed;
-            bottom: 140px;
+            bottom: 120px;
             left: 20px;
             right: 20px;
             display: flex;
@@ -143,12 +143,11 @@
         .price-selector-wrapper {
             background: #F5F5F5;
             border-radius: 16px;
-            padding: 4px;
             display: flex;
             gap: 4px;
             position: relative;
             width: 100%;
-            max-width: calc(100vw - 40px);
+            max-width: 420px;
         }
 
         .price-slider {
@@ -166,7 +165,7 @@
             border: none;
             width: 100%;
             border-radius: 16px;
-            padding: 14px 32px;
+            padding: 12px 12px;
             cursor: pointer;
             transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
@@ -203,10 +202,11 @@
 
         /* Button - 100% radius + press effect */
         .action-btn {
+            max-width: 420px;
+            width: calc(100% - 40px); /* 40px = left 20px + right 20px */
             position: fixed;
             bottom: 55px;
-            left: 20px;
-            right: 20px;
+            left: 50%;
             background: #000000;
             color: #ffffff;
             border: none;
@@ -218,10 +218,11 @@
             z-index: 99;
             border-radius: 100px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateX(-50%);
         }
 
         .action-btn:active {
-            transform: scale(0.96);
+            transform: translateX(-50%) scale(0.96);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
@@ -229,14 +230,16 @@
         .legal-text {
             position: fixed;
             bottom: 10px;
-            left: 0;
-            right: 0;
+            left: 50%;
+            transform: translateX(-50%);
             text-align: center;
             padding: 8px 40px;
             font-size: 11px;
             color: rgba(0, 0, 0, 0.5);
             line-height: 1.4;
             z-index: 50;
+            max-width: 420px;
+            width: 100%;
         }
 
         .legal-text a {
@@ -599,7 +602,7 @@
             setTimeout(() => {
                 document.getElementById('tariffTitle').textContent = data.title;
                 document.getElementById('tariffDesc').textContent = data.desc;
-                document.getElementById('actionBtnText').textContent = `${data.monthly.toLocaleString()} so'm evaziga yangilanish`;
+                document.getElementById('actionBtnText').textContent = `${data.monthly.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm evaziga yangilanish`;
 
                 // Update features
                 featuresList.innerHTML = data.features.map(feature => `
@@ -641,8 +644,8 @@
             const monthly = data.monthly;
             const yearly = monthly * 12 * 0.8; // 20% discount
 
-            document.getElementById('price1Month').textContent = `${monthly.toLocaleString()} so'm`;
-            document.getElementById('price12Month').textContent = `${yearly.toLocaleString()} so'm`;
+            document.getElementById('price1Month').textContent = `${monthly.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
+            document.getElementById('price12Month').textContent = `${Math.round(yearly).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
         }
 
         function openBottomSheet() {
