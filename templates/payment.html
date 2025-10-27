@@ -74,14 +74,25 @@
         /* Content Area */
         .content-area {
             flex: 1;
-            padding: 0 20px 200px;
+            padding: 0 20px;
+            padding-bottom: 200px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
             width: 100%;
             position: relative;
             z-index: 1;
+        }
+
+        .spacer-top {
+            flex: 1;
+            min-height: 20px;
+        }
+
+        .spacer-bottom {
+            flex: 1;
+            min-height: 20px;
         }
 
         /* Feature list - card with border, qoq o'rtada */
@@ -422,6 +433,7 @@
         </div>
 
         <div class="content-area">
+            <div class="spacer-top"></div>
             <div class="features-list" id="featuresList">
                 <!-- Plus features -->
                 <div class="feature-item">
@@ -457,6 +469,7 @@
                     <div class="feature-text">qo'shimcha 5 ta tahlil</div>
                 </div>
             </div>
+            <div class="spacer-bottom"></div>
         </div>
 
         <div class="price-selector">
