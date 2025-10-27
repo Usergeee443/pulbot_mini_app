@@ -25,6 +25,11 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 # OpenAI sozlamalari
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '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')
 
+# Click.uz to'lov sozlamalari
+CLICK_SECRET_KEY = os.getenv('CLICK_SECRET_KEY', '')
+CLICK_SERVICE_ID = os.getenv('CLICK_SERVICE_ID', '')
+CLICK_MERCHANT_ID = os.getenv('CLICK_MERCHANT_ID', '')
+
 # Tarif tizimi
 TARIFF_LIMITS = {
     'Bepul': {

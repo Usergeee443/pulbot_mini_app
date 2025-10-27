@@ -42,6 +42,7 @@ Thumbs.db
 
 # Logs
 *.log
+click_logs.txt
 
 # Database
 *.db

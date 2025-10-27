@@ -2,9 +2,11 @@ from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import os
 import requests
+import hashlib
+import logging
 from datetime import datetime, timedelta
 from database import Database
-from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY
+from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY, CLICK_SECRET_KEY, CLICK_SERVICE_ID, CLICK_MERCHANT_ID
 
 # Flask app yaratish
 app = Flask(__name__)
@@ -787,6 +789,199 @@ def add_test_data(user_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+# ==================== CLICK.UZ TO'LOV TIZIMI ====================
+
+# Logging sozlash
+logging.basicConfig(
+    filename='click_logs.txt',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+def verify_click_signature(params, secret_key):
+    """
+    Click.uz sign_string ni tekshirish
+    SHA1(click_trans_id + service_id + secret_key + merchant_trans_id + amount + action + sign_time)
+    """
+    try:
+        click_trans_id = str(params.get('click_trans_id', ''))
+        service_id = str(params.get('service_id', ''))
+        merchant_trans_id = str(params.get('merchant_trans_id', ''))
+        amount = str(params.get('amount', ''))
+        action = str(params.get('action', ''))
+        sign_time = str(params.get('sign_time', ''))
+        
+        # SHA1 hash yaratish
+        sign_string = f"{click_trans_id}{service_id}{secret_key}{merchant_trans_id}{amount}{action}{sign_time}"
+        calculated_sign = hashlib.sha1(sign_string.encode('utf-8')).hexdigest()
+        
+        received_sign = params.get('sign_string', '')
+        
+        logging.info(f"Signature verification: calculated={calculated_sign}, received={received_sign}")
+        
+        return calculated_sign == received_sign
+    except Exception as e:
+        logging.error(f"Signature verification error: {e}")
+        return False
+
+@app.route('/click/prepare', methods=['POST'])
+def click_prepare():
+    """
+    Click.uz Prepare URL
+    To'lovni boshlashdan oldin tekshiruv
+    """
+    try:
+        # Formadan ma'lumotlarni olish
+        params = request.form.to_dict()
+        
+        logging.info(f"Click Prepare request: {params}")
+        
+        # Majburiy maydonlarni tekshirish
+        required_fields = ['click_trans_id', 'service_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string']
+        for field in required_fields:
+            if field not in params:
+                logging.error(f"Missing field: {field}")
+                return jsonify({
+                    "error": -8,
+                    "error_note": f"Missing parameter: {field}"
+                }), 400
+        
+        # Sign string ni tekshirish
+        if not verify_click_signature(params, CLICK_SECRET_KEY):
+            logging.error("Invalid signature")
+            return jsonify({
+                "error": -1,
+                "error_note": "SIGN CHECK FAILED"
+            }), 400
+        
+        # Service ID ni tekshirish
+        if params.get('service_id') != CLICK_SERVICE_ID:
+            logging.error(f"Invalid service_id: {params.get('service_id')}")
+            return jsonify({
+                "error": -5,
+                "error_note": "Service ID not found"
+            }), 400
+        
+        # Summa tekshiruvi (minimal 1000 so'm)
+        try:
+            amount = float(params.get('amount', 0))
+            if amount < 1000:
+                logging.error(f"Amount too small: {amount}")
+                return jsonify({
+                    "error": -2,
+                    "error_note": "Incorrect parameter amount"
+                }), 400
+        except ValueError:
+            logging.error(f"Invalid amount: {params.get('amount')}")
+            return jsonify({
+                "error": -2,
+                "error_note": "Incorrect parameter amount"
+            }), 400
+        
+        # Action tekshiruvi (0 yoki 1 bo'lishi kerak)
+        action = params.get('action')
+        if action not in ['0', '1']:
+            logging.error(f"Invalid action: {action}")
+            return jsonify({
+                "error": -3,
+                "error_note": "Action not found"
+            }), 400
+        
+        # Merchant trans ID logga yozish
+        merchant_trans_id = params.get('merchant_trans_id')
+        click_trans_id = params.get('click_trans_id')
+        
+        logging.info(f"Prepare success: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
+        
+        # Muvaffaqiyatli javob
+        return jsonify({
+            "click_trans_id": int(click_trans_id),
+            "merchant_trans_id": merchant_trans_id,
+            "merchant_prepare_id": int(datetime.now().timestamp()),
+            "error": 0,
+            "error_note": "Success"
+        }), 200
+        
+    except Exception as e:
+        logging.error(f"Click Prepare error: {e}")
+        return jsonify({
+            "error": -9,
+            "error_note": "Transaction not found"
+        }), 500
+
+@app.route('/click/complete', methods=['POST'])
+def click_complete():
+    """
+    Click.uz Complete URL
+    To'lov yakunlangandan keyin natijani qaytarish
+    """
+    try:
+        # Formadan ma'lumotlarni olish
+        params = request.form.to_dict()
+        
+        logging.info(f"Click Complete request: {params}")
+        
+        # Majburiy maydonlarni tekshirish
+        required_fields = ['click_trans_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
+        for field in required_fields:
+            if field not in params:
+                logging.error(f"Missing field: {field}")
+                return jsonify({
+                    "error": -8,
+                    "error_note": f"Missing parameter: {field}"
+                }), 400
+        
+        # Sign string ni tekshirish
+        if not verify_click_signature(params, CLICK_SECRET_KEY):
+            logging.error("Invalid signature")
+            return jsonify({
+                "error": -1,
+                "error_note": "SIGN CHECK FAILED"
+            }), 400
+        
+        # Error code ni tekshirish (0 = muvaffaqiyatli)
+        error_code = int(params.get('error', -1))
+        click_trans_id = params.get('click_trans_id')
+        merchant_trans_id = params.get('merchant_trans_id')
+        amount = params.get('amount')
+        
+        if error_code == 0:
+            # To'lov muvaffaqiyatli
+            logging.info(f"Payment confirmed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
+            
+            # Bu yerda bazaga yozish kerak (keyingi bosqichda)
+            # user_id = merchant_trans_id.split('_')[0]  # Masalan: "123456_PLUS_1"
+            # tariff = merchant_trans_id.split('_')[1]
+            # db.update_user_tariff(user_id, tariff)
+            
+            return jsonify({
+                "click_trans_id": int(click_trans_id),
+                "merchant_trans_id": merchant_trans_id,
+                "merchant_confirm_id": int(datetime.now().timestamp()),
+                "error": 0,
+                "error_note": "Success"
+            }), 200
+        else:
+            # To'lov muvaffaqiyatsiz
+            logging.warning(f"Payment failed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, error={error_code}")
+            
+            return jsonify({
+                "click_trans_id": int(click_trans_id),
+                "merchant_trans_id": merchant_trans_id,
+                "merchant_confirm_id": int(datetime.now().timestamp()),
+                "error": error_code,
+                "error_note": "Transaction cancelled"
+            }), 200
+        
+    except Exception as e:
+        logging.error(f"Click Complete error: {e}")
+        return jsonify({
+            "error": -9,
+            "error_note": "Transaction not found"
+        }), 500
+
+# ==================== CLICK.UZ END ====================
+
 if __name__ == '__main__':
     # Database jadvallarini yaratish
     try:
@@ -799,4 +994,7 @@ if __name__ == '__main__':
     # Flask app ishga tushirish
     port = int(os.environ.get('PORT', 8080))
     print(f"🚀 Flask app ishga tushmoqda: http://localhost:{port}")
+    print(f"🔐 Click.uz endpoints:")
+    print(f"   - Prepare: https://balansai.onrender.com/click/prepare")
+    print(f"   - Complete: https://balansai.onrender.com/click/complete")
     app.run(host='0.0.0.0', port=port, debug=False)
