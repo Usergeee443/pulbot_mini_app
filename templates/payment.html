@@ -581,7 +581,7 @@
             const slider = document.getElementById('priceSlider');
             const btnRect = element.getBoundingClientRect();
             const wrapperRect = element.parentElement.getBoundingClientRect();
-            const offsetLeft = btnRect.left - wrapperRect.left - 4;
+            const offsetLeft = btnRect.left - wrapperRect.left;
             
             slider.style.left = offsetLeft + 'px';
             slider.style.width = btnRect.width + 'px';
@@ -630,7 +630,7 @@
             const slider = document.getElementById('priceSlider');
             const btnRect = selectedBtn.getBoundingClientRect();
             const wrapperRect = selectedBtn.parentElement.getBoundingClientRect();
-            const offsetLeft = btnRect.left - wrapperRect.left - 4;
+            const offsetLeft = btnRect.left - wrapperRect.left;
             
             slider.style.left = offsetLeft + 'px';
             slider.style.width = btnRect.width + 'px';
