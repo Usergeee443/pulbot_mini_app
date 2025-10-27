@@ -230,6 +230,102 @@ class Database:
         """
         return self.execute_query(query)
     
+    def create_payments_table(self):
+        """To'lovlar jadvalini yaratish"""
+        query = """
+        CREATE TABLE IF NOT EXISTS payments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            click_trans_id VARCHAR(100) UNIQUE,
+            merchant_trans_id VARCHAR(255) NOT NULL,
+            amount DECIMAL(15,2) NOT NULL,
+            tariff VARCHAR(50) NOT NULL,
+            payment_method ENUM('click', 'payme', 'test') DEFAULT 'click',
+            status ENUM('pending', 'prepared', 'confirmed', 'cancelled', 'failed') DEFAULT 'pending',
+            error_code INT DEFAULT 0,
+            error_note VARCHAR(255),
+            prepare_time TIMESTAMP NULL,
+            complete_time TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_click_trans_id (click_trans_id),
+            INDEX idx_merchant_trans_id (merchant_trans_id),
+            INDEX idx_status (status),
+            INDEX idx_created_at (created_at)
+        )
+        """
+        return self.execute_query(query)
+    
+    def create_payment_record(self, user_id, merchant_trans_id, amount, tariff, payment_method='click'):
+        """Yangi to'lov yozuvi yaratish"""
+        query = """
+        INSERT INTO payments (user_id, merchant_trans_id, amount, tariff, payment_method, status)
+        VALUES (%s, %s, %s, %s, %s, 'pending')
+        """
+        return self.execute_query(query, (user_id, merchant_trans_id, amount, tariff, payment_method))
+    
+    def update_payment_prepare(self, merchant_trans_id, click_trans_id):
+        """To'lov prepare holatini yangilash"""
+        from datetime import datetime
+        query = """
+        UPDATE payments 
+        SET click_trans_id = %s, 
+            status = 'prepared',
+            prepare_time = %s
+        WHERE merchant_trans_id = %s
+        """
+        return self.execute_query(query, (click_trans_id, datetime.now(), merchant_trans_id))
+    
+    def update_payment_complete(self, merchant_trans_id, status='confirmed', error_code=0, error_note='Success'):
+        """To'lov complete holatini yangilash"""
+        from datetime import datetime
+        query = """
+        UPDATE payments 
+        SET status = %s,
+            error_code = %s,
+            error_note = %s,
+            complete_time = %s
+        WHERE merchant_trans_id = %s
+        """
+        return self.execute_query(query, (status, error_code, error_note, datetime.now(), merchant_trans_id))
+    
+    def get_payment_by_merchant_trans_id(self, merchant_trans_id):
+        """Merchant trans ID bo'yicha to'lovni olish"""
+        query = "SELECT * FROM payments WHERE merchant_trans_id = %s"
+        result = self.execute_query(query, (merchant_trans_id,))
+        return result[0] if result else None
+    
+    def get_payment_by_click_trans_id(self, click_trans_id):
+        """Click trans ID bo'yicha to'lovni olish"""
+        query = "SELECT * FROM payments WHERE click_trans_id = %s"
+        result = self.execute_query(query, (click_trans_id,))
+        return result[0] if result else None
+    
+    def get_user_payments(self, user_id, limit=10):
+        """Foydalanuvchi to'lovlari tarixini olish"""
+        query = """
+        SELECT * FROM payments 
+        WHERE user_id = %s 
+        ORDER BY created_at DESC 
+        LIMIT %s
+        """
+        return self.execute_query(query, (user_id, limit))
+    
+    def activate_tariff(self, user_id, tariff, months=1):
+        """Tarifni faollashtirish va muddatini belgilash"""
+        from datetime import datetime, timedelta
+        expires_at = datetime.now() + timedelta(days=30 * months)
+        
+        query = """
+        UPDATE users 
+        SET tariff = %s,
+            tariff_expires_at = %s,
+            updated_at = NOW()
+        WHERE user_id = %s
+        """
+        return self.execute_query(query, (tariff, expires_at, user_id))
+    
     def get_user_tariff(self, user_id):
         """Foydalanuvchi tarifini olish"""
         query = "SELECT tariff FROM users WHERE user_id = %s"

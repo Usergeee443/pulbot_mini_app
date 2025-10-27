@@ -887,11 +887,25 @@ def click_prepare():
                 "error_note": "Action not found"
             }), 400
         
-        # Merchant trans ID logga yozish
+        # Merchant trans ID ni parse qilish (format: user_id_tariff_timestamp)
         merchant_trans_id = params.get('merchant_trans_id')
         click_trans_id = params.get('click_trans_id')
         
-        logging.info(f"Prepare success: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
+        try:
+            # merchant_trans_id dan user_id va tariff ni olish
+            parts = merchant_trans_id.split('_')
+            if len(parts) >= 2:
+                user_id = int(parts[0])
+                tariff = parts[1]
+                
+                # Database'da to'lovni prepare holatiga o'tkazish
+                db.update_payment_prepare(merchant_trans_id, click_trans_id)
+                
+                logging.info(f"Prepare success: user_id={user_id}, tariff={tariff}, merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
+            else:
+                logging.warning(f"Invalid merchant_trans_id format: {merchant_trans_id}")
+        except Exception as e:
+            logging.error(f"Error parsing merchant_trans_id: {e}")
         
         # Muvaffaqiyatli javob
         return jsonify({
@@ -949,10 +963,31 @@ def click_complete():
             # To'lov muvaffaqiyatli
             logging.info(f"Payment confirmed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
             
-            # Bu yerda bazaga yozish kerak (keyingi bosqichda)
-            # user_id = merchant_trans_id.split('_')[0]  # Masalan: "123456_PLUS_1"
-            # tariff = merchant_trans_id.split('_')[1]
-            # db.update_user_tariff(user_id, tariff)
+            try:
+                # merchant_trans_id dan user_id va tariff ni olish
+                parts = merchant_trans_id.split('_')
+                if len(parts) >= 2:
+                    user_id = int(parts[0])
+                    tariff = parts[1].upper()
+                    
+                    # Agar months ham mavjud bo'lsa (format: user_id_tariff_months_timestamp)
+                    months = 1
+                    if len(parts) >= 3 and parts[2].isdigit():
+                        months = int(parts[2])
+                    
+                    # Database'da to'lovni confirmed holatiga o'tkazish
+                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
+                    
+                    # Foydalanuvchi tarifini faollashtirish
+                    db.activate_tariff(user_id, tariff, months)
+                    
+                    logging.info(f"Tariff activated: user_id={user_id}, tariff={tariff}, months={months}")
+                else:
+                    logging.warning(f"Invalid merchant_trans_id format: {merchant_trans_id}")
+                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success (format warning)')
+            except Exception as e:
+                logging.error(f"Error activating tariff: {e}")
+                db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (activation error: {str(e)})')
             
             return jsonify({
                 "click_trans_id": int(click_trans_id),
@@ -964,6 +999,12 @@ def click_complete():
         else:
             # To'lov muvaffaqiyatsiz
             logging.warning(f"Payment failed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, error={error_code}")
+            
+            try:
+                # Database'da to'lovni failed holatiga o'tkazish
+                db.update_payment_complete(merchant_trans_id, status='failed', error_code=error_code, error_note='Transaction cancelled')
+            except Exception as e:
+                logging.error(f"Error updating payment status: {e}")
             
             return jsonify({
                 "click_trans_id": int(click_trans_id),
@@ -980,6 +1021,61 @@ def click_complete():
             "error_note": "Transaction not found"
         }), 500
 
+@app.route('/api/payment-history/<int:user_id>', methods=['GET'])
+def get_payment_history(user_id):
+    """
+    Foydalanuvchi to'lovlari tarixini olish
+    """
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        payments = db.get_user_payments(user_id, limit)
+        
+        return jsonify({
+            'success': True,
+            'payments': payments
+        }), 200
+    except Exception as e:
+        logging.error(f"Get payment history error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/create-payment', methods=['POST'])
+def create_payment():
+    """
+    Yangi to'lov yozuvi yaratish (frontend dan chaqiriladi)
+    """
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        tariff = data.get('tariff')
+        amount = data.get('amount')
+        months = data.get('months', 1)
+        payment_method = data.get('payment_method', 'click')
+        
+        # Merchant trans ID yaratish
+        import time
+        timestamp = int(time.time())
+        merchant_trans_id = f"{user_id}_{tariff.upper()}_{months}_{timestamp}"
+        
+        # Database'ga yozish
+        db.create_payment_record(user_id, merchant_trans_id, amount, tariff, payment_method)
+        
+        logging.info(f"Payment record created: {merchant_trans_id}")
+        
+        return jsonify({
+            'success': True,
+            'merchant_trans_id': merchant_trans_id,
+            'message': 'To\'lov yozuvi yaratildi'
+        }), 200
+    except Exception as e:
+        logging.error(f"Create payment error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # ==================== CLICK.UZ END ====================
 
 if __name__ == '__main__':
@@ -987,9 +1083,10 @@ if __name__ == '__main__':
     try:
         db.create_ai_requests_table()
         db.create_goals_table()
-        print("Database jadvallari yaratildi")
+        db.create_payments_table()
+        print("✅ Database jadvallari yaratildi")
     except Exception as e:
-        print(f"Database xatoligi: {e}")
+        print(f"❌ Database xatoligi: {e}")
     
     # Flask app ishga tushirish
     port = int(os.environ.get('PORT', 8080))
@@ -997,4 +1094,6 @@ if __name__ == '__main__':
     print(f"🔐 Click.uz endpoints:")
     print(f"   - Prepare: https://balansai.onrender.com/click/prepare")
     print(f"   - Complete: https://balansai.onrender.com/click/complete")
+    print(f"💳 Merchant Trans ID format: user_id_tariff_months_timestamp")
+    print(f"   Example: 123456_PLUS_1_1730034567")
     app.run(host='0.0.0.0', port=port, debug=False)

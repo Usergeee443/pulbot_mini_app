@@ -161,13 +161,146 @@ Misol:
 
 ---
 
+## 💾 Database Integratsiyasi
+
+### Payments Jadvali
+
+```sql
+CREATE TABLE payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    click_trans_id VARCHAR(100) UNIQUE,
+    merchant_trans_id VARCHAR(255) NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    tariff VARCHAR(50) NOT NULL,
+    payment_method ENUM('click', 'payme', 'test') DEFAULT 'click',
+    status ENUM('pending', 'prepared', 'confirmed', 'cancelled', 'failed') DEFAULT 'pending',
+    error_code INT DEFAULT 0,
+    error_note VARCHAR(255),
+    prepare_time TIMESTAMP NULL,
+    complete_time TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)
+```
+
+### Database Funksiyalari
+
+```python
+# To'lov yozuvi yaratish
+db.create_payment_record(user_id, merchant_trans_id, amount, tariff, payment_method)
+
+# Prepare holatini yangilash
+db.update_payment_prepare(merchant_trans_id, click_trans_id)
+
+# Complete holatini yangilash
+db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
+
+# Tarifni faollashtirish
+db.activate_tariff(user_id, tariff, months)
+
+# To'lovlar tarixini olish
+db.get_user_payments(user_id, limit=10)
+```
+
+---
+
+## 🔌 Frontend API Endpointlari
+
+### 1. To'lov Yaratish
+
+```javascript
+POST /api/create-payment
+
+Body:
+{
+  "user_id": 123456,
+  "tariff": "PLUS",
+  "amount": 15000,
+  "months": 1,
+  "payment_method": "click"
+}
+
+Response:
+{
+  "success": true,
+  "merchant_trans_id": "123456_PLUS_1_1730034567",
+  "message": "To'lov yozuvi yaratildi"
+}
+```
+
+### 2. To'lovlar Tarixi
+
+```javascript
+GET /api/payment-history/{user_id}?limit=10
+
+Response:
+{
+  "success": true,
+  "payments": [
+    {
+      "id": 1,
+      "user_id": 123456,
+      "click_trans_id": "123456789",
+      "merchant_trans_id": "123456_PLUS_1_1730034567",
+      "amount": 15000,
+      "tariff": "PLUS",
+      "status": "confirmed",
+      "created_at": "2025-10-27 12:34:56"
+    }
+  ]
+}
+```
+
+---
+
+## 🔄 To'lov Jarayoni
+
+### 1. Frontend → Backend
+
+```javascript
+// 1. To'lov yozuvini yaratish
+const response = await fetch('/api/create-payment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        user_id: userId,
+        tariff: 'PLUS',
+        amount: 15000,
+        months: 1,
+        payment_method: 'click'
+    })
+});
+
+const { merchant_trans_id } = await response.json();
+
+// 2. Click.uz'ga yo'naltirish
+window.location.href = `https://my.click.uz/services/pay?service_id=${SERVICE_ID}&merchant_trans_id=${merchant_trans_id}&amount=${amount}`;
+```
+
+### 2. Click.uz → Backend
+
+```
+1. Click.uz /click/prepare ga POST yuboradi
+   → Database: status = 'prepared'
+
+2. Foydalanuvchi to'lovni tasdiqlaydi
+
+3. Click.uz /click/complete ga POST yuboradi
+   → Database: status = 'confirmed'
+   → User tariff yangilanadi
+```
+
+---
+
 ## 🔄 Keyingi Qadamlar
 
 1. ✅ Endpointlar yaratildi va test qilindi
-2. ⏳ Database'ga to'lov ma'lumotlarini saqlash
-3. ⏳ Frontend'da to'lov tugmasini faollashtirish
-4. ⏳ Foydalanuvchi tarifini avtomatik yangilash
-5. ⏳ To'lov tarixini ko'rsatish
+2. ✅ Database'ga to'lov ma'lumotlarini saqlash
+3. ✅ Foydalanuvchi tarifini avtomatik yangilash
+4. ✅ To'lov tarixini ko'rsatish
+5. ⏳ Frontend'da to'lov tugmasini faollashtirish
+6. ⏳ Click.uz test rejimida test qilish
 
 ---
 
