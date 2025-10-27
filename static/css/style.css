@@ -1628,3 +1628,62 @@ input, textarea, [contenteditable] {
     color: var(--tg-theme-hint-color);
     margin-left: 8px;
 }
+
+/* Premium Lock Overlay */
+.premium-feature.locked {
+    position: relative;
+    overflow: hidden;
+}
+
+.premium-lock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.lock-content {
+    text-align: center;
+    padding: 20px;
+}
+
+.lock-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+.lock-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--tg-theme-text-color);
+    margin-bottom: 16px;
+}
+
+.unlock-btn {
+    background: var(--tg-theme-button-color);
+    color: var(--tg-theme-button-text-color);
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.unlock-btn:active {
+    opacity: 0.8;
+}
+
+.analytics-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--tg-theme-hint-color);
+    font-size: 14px;
+}

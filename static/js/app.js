@@ -446,23 +446,31 @@ class BalansAI {
     }
 
     lockPremiumCharts() {
-        // Plus/Biznes/Oila grafiklarni qulf qilish (Bepul uchun)
-        const premiumCharts = [
-            'categoryChart', 'dailyChart', 'weeklyChart', 'incomeExpenseChart',
-            'topExpensesChart', 'monthlyTrendChart', 'categoryDistributionChart',
-            'yearlyChart', 'debtsChart', 'balanceChangeChart'
-        ];
+        // PLUS/PRO grafiklarni qulf qilish (FREE uchun)
+        const premiumFeatures = document.querySelectorAll('.premium-feature');
         
-        premiumCharts.forEach(chartId => {
-            const container = document.getElementById(chartId)?.parentElement;
-            if (container) {
-                container.innerHTML = `
-                    <div class="chart-locked">
-                        <div class="lock-icon">🔒</div>
-                        <h4>Plus, Biznes yoki Oila kerak</h4>
-                        <p>Bu grafikni ko'rish uchun tarifni yangilang</p>
-                    </div>
-                `;
+        premiumFeatures.forEach(feature => {
+            if (!feature.classList.contains('locked')) {
+                feature.classList.add('locked');
+                const content = feature.querySelector('.analytics-table, canvas');
+                if (content) {
+                    content.style.filter = 'blur(4px)';
+                    content.style.pointerEvents = 'none';
+                }
+                
+                // Lock overlay qo'shish
+                if (!feature.querySelector('.premium-lock-overlay')) {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'premium-lock-overlay';
+                    overlay.innerHTML = `
+                        <div class="lock-content">
+                            <div class="lock-icon">🔒</div>
+                            <div class="lock-text">Plus yoki Pro kerak</div>
+                            <button class="unlock-btn" onclick="window.location.href='/payment'">Tarifni yangilash</button>
+                        </div>
+                    `;
+                    feature.appendChild(overlay);
+                }
             }
         });
     }
@@ -502,40 +510,41 @@ class BalansAI {
     }
 
     createBasicChart() {
-        // Faqat asosiy grafik
-        this.createMonthlyChart();
+        // FREE tarif - 3 ta grafik
+        console.log('Creating FREE tariff charts');
+        this.createIncomeExpenseGrowthChart();
+        this.createNewCategoryChart();
+        this.createNewMonthlyTrendChart();
     }
 
     createPremiumCharts() {
-        // Plus/Biznes/Oila grafiklar (5 ta)
-        console.log('Creating premium charts (5 charts for Plus/Biznes/Oila)');
-        console.log('Current tariff:', this.data.tariff);
-        console.log('Transactions:', this.data.transactions);
+        // PLUS/PRO tarif - FREE + qo'shimcha 3 ta
+        console.log('Creating PLUS/PRO tariff charts');
         
-        // 5 ta grafikni yaratish
-        this.createMonthlyChart();
-        this.createCategoryChart();
-        this.createDailyChart();
-        this.createWeeklyChart();
-        this.createIncomeExpenseChart();
+        // FREE grafiklar
+        this.createIncomeExpenseGrowthChart();
+        this.createNewCategoryChart();
+        this.createNewMonthlyTrendChart();
         
-        // Qolgan grafiklarni qulf qilish
-        console.log('Locking max charts (6-11)');
+        // PLUS grafiklar
+        this.createTopExpensesTable();
+        this.createTopIncomeSources();
+        this.createLifetimeIncomeChart();
     }
 
     createMaxCharts() {
-        // Barcha grafiklar
-        this.createMonthlyChart();
-        this.createCategoryChart();
-        this.createDailyChart();
-        this.createWeeklyChart();
-        this.createIncomeExpenseChart();
-        this.createTopExpensesChart();
-        this.createMonthlyTrendChart();
-        this.createCategoryDistributionChart();
-        this.createYearlyChart();
-        this.createDebtsChart();
-        this.createBalanceChangeChart();
+        // MAX tarif - hammasi
+        console.log('Creating MAX tariff charts');
+        
+        // FREE grafiklar
+        this.createIncomeExpenseGrowthChart();
+        this.createNewCategoryChart();
+        this.createNewMonthlyTrendChart();
+        
+        // PLUS grafiklar
+        this.createTopExpensesTable();
+        this.createTopIncomeSources();
+        this.createLifetimeIncomeChart();
     }
 
     createMonthlyChart() {
@@ -893,6 +902,311 @@ class BalansAI {
                 }
             }
         });
+    }
+
+    // ===== YANGI CHART FUNKSIYALARI =====
+    
+    createIncomeExpenseGrowthChart() {
+        const ctx = document.getElementById('incomeExpenseGrowthChart');
+        if (!ctx) {
+            console.log('incomeExpenseGrowthChart not found');
+            return;
+        }
+
+        const data = this.generateMonthlyData();
+        
+        this.charts.incomeExpenseGrowth = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: 'Daromad',
+                        data: data.income,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Xarajat',
+                        data: data.expense,
+                        borderColor: '#F44336',
+                        backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + " so'm";
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    createNewCategoryChart() {
+        const ctx = document.getElementById('categoryChart');
+        if (!ctx) {
+            console.log('categoryChart not found');
+            return;
+        }
+
+        const data = this.generateCategoryData();
+        
+        this.charts.newCategory = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: [
+                        '#FF6384',
+                        '#36A2EB',
+                        '#FFCE56',
+                        '#4BC0C0',
+                        '#9966FF',
+                        '#FF9F40'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    createNewMonthlyTrendChart() {
+        const ctx = document.getElementById('monthlyTrendChart');
+        if (!ctx) {
+            console.log('monthlyTrendChart not found');
+            return;
+        }
+
+        const data = this.generateMonthlyData();
+        
+        this.charts.newMonthlyTrend = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: 'Daromad',
+                        data: data.income,
+                        backgroundColor: 'rgba(76, 175, 80, 0.8)'
+                    },
+                    {
+                        label: 'Xarajat',
+                        data: data.expense,
+                        backgroundColor: 'rgba(244, 67, 54, 0.8)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + " so'm";
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    createTopExpensesTable() {
+        const container = document.getElementById('topExpensesTable');
+        if (!container) {
+            console.log('topExpensesTable not found');
+            return;
+        }
+
+        const topExpenses = this.getTopExpenses(5);
+        
+        if (topExpenses.length === 0) {
+            container.innerHTML = '<div class="analytics-empty">Xarajat ma\'lumotlari mavjud emas</div>';
+            return;
+        }
+
+        const totalAmount = topExpenses.reduce((sum, item) => sum + item.amount, 0);
+        
+        container.innerHTML = topExpenses.map((item, index) => `
+            <div class="analytics-row">
+                <div class="analytics-row-rank">${index + 1}</div>
+                <div class="analytics-row-name">${item.category}</div>
+                <div class="analytics-row-value">${this.formatMoney(item.amount)}</div>
+                <div class="analytics-row-percent">${((item.amount / totalAmount) * 100).toFixed(1)}%</div>
+            </div>
+        `).join('');
+    }
+
+    createTopIncomeSources() {
+        const container = document.getElementById('topIncomeSources');
+        if (!container) {
+            console.log('topIncomeSources not found');
+            return;
+        }
+
+        const topIncome = this.getTopIncome(5);
+        
+        if (topIncome.length === 0) {
+            container.innerHTML = '<div class="analytics-empty">Daromad ma\'lumotlari mavjud emas</div>';
+            return;
+        }
+
+        const totalAmount = topIncome.reduce((sum, item) => sum + item.amount, 0);
+        
+        container.innerHTML = topIncome.map((item, index) => `
+            <div class="analytics-row">
+                <div class="analytics-row-rank">${index + 1}</div>
+                <div class="analytics-row-name">${item.category}</div>
+                <div class="analytics-row-value">${this.formatMoney(item.amount)}</div>
+                <div class="analytics-row-percent">${((item.amount / totalAmount) * 100).toFixed(1)}%</div>
+            </div>
+        `).join('');
+    }
+
+    createLifetimeIncomeChart() {
+        const ctx = document.getElementById('lifetimeIncomeChart');
+        if (!ctx) {
+            console.log('lifetimeIncomeChart not found');
+            return;
+        }
+
+        const data = this.generateLifetimeIncomeData();
+        
+        this.charts.lifetimeIncome = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Jami daromad',
+                    data: data.values,
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + " so'm";
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Helper functions for new charts
+    getTopExpenses(limit = 5) {
+        const expenses = this.data.transactions.filter(t => 
+            t.transaction_type === 'expense' || t.type === 'expense'
+        );
+        
+        const categoryTotals = {};
+        expenses.forEach(t => {
+            const category = t.category || 'Boshqa';
+            categoryTotals[category] = (categoryTotals[category] || 0) + t.amount;
+        });
+        
+        return Object.entries(categoryTotals)
+            .map(([category, amount]) => ({ category, amount }))
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, limit);
+    }
+
+    getTopIncome(limit = 5) {
+        const income = this.data.transactions.filter(t => 
+            t.transaction_type === 'income' || t.type === 'income'
+        );
+        
+        const categoryTotals = {};
+        income.forEach(t => {
+            const category = t.category || 'Boshqa';
+            categoryTotals[category] = (categoryTotals[category] || 0) + t.amount;
+        });
+        
+        return Object.entries(categoryTotals)
+            .map(([category, amount]) => ({ category, amount }))
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, limit);
+    }
+
+    generateLifetimeIncomeData() {
+        const income = this.data.transactions
+            .filter(t => t.transaction_type === 'income' || t.type === 'income')
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        
+        const labels = [];
+        const values = [];
+        let total = 0;
+        
+        income.forEach((t, index) => {
+            total += t.amount;
+            if (index % Math.ceil(income.length / 10) === 0 || index === income.length - 1) {
+                const date = new Date(t.created_at);
+                labels.push(`${date.getDate()}/${date.getMonth() + 1}`);
+                values.push(total);
+            }
+        });
+        
+        if (labels.length === 0) {
+            return {
+                labels: ['Bugun'],
+                values: [0]
+            };
+        }
+        
+        return { labels, values };
     }
 
     // Data generators
