@@ -29,11 +29,12 @@
 
         .payment-container {
             width: 100%;
-            min-height: 100vh;
+            height: 100vh;
             position: relative;
             display: flex;
             flex-direction: column;
             background: white;
+            overflow: hidden;
         }
 
         /* Gradient overlay - faqat tepa 40% */
@@ -60,16 +61,15 @@
         .payment-header h1 {
             font-size: 64px;
             font-weight: 900;
-            margin-bottom: 12px;
             color: #FFFFFF;
             letter-spacing: -1px;
         }
 
         .payment-header p {
-            font-size: 17px;
-            color: rgba(255, 255, 255, 0.95);
+            font-size: 18px;
+            color: white;
             line-height: 1.4;
-            font-weight: 400;
+            font-weight: 450;
             padding: 0 20px;
         }
 
@@ -77,24 +77,15 @@
         .content-area {
             flex: 1;
             padding: 0 20px;
-            padding-bottom: 200px;
+            padding-bottom: 20px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             width: 100%;
             position: relative;
             z-index: 1;
-        }
-
-        .spacer-top {
-            flex: 1;
-            min-height: 20px;
-        }
-
-        .spacer-bottom {
-            flex: 1;
-            min-height: 20px;
+            min-height: 0;
         }
 
         /* Feature list - card with border, qoq o'rtada */
@@ -145,7 +136,7 @@
         /* Price selection buttons - rasmdagidek slider effect */
         .price-selector {
             position: fixed;
-            bottom: 130px;
+            bottom: 140px;
             left: 20px;
             right: 20px;
             display: flex;
@@ -435,7 +426,6 @@
         </div>
 
         <div class="content-area">
-            <div class="spacer-top"></div>
             <div class="features-list" id="featuresList">
                 <!-- Plus features -->
                 <div class="feature-item">
@@ -471,7 +461,6 @@
                     <div class="feature-text">qo'shimcha 5 ta tahlil</div>
                 </div>
             </div>
-            <div class="spacer-bottom"></div>
         </div>
 
         <div class="price-selector">
