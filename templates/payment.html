@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Balans AI - Tariff Tanlang</title>
+    <title>Balans AI - Tarif</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -18,8 +18,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             color: #000000;
             overflow-x: hidden;
             -webkit-user-select: none;
@@ -29,56 +28,44 @@
         .payment-container {
             width: 100%;
             min-height: 100vh;
-            background: #f5f5f5;
             position: relative;
             display: flex;
             flex-direction: column;
-            padding-bottom: 100px;
+            padding-bottom: 160px;
+        }
+
+        /* Plus gradient */
+        .payment-container.plus-view {
+            background: linear-gradient(180deg, #7CB3FF 0%, #A8CFFF 100%);
+        }
+
+        /* Pro gradient */
+        .payment-container.pro-view {
+            background: linear-gradient(180deg, #7B9BFF 0%, #A8B8FF 100%);
         }
 
         /* Header */
         .payment-header {
             text-align: center;
-            padding: 20px 20px 30px;
+            padding: 60px 20px 40px;
             position: relative;
             flex-shrink: 0;
         }
 
-        .back-btn {
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: rgba(0, 0, 0, 0.6);
-            cursor: pointer;
-            padding: 8px 12px;
-            transition: all 0.15s;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .back-btn:active {
-            opacity: 0.6;
-        }
-
         .payment-header h1 {
-            font-size: 34px;
+            font-size: 64px;
             font-weight: 700;
-            margin-bottom: 8px;
-            color: #000;
+            margin-bottom: 12px;
+            color: #FFFFFF;
+            letter-spacing: -1px;
         }
 
         .payment-header p {
-            font-size: 15px;
-            color: rgba(0, 0, 0, 0.6);
+            font-size: 17px;
+            color: rgba(255, 255, 255, 0.95);
             line-height: 1.4;
             font-weight: 400;
+            padding: 0 20px;
         }
 
         /* Content Area */
@@ -87,270 +74,123 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             width: 100%;
+        }
+
+        /* Content card - oq fon */
+        .tariff-card {
+            background: white;
+            border-radius: 30px;
+            padding: 40px 24px 32px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
             gap: 20px;
         }
 
-        /* Tariff Cards */
-        .tariff-card {
-            background: white;
-            border-radius: 24px;
-            padding: 0;
-            width: 100%;
-            max-width: 320px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-
-        .tariff-card:active {
-            transform: scale(0.98);
-        }
-
-        .tariff-card.selected {
-            border-color: #5A8EF4;
-            box-shadow: 0 4px 16px rgba(90, 142, 244, 0.3);
-        }
-
-        .tariff-gradient {
-            height: 140px;
+        .tariff-content {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            text-align: center;
-        }
-
-        .gradient-plus {
-            background: linear-gradient(135deg, #5A8EF4 0%, #7CB3FF 100%);
-        }
-
-        .gradient-pro {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .tariff-name {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            letter-spacing: -1px;
-        }
-
-        .tariff-desc {
-            font-size: 14px;
-            font-weight: 400;
-            opacity: 0.95;
-            line-height: 1.3;
-            max-width: 280px;
-        }
-
-        .tariff-content {
-            padding: 24px 20px;
+            gap: 16px;
         }
 
         .feature-item {
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .feature-item:last-child {
-            margin-bottom: 0;
         }
 
         .feature-icon {
             flex-shrink: 0;
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
         .feature-icon svg {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             stroke: #5A8EF4;
             stroke-width: 2.5;
         }
 
         .feature-text {
-            font-size: 13px;
-            color: rgba(0, 0, 0, 0.8);
-            line-height: 1.4;
-            font-weight: 500;
-        }
-
-        .tariff-price {
-            text-align: center;
-            padding: 16px 20px;
-            border-top: 1px solid rgba(0, 0, 0, 0.05);
-            font-size: 18px;
-            font-weight: 700;
-            color: #000;
-        }
-
-        /* Step 2: Duration */
-        .duration-options {
-            width: 100%;
-            max-width: 350px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .duration-card {
-            background: white;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 16px;
-            padding: 18px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .duration-card.selected {
-            border: 2px solid #5A8EF4;
-        }
-
-        .duration-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 8px;
-        }
-
-        .duration-left {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .duration-label {
-            font-size: 14px;
-            font-weight: 500;
-            color: rgba(0, 0, 0, 0.6);
-        }
-
-        .duration-price {
-            font-size: 24px;
-            font-weight: 700;
-            color: #000;
-            margin-top: 4px;
-        }
-
-        .duration-discount {
-            font-size: 13px;
-            color: #5A8EF4;
-            font-weight: 600;
-        }
-
-        .duration-bonus {
-            font-size: 13px;
-            color: #4caf50;
-            font-weight: 600;
-        }
-
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.4);
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .modal-content {
-            background: #ffffff;
-            border-radius: 20px 20px 0 0;
-            padding: 24px;
-            width: 100%;
-            max-width: 500px;
-            transform: translateY(100%);
-            transition: transform 0.25s ease;
-        }
-
-        .modal-overlay.active .modal-content {
-            transform: translateY(0);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .modal-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #000;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #000;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        .modal-close:active {
-            opacity: 0.5;
-        }
-
-        .coming-soon {
-            text-align: center;
-            padding: 40px 20px;
-        }
-
-        .coming-soon-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-        }
-
-        .coming-soon-text {
             font-size: 16px;
+            color: rgba(0, 0, 0, 0.85);
             line-height: 1.5;
+            font-weight: 400;
+        }
+
+        /* Price selection buttons at bottom */
+        .price-selector {
+            position: fixed;
+            bottom: 90px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            z-index: 98;
+        }
+
+        .price-btn {
+            background: white;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 14px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+            max-width: 180px;
+            text-align: center;
+        }
+
+        .price-btn:active {
+            transform: scale(0.98);
+        }
+
+        .price-btn.selected {
+            border-color: #000000;
+            background: #F5F5F5;
+        }
+
+        .price-label {
+            font-size: 15px;
+            font-weight: 700;
+            color: #000;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .price-amount {
+            font-size: 13px;
             color: rgba(0, 0, 0, 0.6);
+            display: block;
         }
 
         /* Button */
         .action-btn {
             position: fixed;
-            bottom: 80px;
+            bottom: 20px;
             left: 20px;
             right: 20px;
             background: #000000;
             color: #ffffff;
             border: none;
-            padding: 14px 20px;
+            padding: 16px 20px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: opacity 0.2s;
             z-index: 99;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border-radius: 14px;
         }
 
         .action-btn:active {
@@ -362,80 +202,44 @@
             cursor: not-allowed;
         }
 
-        /* Legal Text */
+        /* Legal text */
         .legal-text {
             position: fixed;
-            bottom: 0;
+            bottom: 190px;
             left: 0;
             right: 0;
             text-align: center;
-            padding: 12px 20px;
+            padding: 12px 40px;
             font-size: 11px;
             color: rgba(0, 0, 0, 0.6);
-            line-height: 1.3;
-            background: #ffffff;
-            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            line-height: 1.4;
             z-index: 50;
         }
 
         .legal-text a {
-            color: #5A8EF4;
-            text-decoration: none;
+            color: rgba(0, 0, 0, 0.8);
+            text-decoration: underline;
         }
 
         .hidden {
             display: none;
         }
-
-        /* Step indicator */
-        .steps-indicator {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 16px;
-            margin-top: 12px;
-        }
-
-        .step-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.15);
-            transition: all 0.3s ease;
-        }
-
-        .step-dot.active {
-            background: #5A8EF4;
-            width: 24px;
-            border-radius: 4px;
-        }
     </style>
 </head>
 <body>
-    <!-- Step 1: Tariff Selection -->
-    <div class="payment-container" id="step1">
+    <!-- Plus Tarif View -->
+    <div class="payment-container plus-view" id="plusView">
         <div class="payment-header">
-            <h1>Tarif tanlang</h1>
-            <p>Sizga mos keladigan paketi tanlang</p>
-        </div>
-
-        <div class="steps-indicator">
-            <div class="step-dot active"></div>
-            <div class="step-dot"></div>
-            <div class="step-dot"></div>
+            <h1>Plus</h1>
+            <p>Tezroq, aqlliroq va qulayroq balans yuritish.</p>
         </div>
 
         <div class="content-area">
-            <!-- Plus Card -->
-            <div class="tariff-card selected" data-tariff="plus" onclick="selectTariff('plus', this)">
-                <div class="tariff-gradient gradient-plus">
-                    <div class="tariff-name">Plus</div>
-                    <div class="tariff-desc">Tezroq, aqlliroq va qulayroq balans yuritish.</div>
-                </div>
+            <div class="tariff-card">
                 <div class="tariff-content">
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
@@ -443,7 +247,7 @@
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
@@ -451,34 +255,57 @@
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
-                        <div class="feature-text">Ovozli xabar oraqlari tranzaksiya</div>
+                        <div class="feature-text">Ovozli xabar orqali tranzaksiya</div>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
                         <div class="feature-text">qo'shimcha 5 ta tahlil</div>
                     </div>
                 </div>
-                <div class="tariff-price">15 000 so'm/oy</div>
             </div>
+        </div>
 
-            <!-- Pro Card -->
-            <div class="tariff-card" data-tariff="pro" onclick="selectTariff('pro', this)">
-                <div class="tariff-gradient gradient-pro">
-                    <div class="tariff-name">Pro</div>
-                    <div class="tariff-desc">AI bilan yanada chuqurroq nazorат va tahil.</div>
-                </div>
+        <div class="price-selector">
+            <div class="price-btn selected" onclick="selectPrice('plus', 'monthly')">
+                <div class="price-label">Plus</div>
+                <div class="price-amount">15 000 so'm/oy</div>
+            </div>
+            <div class="price-btn" onclick="selectPrice('pro', 'monthly')">
+                <div class="price-label">Pro</div>
+                <div class="price-amount">35 000 so'm/oy</div>
+            </div>
+        </div>
+
+        <div class="legal-text">
+            Yangilash orqali <a href="/terms">Foydalanish shartlari</a> va <a href="/privacy">Maxfiylik siyosati</a> ga rozilik bildirasiz.
+        </div>
+
+        <button class="action-btn" onclick="processPayment()">
+            15 000 so'm evaziga yangilanish
+        </button>
+    </div>
+
+    <!-- Pro Tarif View (hidden by default) -->
+    <div class="payment-container pro-view hidden" id="proView">
+        <div class="payment-header">
+            <h1>Pro</h1>
+            <p>AI bilan yanada chuqurroq nazorat va tahlil.</p>
+        </div>
+
+        <div class="content-area">
+            <div class="tariff-card">
                 <div class="tariff-content">
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
@@ -486,7 +313,7 @@
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
@@ -494,15 +321,15 @@
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
-                        <div class="feature-text">Ovozli xbaar oraqlari tranzaksiya</div>
+                        <div class="feature-text">Ovozli xabar orqali tranzaksiya</div>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
@@ -510,7 +337,7 @@
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
@@ -518,172 +345,114 @@
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
                         <div class="feature-text">AI bilan chat</div>
                     </div>
                 </div>
-                <div class="tariff-price">35 000 so'm/oy</div>
             </div>
         </div>
 
-        <button class="action-btn" onclick="goToStep2()">Davom etish</button>
-
-        <div class="legal-text">
-            Tasdiqlash orqali <a href="/terms">Foydalanish shartlari</a> va <a href="/privacy">Maxfiylik siyosati</a> ga rozilik bildirasiz.
-        </div>
-    </div>
-
-    <!-- Step 2: Duration Selection -->
-    <div class="payment-container hidden" id="step2">
-        <div class="payment-header">
-            <button class="back-btn" onclick="goToStep1()">&#8249;</button>
-            <h1 id="step2Title">Plus</h1>
-            <p id="step2Desc">Muddatni tanlang</p>
-        </div>
-
-        <div class="steps-indicator">
-            <div class="step-dot active"></div>
-            <div class="step-dot active"></div>
-            <div class="step-dot"></div>
-        </div>
-
-        <div class="content-area">
-            <div class="duration-options" id="durationOptions">
-                <!-- Will be filled by JS -->
+        <div class="price-selector">
+            <div class="price-btn" onclick="selectPrice('plus', 'monthly')">
+                <div class="price-label">Plus</div>
+                <div class="price-amount">15 000 so'm/oy</div>
+            </div>
+            <div class="price-btn selected" onclick="selectPrice('pro', 'monthly')">
+                <div class="price-label">Pro</div>
+                <div class="price-amount">35 000 so'm/oy</div>
             </div>
         </div>
-
-        <button class="action-btn" onclick="goToStep3()" id="step2Btn">Davom etish</button>
 
         <div class="legal-text">
             Yangilash orqali <a href="/terms">Foydalanish shartlari</a> va <a href="/privacy">Maxfiylik siyosati</a> ga rozilik bildirasiz.
         </div>
-    </div>
 
-    <!-- Step 3: Payment Modal -->
-    <div class="modal-overlay" id="paymentModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">To'lov usulini tanlang:</div>
-                <button class="modal-close" onclick="closePaymentModal()">✕</button>
-            </div>
-
-            <div class="coming-soon">
-                <div class="coming-soon-icon">🚧</div>
-                <div class="coming-soon-text">
-                    To'lov usullari tez orada qo'shiladi.<br>
-                    Joriy vaqtda faqat test rejimida to'lov mumkin.
-                </div>
-            </div>
-        </div>
+        <button class="action-btn" onclick="processPayment()">
+            35 000 so'm evaziga yangilanish
+        </button>
     </div>
 
     <script>
-        let tg = null;
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
+        // Telegram WebApp init
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
             tg.ready();
             tg.expand();
         }
 
-        let selectedTariff = 'plus';
-        let selectedDuration = 1;
-
-        const tariffs = {
-            plus: { name: 'Plus', price: 15000, desc: 'Tezroq, aqlliroq va qulayroq balans yuritish.' },
-            pro: { name: 'Pro', price: 35000, desc: 'AI bilan yanada chuqurroq nazorат va tahil.' }
-        };
-
-        const durations = [
-            { months: 1, label: '1 oy', basePrice: 1, discount: 0, bonus: '' },
-            { months: 14, label: '1 yil + 2 oy', basePrice: 12, discount: 17, bonus: '14 oy' }
-        ];
-
         function hapticFeedback() {
-            if (tg && tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
             }
         }
 
-        function selectTariff(tariff, element) {
+        let currentTariff = 'plus';
+
+        function selectPrice(tariff, period) {
             hapticFeedback();
-            selectedTariff = tariff;
-            document.querySelectorAll('.tariff-card').forEach(card => card.classList.remove('selected'));
-            element.classList.add('selected');
+            currentTariff = tariff;
+
+            // Hide all views
+            document.getElementById('plusView').classList.add('hidden');
+            document.getElementById('proView').classList.add('hidden');
+
+            // Show selected view
+            if (tariff === 'plus') {
+                document.getElementById('plusView').classList.remove('hidden');
+            } else {
+                document.getElementById('proView').classList.remove('hidden');
+            }
         }
 
-        function goToStep2() {
+        async function processPayment() {
             hapticFeedback();
-            document.getElementById('step1').classList.add('hidden');
-            document.getElementById('step2').classList.remove('hidden');
-            
-            // Update title
-            document.getElementById('step2Title').textContent = tariffs[selectedTariff].name;
-            document.getElementById('step2Desc').textContent = tariffs[selectedTariff].desc;
-            
-            // Render duration options
-            renderDurations();
-        }
 
-        function renderDurations() {
-            const container = document.getElementById('durationOptions');
-            container.innerHTML = durations.map((dur, idx) => {
-                const finalPrice = tariffs[selectedTariff].price * dur.basePrice;
-                const discountedPrice = Math.round(finalPrice * (1 - dur.discount / 100));
-                return `
-                    <div class="duration-card ${idx === 0 ? 'selected' : ''}" data-months="${dur.months}" onclick="selectDuration(${dur.months}, this)">
-                        <div class="duration-header">
-                            <div class="duration-left">
-                                <span class="duration-label">${dur.label}</span>
-                                <span class="duration-price">${discountedPrice.toLocaleString()} so'm</span>
-                            </div>
-                        </div>
-                        ${dur.discount > 0 ? `<div class="duration-discount">${dur.discount}% chegirma</div>` : '<div class="duration-discount">Chegirma yo\'q</div>'}
-                        ${dur.bonus ? `<div class="duration-bonus">Bonus: ${dur.bonus}</div>` : ''}
-                    </div>
-                `;
-            }).join('');
-            selectedDuration = 1;
-            updateButton();
-        }
+            const userId = tg?.initDataUnsafe?.user?.id || 123456789;
+            const amount = currentTariff === 'plus' ? 15000 : 35000;
 
-        function selectDuration(months, element) {
-            hapticFeedback();
-            selectedDuration = months;
-            document.querySelectorAll('.duration-card').forEach(card => card.classList.remove('selected'));
-            element.classList.add('selected');
-            updateButton();
-        }
+            try {
+                const response = await fetch('/api/process-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        tariff: currentTariff.toUpperCase(),
+                        months: 1,
+                        amount: amount,
+                        payment_method: 'test'
+                    })
+                });
 
-        function updateButton() {
-            const dur = durations.find(d => d.months === selectedDuration);
-            const finalPrice = tariffs[selectedTariff].price * dur.basePrice;
-            const discountedPrice = Math.round(finalPrice * (1 - dur.discount / 100));
-            document.getElementById('step2Btn').textContent = `${discountedPrice.toLocaleString()} so'm evaziga yangilanish`;
-        }
+                const result = await response.json();
 
-        function goToStep1() {
-            hapticFeedback();
-            document.getElementById('step2').classList.add('hidden');
-            document.getElementById('step1').classList.remove('hidden');
+                if (result.success) {
+                    if (tg) {
+                        tg.showAlert('✅ To\'lov muvaffaqiyatli amalga oshirildi!', () => {
+                            tg.close();
+                        });
+                    } else {
+                        alert('✅ To\'lov muvaffaqiyatli!');
+                        window.location.href = '/';
+                    }
+                } else {
+                    if (tg) {
+                        tg.showAlert('❌ Xatolik: ' + (result.message || 'To\'lovni amalga oshirib bo\'lmadi'));
+                    } else {
+                        alert('❌ Xatolik: ' + (result.message || 'To\'lovni amalga oshirib bo\'lmadi'));
+                    }
+                }
+            } catch (error) {
+                console.error('Payment error:', error);
+                if (tg) {
+                    tg.showAlert('❌ To\'lovni amalga oshirishda xatolik');
+                } else {
+                    alert('❌ To\'lovni amalga oshirishda xatolik');
+                }
+            }
         }
-
-        function goToStep3() {
-            hapticFeedback();
-            document.getElementById('paymentModal').classList.add('active');
-        }
-
-        function closePaymentModal() {
-            hapticFeedback();
-            document.getElementById('paymentModal').classList.remove('active');
-        }
-
-        document.getElementById('paymentModal').addEventListener('click', (e) => {
-            if (e.target.id === 'paymentModal') closePaymentModal();
-        });
     </script>
 </body>
 </html>
