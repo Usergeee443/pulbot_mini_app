@@ -52,7 +52,7 @@
             padding: 60px 20px 40px;
             position: relative;
             z-index: 1;
-            transition: opacity 0.5s ease, transform 0.5s ease;
+            transition: opacity 0.4s ease;
         }
 
         .payment-header h1 {
@@ -91,7 +91,7 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-            transition: opacity 0.5s ease, transform 0.5s ease;
+            transition: opacity 0.4s ease;
         }
 
         .feature-item {
@@ -124,52 +124,75 @@
             font-weight: 400;
         }
 
-        /* Price selection buttons - xuddi rasmdagidek */
+        /* Price selection buttons - rasmdagidek slider effect */
         .price-selector {
             position: fixed;
             bottom: 130px;
             left: 20px;
             right: 20px;
             display: flex;
-            gap: 12px;
             justify-content: center;
             z-index: 98;
         }
 
-        .price-btn {
-            background: white;
-            border: 2px solid rgba(0, 0, 0, 0.12);
+        .price-selector-wrapper {
+            background: #F5F5F5;
             border-radius: 20px;
-            padding: 16px 24px;
+            padding: 4px;
+            display: flex;
+            gap: 4px;
+            position: relative;
+        }
+
+        .price-slider {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+        }
+
+        .price-btn {
+            background: transparent;
+            border: none;
+            border-radius: 16px;
+            padding: 14px 32px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            flex: 1;
-            max-width: 200px;
-            text-align: center;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 1;
+            min-width: 140px;
         }
 
         .price-btn:active {
-            transform: scale(0.97);
-        }
-
-        .price-btn.selected {
-            border-color: #000000;
-            border-width: 2.5px;
-            background: #FAFAFA;
+            transform: scale(0.98);
         }
 
         .price-label {
             font-size: 16px;
             font-weight: 900;
-            color: #000;
+            color: rgba(0, 0, 0, 0.4);
             display: block;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
+            transition: color 0.35s ease;
+        }
+
+        .price-btn.selected .price-label {
+            color: #000;
         }
 
         .price-amount {
             font-size: 12px;
-            color: rgba(0, 0, 0, 0.6);
+            color: rgba(0, 0, 0, 0.3);
             display: block;
+            transition: color 0.35s ease;
+        }
+
+        .price-btn.selected .price-amount {
+            color: rgba(0, 0, 0, 0.6);
         }
 
         /* Button - 100% radius + press effect */
@@ -432,13 +455,16 @@
         </div>
 
         <div class="price-selector">
-            <div class="price-btn selected" onclick="selectPrice('plus')">
-                <div class="price-label">Plus</div>
-                <div class="price-amount">15 000 so'm/oy</div>
-            </div>
-            <div class="price-btn" onclick="selectPrice('pro')">
-                <div class="price-label">Pro</div>
-                <div class="price-amount">35 000 so'm/oy</div>
+            <div class="price-selector-wrapper">
+                <div class="price-slider" id="priceSlider"></div>
+                <div class="price-btn selected" onclick="selectPrice('plus', this)">
+                    <div class="price-label">Plus</div>
+                    <div class="price-amount">15 000 so'm/oy</div>
+                </div>
+                <div class="price-btn" onclick="selectPrice('pro', this)">
+                    <div class="price-label">Pro</div>
+                    <div class="price-amount">35 000 so'm/oy</div>
+                </div>
             </div>
         </div>
 
@@ -533,7 +559,7 @@
             }
         };
 
-        function selectPrice(tariff) {
+        function selectPrice(tariff, element) {
             hapticFeedback();
             if (currentTariff === tariff) return; // Agar bir xil bo'lsa animatsiya qilmaydi
             
@@ -543,18 +569,25 @@
             document.querySelectorAll('.price-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
-            event.currentTarget.classList.add('selected');
+            element.classList.add('selected');
+
+            // Animate slider
+            const slider = document.getElementById('priceSlider');
+            const btnRect = element.getBoundingClientRect();
+            const wrapperRect = element.parentElement.getBoundingClientRect();
+            const offsetLeft = btnRect.left - wrapperRect.left - 4;
+            
+            slider.style.left = offsetLeft + 'px';
+            slider.style.width = btnRect.width + 'px';
 
             const data = tariffData[tariff];
 
-            // Fade out animation
+            // Fade out animation - joyida xira bo'ladi
             const header = document.querySelector('.payment-header');
             const featuresList = document.getElementById('featuresList');
             
             header.style.opacity = '0';
-            header.style.transform = 'translateY(-10px)';
             featuresList.style.opacity = '0';
-            featuresList.style.transform = 'translateY(10px)';
 
             // Update content after fade out
             setTimeout(() => {
@@ -574,18 +607,28 @@
                     </div>
                 `).join('');
 
-                // Fade in animation
+                // Fade in animation - joyida to'q bo'ladi
                 setTimeout(() => {
                     header.style.opacity = '1';
-                    header.style.transform = 'translateY(0)';
                     featuresList.style.opacity = '1';
-                    featuresList.style.transform = 'translateY(0)';
                 }, 50);
-            }, 300);
+            }, 200);
 
             // Update bottom sheet prices
             updateSheetPrices();
         }
+
+        // Initialize slider position on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const selectedBtn = document.querySelector('.price-btn.selected');
+            const slider = document.getElementById('priceSlider');
+            const btnRect = selectedBtn.getBoundingClientRect();
+            const wrapperRect = selectedBtn.parentElement.getBoundingClientRect();
+            const offsetLeft = btnRect.left - wrapperRect.left - 4;
+            
+            slider.style.left = offsetLeft + 'px';
+            slider.style.width = btnRect.width + 'px';
+        });
 
         function updateSheetPrices() {
             const data = tariffData[currentTariff];
