@@ -42,15 +42,8 @@
             right: 0;
             height: 40%;
             z-index: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .gradient-overlay.plus {
+            transition: opacity 0.5s ease;
             background: linear-gradient(180deg, #7CB3FF 0%, rgba(255, 255, 255, 0) 100%);
-        }
-
-        .gradient-overlay.pro {
-            background: linear-gradient(180deg, #7B9BFF 0%, rgba(255, 255, 255, 0) 100%);
         }
 
         /* Header */
@@ -59,6 +52,7 @@
             padding: 60px 20px 40px;
             position: relative;
             z-index: 1;
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
 
         .payment-header h1 {
@@ -83,20 +77,21 @@
             padding: 0 20px 200px;
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
             width: 100%;
             position: relative;
             z-index: 1;
         }
 
-        /* Feature list - card ichida EMAS */
+        /* Feature list - card ichida EMAS, qoq o'rtada */
         .features-list {
             width: 100%;
             max-width: 420px;
             display: flex;
             flex-direction: column;
             gap: 16px;
-            margin-top: 20px;
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
 
         .feature-item {
@@ -129,7 +124,7 @@
             font-weight: 400;
         }
 
-        /* Price selection buttons */
+        /* Price selection buttons - xuddi rasmdagidek */
         .price-selector {
             position: fixed;
             bottom: 130px;
@@ -143,40 +138,41 @@
 
         .price-btn {
             background: white;
-            border: 2px solid rgba(0, 0, 0, 0.15);
+            border: 2px solid rgba(0, 0, 0, 0.12);
             border-radius: 20px;
             padding: 16px 24px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             flex: 1;
-            max-width: 180px;
+            max-width: 200px;
             text-align: center;
         }
 
         .price-btn:active {
-            transform: scale(0.98);
+            transform: scale(0.97);
         }
 
         .price-btn.selected {
             border-color: #000000;
-            border-width: 3px;
+            border-width: 2.5px;
+            background: #FAFAFA;
         }
 
         .price-label {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 900;
             color: #000;
             display: block;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
         .price-amount {
-            font-size: 13px;
+            font-size: 12px;
             color: rgba(0, 0, 0, 0.6);
             display: block;
         }
 
-        /* Button - 100% radius */
+        /* Button - 100% radius + press effect */
         .action-btn {
             position: fixed;
             bottom: 55px;
@@ -189,13 +185,15 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
             z-index: 99;
             border-radius: 100px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .action-btn:active {
-            opacity: 0.8;
+            transform: scale(0.96);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         /* Legal text - tugma ostida */
@@ -537,6 +535,8 @@
 
         function selectPrice(tariff) {
             hapticFeedback();
+            if (currentTariff === tariff) return; // Agar bir xil bo'lsa animatsiya qilmaydi
+            
             currentTariff = tariff;
 
             // Update buttons
@@ -545,28 +545,43 @@
             });
             event.currentTarget.classList.add('selected');
 
-            // Update content
             const data = tariffData[tariff];
-            document.getElementById('tariffTitle').textContent = data.title;
-            document.getElementById('tariffDesc').textContent = data.desc;
-            document.getElementById('actionBtnText').textContent = `${data.monthly.toLocaleString()} so'm evaziga yangilanish`;
 
-            // Update gradient
-            const gradient = document.getElementById('gradientOverlay');
-            gradient.className = 'gradient-overlay ' + data.gradient;
-
-            // Update features
+            // Fade out animation
+            const header = document.querySelector('.payment-header');
             const featuresList = document.getElementById('featuresList');
-            featuresList.innerHTML = data.features.map(feature => `
-                <div class="feature-item">
-                    <div class="feature-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
+            
+            header.style.opacity = '0';
+            header.style.transform = 'translateY(-10px)';
+            featuresList.style.opacity = '0';
+            featuresList.style.transform = 'translateY(10px)';
+
+            // Update content after fade out
+            setTimeout(() => {
+                document.getElementById('tariffTitle').textContent = data.title;
+                document.getElementById('tariffDesc').textContent = data.desc;
+                document.getElementById('actionBtnText').textContent = `${data.monthly.toLocaleString()} so'm evaziga yangilanish`;
+
+                // Update features
+                featuresList.innerHTML = data.features.map(feature => `
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="feature-text">${feature}</div>
                     </div>
-                    <div class="feature-text">${feature}</div>
-                </div>
-            `).join('');
+                `).join('');
+
+                // Fade in animation
+                setTimeout(() => {
+                    header.style.opacity = '1';
+                    header.style.transform = 'translateY(0)';
+                    featuresList.style.opacity = '1';
+                    featuresList.style.transform = 'translateY(0)';
+                }, 50);
+            }, 300);
 
             // Update bottom sheet prices
             updateSheetPrices();
