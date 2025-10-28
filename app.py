@@ -834,12 +834,39 @@ def verify_click_signature(params, secret_key):
         logging.error(f"Signature verification error: {e}")
         return False
 
-@app.route('/api/click/prepare', methods=['POST'])
+@app.route('/api/click/prepare', methods=['GET', 'POST'])
 def click_prepare():
     """
     Click.uz Prepare URL
     To'lovni boshlashdan oldin tekshiruv
     """
+    # GET so'rov - test uchun
+    if request.method == 'GET':
+        return jsonify({
+            "status": "ok",
+            "message": "Click.uz Prepare Endpoint",
+            "method": "POST",
+            "description": "Bu endpoint Click.uz serveridan POST so'rovi bilan chaqiriladi",
+            "required_fields": [
+                "click_trans_id",
+                "service_id",
+                "merchant_trans_id",
+                "amount",
+                "action",
+                "sign_time",
+                "sign_string"
+            ],
+            "example_request": {
+                "click_trans_id": "123456789",
+                "service_id": "85417",
+                "merchant_trans_id": "123456_PLUS_1_1730034567",
+                "amount": "10000",
+                "action": "1",
+                "sign_time": "1730034567",
+                "sign_string": "calculated_md5_hash"
+            }
+        }), 200
+    
     try:
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
@@ -944,12 +971,39 @@ def click_prepare():
             "error_note": "Transaction not found"
         }), 500
 
-@app.route('/api/click/complete', methods=['POST'])
+@app.route('/api/click/complete', methods=['GET', 'POST'])
 def click_complete():
     """
     Click.uz Complete URL
     To'lov yakunlangandan keyin natijani qaytarish
     """
+    # GET so'rov - test uchun
+    if request.method == 'GET':
+        return jsonify({
+            "status": "ok",
+            "message": "Click.uz Complete Endpoint",
+            "method": "POST",
+            "description": "Bu endpoint Click.uz serveridan POST so'rovi bilan chaqiriladi",
+            "required_fields": [
+                "click_trans_id",
+                "merchant_trans_id",
+                "amount",
+                "action",
+                "sign_time",
+                "sign_string",
+                "error"
+            ],
+            "example_request": {
+                "click_trans_id": "123456789",
+                "merchant_trans_id": "123456_PLUS_1_1730034567",
+                "amount": "10000",
+                "action": "1",
+                "sign_time": "1730034567",
+                "sign_string": "calculated_md5_hash",
+                "error": "0"
+            }
+        }), 200
+    
     try:
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
