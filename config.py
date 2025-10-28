@@ -26,9 +26,10 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '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')
 
 # Click.uz to'lov sozlamalari
-CLICK_SECRET_KEY = os.getenv('CLICK_SECRET_KEY', '')
-CLICK_SERVICE_ID = os.getenv('CLICK_SERVICE_ID', '')
-CLICK_MERCHANT_ID = os.getenv('CLICK_MERCHANT_ID', '')
+CLICK_SECRET_KEY = os.getenv('CLICK_SECRET_KEY', '3DSnE96DKz7Nh')
+CLICK_SERVICE_ID = os.getenv('CLICK_SERVICE_ID', '85417')
+CLICK_MERCHANT_ID = os.getenv('CLICK_MERCHANT_ID', '49266')
+CLICK_MERCHANT_USER_ID = os.getenv('CLICK_MERCHANT_USER_ID', '67944')
 
 # Tarif tizimi
 TARIFF_LIMITS = {

@@ -6,7 +6,7 @@ import hashlib
 import logging
 from datetime import datetime, timedelta
 from database import Database
-from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY, CLICK_SECRET_KEY, CLICK_SERVICE_ID, CLICK_MERCHANT_ID
+from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY, CLICK_SECRET_KEY, CLICK_SERVICE_ID, CLICK_MERCHANT_ID, CLICK_MERCHANT_USER_ID
 
 # Flask app yaratish
 app = Flask(__name__)
@@ -791,17 +791,27 @@ def add_test_data(user_id):
 
 # ==================== CLICK.UZ TO'LOV TIZIMI ====================
 
-# Logging sozlash
-logging.basicConfig(
-    filename='click_logs.txt',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+# Click.uz log fayli uchun alohida handler
+click_logger = logging.getLogger('click')
+click_logger.setLevel(logging.INFO)
+
+# /var/log/click.log ga yozish uchun handler (agar mumkin bo'lsa)
+try:
+    import sys
+    # Production uchun /var/log/click.log
+    click_file_handler = logging.FileHandler('/var/log/click.log', mode='a', encoding='utf-8')
+except (PermissionError, FileNotFoundError):
+    # Development uchun click_logs.txt
+    click_file_handler = logging.FileHandler('click_logs.txt', mode='a', encoding='utf-8')
+
+click_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+click_logger.addHandler(click_file_handler)
+click_logger.propagate = False
 
 def verify_click_signature(params, secret_key):
     """
-    Click.uz sign_string ni tekshirish
-    SHA1(click_trans_id + service_id + secret_key + merchant_trans_id + amount + action + sign_time)
+    Click.uz sign_string ni tekshirish (MD5)
+    MD5(click_trans_id + service_id + secret_key + merchant_trans_id + amount + action + sign_time)
     """
     try:
         click_trans_id = str(params.get('click_trans_id', ''))
@@ -811,9 +821,9 @@ def verify_click_signature(params, secret_key):
         action = str(params.get('action', ''))
         sign_time = str(params.get('sign_time', ''))
         
-        # SHA1 hash yaratish
+        # MD5 hash yaratish
         sign_string = f"{click_trans_id}{service_id}{secret_key}{merchant_trans_id}{amount}{action}{sign_time}"
-        calculated_sign = hashlib.sha1(sign_string.encode('utf-8')).hexdigest()
+        calculated_sign = hashlib.md5(sign_string.encode('utf-8')).hexdigest()
         
         received_sign = params.get('sign_string', '')
         
@@ -824,7 +834,7 @@ def verify_click_signature(params, secret_key):
         logging.error(f"Signature verification error: {e}")
         return False
 
-@app.route('/click/prepare', methods=['POST'])
+@app.route('/api/click/prepare', methods=['POST'])
 def click_prepare():
     """
     Click.uz Prepare URL
@@ -834,7 +844,8 @@ def click_prepare():
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
         
-        logging.info(f"Click Prepare request: {params}")
+        # Logga yozish (datetime + request.body formatida)
+        click_logger.info(f"PREPARE_REQUEST: {params}")
         
         # Majburiy maydonlarni tekshirish
         required_fields = ['click_trans_id', 'service_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string']
@@ -860,6 +871,14 @@ def click_prepare():
             return jsonify({
                 "error": -5,
                 "error_note": "Service ID not found"
+            }), 400
+        
+        # Merchant ID ni tekshirish (agar mavjud bo'lsa)
+        if 'merchant_id' in params and params.get('merchant_id') != CLICK_MERCHANT_ID:
+            logging.error(f"Invalid merchant_id: {params.get('merchant_id')}")
+            return jsonify({
+                "error": -6,
+                "error_note": "Merchant ID not found"
             }), 400
         
         # Summa tekshiruvi (minimal 1000 so'm)
@@ -901,20 +920,22 @@ def click_prepare():
                 # Database'da to'lovni prepare holatiga o'tkazish
                 db.update_payment_prepare(merchant_trans_id, click_trans_id)
                 
-                logging.info(f"Prepare success: user_id={user_id}, tariff={tariff}, merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
+                click_logger.info(f"Prepare success: user_id={user_id}, tariff={tariff}, merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
             else:
                 logging.warning(f"Invalid merchant_trans_id format: {merchant_trans_id}")
         except Exception as e:
             logging.error(f"Error parsing merchant_trans_id: {e}")
         
         # Muvaffaqiyatli javob
-        return jsonify({
+        response = {
             "click_trans_id": int(click_trans_id),
             "merchant_trans_id": merchant_trans_id,
             "merchant_prepare_id": int(datetime.now().timestamp()),
             "error": 0,
             "error_note": "Success"
-        }), 200
+        }
+        click_logger.info(f"PREPARE_RESPONSE: {response}")
+        return jsonify(response), 200
         
     except Exception as e:
         logging.error(f"Click Prepare error: {e}")
@@ -923,7 +944,7 @@ def click_prepare():
             "error_note": "Transaction not found"
         }), 500
 
-@app.route('/click/complete', methods=['POST'])
+@app.route('/api/click/complete', methods=['POST'])
 def click_complete():
     """
     Click.uz Complete URL
@@ -933,7 +954,8 @@ def click_complete():
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
         
-        logging.info(f"Click Complete request: {params}")
+        # Logga yozish (datetime + request.body formatida)
+        click_logger.info(f"COMPLETE_REQUEST: {params}")
         
         # Majburiy maydonlarni tekshirish
         required_fields = ['click_trans_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
@@ -989,13 +1011,15 @@ def click_complete():
                 logging.error(f"Error activating tariff: {e}")
                 db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (activation error: {str(e)})')
             
-            return jsonify({
+            response = {
                 "click_trans_id": int(click_trans_id),
                 "merchant_trans_id": merchant_trans_id,
                 "merchant_confirm_id": int(datetime.now().timestamp()),
                 "error": 0,
                 "error_note": "Success"
-            }), 200
+            }
+            click_logger.info(f"COMPLETE_RESPONSE_SUCCESS: {response}")
+            return jsonify(response), 200
         else:
             # To'lov muvaffaqiyatsiz
             logging.warning(f"Payment failed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, error={error_code}")
@@ -1006,13 +1030,15 @@ def click_complete():
             except Exception as e:
                 logging.error(f"Error updating payment status: {e}")
             
-            return jsonify({
+            response = {
                 "click_trans_id": int(click_trans_id),
                 "merchant_trans_id": merchant_trans_id,
                 "merchant_confirm_id": int(datetime.now().timestamp()),
                 "error": error_code,
                 "error_note": "Transaction cancelled"
-            }), 200
+            }
+            click_logger.info(f"COMPLETE_RESPONSE_FAILED: {response}")
+            return jsonify(response), 200
         
     except Exception as e:
         logging.error(f"Click Complete error: {e}")
@@ -1092,8 +1118,13 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     print(f"🚀 Flask app ishga tushmoqda: http://localhost:{port}")
     print(f"🔐 Click.uz endpoints:")
-    print(f"   - Prepare: https://balansai.onrender.com/click/prepare")
-    print(f"   - Complete: https://balansai.onrender.com/click/complete")
+    print(f"   - Prepare: https://balansai.onrender.com/api/click/prepare")
+    print(f"   - Complete: https://balansai.onrender.com/api/click/complete")
+    print(f"📋 Click credentials:")
+    print(f"   - Service ID: {CLICK_SERVICE_ID}")
+    print(f"   - Merchant ID: {CLICK_MERCHANT_ID}")
+    print(f"   - Merchant User ID: {CLICK_MERCHANT_USER_ID}")
     print(f"💳 Merchant Trans ID format: user_id_tariff_months_timestamp")
     print(f"   Example: 123456_PLUS_1_1730034567")
+    print(f"✅ Click.uz integratsiyasi tayyor!")
     app.run(host='0.0.0.0', port=port, debug=False)

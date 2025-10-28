@@ -1,170 +1,157 @@
-# Click.uz To'lov Integratsiyasi
+# 📝 Click.uz Integratsiya Hujjati
 
-## 📋 Umumiy Ma'lumot
-
-Balans AI mini ilovasiga Click.uz to'lov tizimi integratsiya qilindi.
-
-### Endpointlar:
-- **Prepare URL**: `https://balansai.onrender.com/click/prepare`
-- **Complete URL**: `https://balansai.onrender.com/click/complete`
+## 🎯 Maqsad
+balansaibot servisini Click orqali to'lovni qabul qilish uchun to'liq integratsiya qilish.
 
 ---
 
-## 🔐 Sozlash
+## 📄 Kerakli Ma'lumotlar
 
-### 1. Environment Variables
-
-`.env` faylga quyidagilarni qo'shing:
-
-```env
-CLICK_SECRET_KEY=your_click_secret_key_here
-CLICK_SERVICE_ID=your_service_id_here
-CLICK_MERCHANT_ID=your_merchant_id_here
 ```
-
-### 2. Click.uz Kabinetida Sozlash
-
-1. Click.uz kabinetingizga kiring
-2. Service yarating yoki mavjud serviceni sozlang
-3. Quyidagi URLlarni kiriting:
-   - **Prepare URL**: `https://balansai.onrender.com/click/prepare`
-   - **Complete URL**: `https://balansai.onrender.com/click/complete`
-4. Secret Key va Service ID ni oling va `.env` ga kiriting
-
----
-
-## 📡 API Hujjatlari
-
-### 1. `/click/prepare` - Prepare Endpoint
-
-**Metod**: `POST`  
-**Content-Type**: `application/x-www-form-urlencoded`
-
-**So'rov parametrlari**:
-```
-click_trans_id: Click tranzaksiya ID
-service_id: Xizmat ID
-merchant_trans_id: Merchant tranzaksiya ID (format: "user_id_tariff_timestamp")
-amount: Summa (so'm)
-action: Harakat (0 yoki 1)
-sign_time: Vaqt timestamp
-sign_string: SHA1 imzo
-```
-
-**Muvaffaqiyatli javob** (200):
-```json
-{
-  "click_trans_id": 123456,
-  "merchant_trans_id": "789_PLUS_1234567890",
-  "merchant_prepare_id": 1234567890,
-  "error": 0,
-  "error_note": "Success"
-}
-```
-
-**Xato javoblari**:
-- `-1`: Sign check failed (imzo xato)
-- `-2`: Incorrect amount (summa xato)
-- `-3`: Action not found (harakat topilmadi)
-- `-5`: Service ID not found (xizmat topilmadi)
-- `-8`: Missing parameter (parametr yo'q)
-- `-9`: Transaction not found (tranzaksiya topilmadi)
-
----
-
-### 2. `/click/complete` - Complete Endpoint
-
-**Metod**: `POST`  
-**Content-Type**: `application/x-www-form-urlencoded`
-
-**So'rov parametrlari**:
-```
-click_trans_id: Click tranzaksiya ID
-merchant_trans_id: Merchant tranzaksiya ID
-amount: Summa
-action: Harakat
-sign_time: Vaqt
-sign_string: SHA1 imzo
-error: Click xato kodi (0 = muvaffaqiyatli)
-```
-
-**Muvaffaqiyatli javob** (200):
-```json
-{
-  "click_trans_id": 123456,
-  "merchant_trans_id": "789_PLUS_1234567890",
-  "merchant_confirm_id": 1234567890,
-  "error": 0,
-  "error_note": "Success"
-}
+SERVICE_ID: 85417
+MERCHANT_ID: 49266
+SECRET_KEY: 3DSnE96DKz7Nh
+MERCHANT_USER_ID: 67944
 ```
 
 ---
 
-## 🔒 Xavfsizlik
+## 🔐 Endpointlar
 
-### SHA1 Imzo Algoritmi
+### 1. POST /api/click/prepare
+**Maqsad:** Click to'lovni boshlashdan oldin tekshiruv
 
-Imzo yaratish formulasi:
-```
-SHA1(click_trans_id + service_id + secret_key + merchant_trans_id + amount + action + sign_time)
-```
+**Talablar:**
+- `merchant_id` - MERCHANT_ID (49266) ga teng bo'lishi kerak
+- `service_id` - SERVICE_ID (85417) ga teng bo'lishi kerak
+- `sign_string` - SECRET_KEY orqali to'g'ri hosil qilingan bo'lishi kerak
+- Barcha kerakli parametrlar mavjud bo'lishi kerak
 
-**Python misol**:
+**Signature Formula (MD5):**
 ```python
-import hashlib
+sign_string = MD5(
+    click_trans_id + 
+    service_id + 
+    secret_key + 
+    merchant_trans_id + 
+    amount + 
+    action + 
+    sign_time
+)
+```
 
-def create_signature(click_trans_id, service_id, secret_key, merchant_trans_id, amount, action, sign_time):
+**Muvaffaqiyatli javob:**
+```json
+{
+    "error": 0,
+    "error_note": "Success",
+    "click_trans_id": "12345",
+    "merchant_trans_id": "123456_PLUS_1_1730034567",
+    "merchant_prepare_id": 12345
+}
+```
+
+**Xatolik javob:**
+```json
+{
+    "error": -8,
+    "error_note": "Missing parameter: field_name"
+}
+```
+
+---
+
+### 2. POST /api/click/complete
+**Maqsad:** Click to'lovni tasdiqlaganda chaqiriladi
+
+**Talablar:**
+- `sign_string` - to'g'riligini tekshirish
+- Oldingi prepare bosqichi bajarilganligini tekshirish
+- `amount` mosligini tekshirish
+- To'g'ri bo'lsa, to'lov holatini `confirmed` ga o'zgartirish
+
+**Muvaffaqiyatli javob:**
+```json
+{
+    "error": 0,
+    "error_note": "Success",
+    "click_trans_id": "12345",
+    "merchant_trans_id": "123456_PLUS_1_1730034567",
+    "merchant_confirm_id": 12345
+}
+```
+
+**Xatolik javob:**
+```json
+{
+    "error": -9,
+    "error_note": "Transaction cancelled"
+}
+```
+
+---
+
+## 🔐 Security & Authentication
+
+### Signature Verification
+```python
+def verify_click_signature(params, secret_key):
+    """
+    MD5 signature tekshiruvi
+    """
+    click_trans_id = str(params.get('click_trans_id', ''))
+    service_id = str(params.get('service_id', ''))
+    merchant_trans_id = str(params.get('merchant_trans_id', ''))
+    amount = str(params.get('amount', ''))
+    action = str(params.get('action', ''))
+    sign_time = str(params.get('sign_time', ''))
+    
     sign_string = f"{click_trans_id}{service_id}{secret_key}{merchant_trans_id}{amount}{action}{sign_time}"
-    return hashlib.sha1(sign_string.encode('utf-8')).hexdigest()
+    calculated_sign = hashlib.md5(sign_string.encode('utf-8')).hexdigest()
+    
+    return calculated_sign == params.get('sign_string', '')
 ```
 
 ---
 
-## 📝 Loglar
+## 📊 Logging
 
-Barcha to'lov so'rovlari `click_logs.txt` faylga yoziladi:
+### Log Fayl: `/var/log/click.log`
+**Format:** `datetime - message`
 
+**Log Qismlari:**
+1. `PREPARE_REQUEST` - Prepare so'rov ma'lumotlari
+2. `PREPARE_RESPONSE` - Prepare javob ma'lumotlari
+3. `COMPLETE_REQUEST` - Complete so'rov ma'lumotlari
+4. `COMPLETE_RESPONSE_SUCCESS` - Muvaffaqiyatli complete
+5. `COMPLETE_RESPONSE_FAILED` - Muvaffaqiyatsiz complete
+
+**Misol:**
 ```
-2025-10-27 12:34:56 - INFO - Click Prepare request: {...}
-2025-10-27 12:34:57 - INFO - Prepare success: merchant_trans_id=789_PLUS_1234567890
-2025-10-27 12:35:00 - INFO - Payment confirmed: merchant_trans_id=789_PLUS_1234567890
-```
-
----
-
-## 🧪 Test Qilish
-
-### Test So'rov (cURL):
-
-```bash
-curl -X POST https://balansai.onrender.com/click/prepare \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "click_trans_id=123456" \
-  -d "service_id=YOUR_SERVICE_ID" \
-  -d "merchant_trans_id=789_PLUS_1234567890" \
-  -d "amount=15000" \
-  -d "action=0" \
-  -d "sign_time=1234567890" \
-  -d "sign_string=CALCULATED_SHA1_HASH"
-```
-
-### Merchant Trans ID Formati:
-
-```
-{user_id}_{tariff}_{timestamp}
-
-Misol:
-- 123456_PLUS_1730034567
-- 789012_PRO_1730034568
+2025-10-27 12:34:56 - PREPARE_REQUEST: {'click_trans_id': '123', 'service_id': '85417', ...}
+2025-10-27 12:34:56 - PREPARE_RESPONSE: {'error': 0, 'error_note': 'Success', ...}
 ```
 
 ---
 
-## 💾 Database Integratsiyasi
+## ⚙️ Xatolik Kodlari
+
+| Kod | Tavsif |
+|-----|--------|
+| 0 | Muvaffaqiyatli |
+| -1 | SIGN CHECK FAILED |
+| -2 | Incorrect parameter amount |
+| -3 | Action not found |
+| -5 | Service ID not found |
+| -6 | Merchant ID not found |
+| -8 | Missing parameter |
+| -9 | Transaction not found |
+
+---
+
+## 💾 Database Schema
 
 ### Payments Jadvali
-
 ```sql
 CREATE TABLE payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -184,7 +171,15 @@ CREATE TABLE payments (
 )
 ```
 
-### Database Funksiyalari
+**Status Flow:**
+```
+pending → prepared → confirmed
+                  ↘ failed
+```
+
+---
+
+## 🔌 Database Funksiyalari
 
 ```python
 # To'lov yozuvi yaratish
@@ -194,21 +189,20 @@ db.create_payment_record(user_id, merchant_trans_id, amount, tariff, payment_met
 db.update_payment_prepare(merchant_trans_id, click_trans_id)
 
 # Complete holatini yangilash
-db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
+db.update_payment_complete(merchant_trans_id, status, error_code, error_note)
 
 # Tarifni faollashtirish
 db.activate_tariff(user_id, tariff, months)
 
 # To'lovlar tarixini olish
-db.get_user_payments(user_id, limit=10)
+db.get_user_payments(user_id, limit)
 ```
 
 ---
 
-## 🔌 Frontend API Endpointlari
+## 🚀 Frontend Integratsiya
 
 ### 1. To'lov Yaratish
-
 ```javascript
 POST /api/create-payment
 
@@ -224,89 +218,101 @@ Body:
 Response:
 {
   "success": true,
-  "merchant_trans_id": "123456_PLUS_1_1730034567",
-  "message": "To'lov yozuvi yaratildi"
+  "merchant_trans_id": "123456_PLUS_1_1730034567"
 }
 ```
 
-### 2. To'lovlar Tarixi
-
+### 2. Click.uz'ga Yo'naltirish
 ```javascript
-GET /api/payment-history/{user_id}?limit=10
+const clickUrl = `https://my.click.uz/services/pay?service_id=85417&merchant_trans_id=${merchant_trans_id}&amount=${amount}`;
+window.location.href = clickUrl;
+```
 
-Response:
-{
-  "success": true,
-  "payments": [
-    {
-      "id": 1,
-      "user_id": 123456,
-      "click_trans_id": "123456789",
-      "merchant_trans_id": "123456_PLUS_1_1730034567",
-      "amount": 15000,
-      "tariff": "PLUS",
-      "status": "confirmed",
-      "created_at": "2025-10-27 12:34:56"
-    }
-  ]
-}
+---
+
+## 📋 Merchant Trans ID Format
+
+**Format:** `user_id_tariff_months_timestamp`
+
+**Misol:**
+- `123456_PLUS_1_1730034567` - User 123456, PLUS tarifi, 1 oy
+- `789012_MAX_3_1730034568` - User 789012, MAX tarifi, 3 oy
+
+**Parsing:**
+```python
+parts = merchant_trans_id.split('_')
+user_id = int(parts[0])      # 123456
+tariff = parts[1].upper()     # PLUS
+months = int(parts[2])        # 1
+timestamp = int(parts[3])     # 1730034567
 ```
 
 ---
 
 ## 🔄 To'lov Jarayoni
 
-### 1. Frontend → Backend
-
-```javascript
-// 1. To'lov yozuvini yaratish
-const response = await fetch('/api/create-payment', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        user_id: userId,
-        tariff: 'PLUS',
-        amount: 15000,
-        months: 1,
-        payment_method: 'click'
-    })
-});
-
-const { merchant_trans_id } = await response.json();
-
-// 2. Click.uz'ga yo'naltirish
-window.location.href = `https://my.click.uz/services/pay?service_id=${SERVICE_ID}&merchant_trans_id=${merchant_trans_id}&amount=${amount}`;
 ```
+1. Frontend → POST /api/create-payment
+   ↓ merchant_trans_id yaratiladi
+   ↓ Database: status = 'pending'
 
-### 2. Click.uz → Backend
+2. Frontend → Click.uz'ga yo'naltirish
+   ↓ Click.uz to'lov sahifasi
 
-```
-1. Click.uz /click/prepare ga POST yuboradi
-   → Database: status = 'prepared'
+3. Click.uz → POST /api/click/prepare
+   ↓ Signature tekshiruvi
+   ↓ Database: status = 'prepared'
 
-2. Foydalanuvchi to'lovni tasdiqlaydi
+4. Foydalanuvchi → To'lovni tasdiqlaydi
 
-3. Click.uz /click/complete ga POST yuboradi
-   → Database: status = 'confirmed'
-   → User tariff yangilanadi
+5. Click.uz → POST /api/click/complete
+   ↓ Signature tekshiruvi
+   ↓ Database: status = 'confirmed'
+   ↓ db.activate_tariff() - Tarif faollashtiriladi
 ```
 
 ---
 
-## 🔄 Keyingi Qadamlar
+## 🧪 Test
 
-1. ✅ Endpointlar yaratildi va test qilindi
-2. ✅ Database'ga to'lov ma'lumotlarini saqlash
-3. ✅ Foydalanuvchi tarifini avtomatik yangilash
-4. ✅ To'lov tarixini ko'rsatish
-5. ⏳ Frontend'da to'lov tugmasini faollashtirish
-6. ⏳ Click.uz test rejimida test qilish
+### Test Rejimi
+Click.uz test rejimida to'lov yuborganda:
+- JSON javoblarda `error: 0` bo'lishi kerak
+- Log faylga yozilishi kerak
+- Database'da saqlanishi kerak
+
+### Test Endpointlari
+```
+Prepare: https://balansai.onrender.com/api/click/prepare
+Complete: https://balansai.onrender.com/api/click/complete
+```
+
+---
+
+## ✅ Kamchiliklar va Cheklovlar
+
+1. **Login** - Faqat `application/x-www-form-urlencoded` formatda so'rovlar qabul qilinadi
+2. **Signature** - MD5 hash tekshiruvi barcha so'rovlarda talab qilinadi
+3. **Merchant Trans ID** - Mavjud formatdan foydalanish shart (`user_id_tariff_months_timestamp`)
+4. **Logging** - Production'da `/var/log/click.log` ga yozadi, agar ruxsat yo'q bo'lsa `click_logs.txt` ga yozadi
 
 ---
 
 ## 📞 Yordam
 
-Savollar bo'lsa:
-- Click.uz: https://docs.click.uz/
-- Telegram: @support_balansai
+Click.uz o'z saytida to'liq integratsiya bo'yicha yordam beradi:
+- [Click.uz Integratsiya Bo'limi](https://docs.click.uz/)
+- Farangez Raximovaga murojaat: "URL joylandi, testga tayyor"
 
+---
+
+## 🎉 Status
+
+✅ Endpointlar yaratildi  
+✅ Database integratsiyasi  
+✅ Signature verification (MD5)  
+✅ Logging tizimi  
+✅ Tariff faollashtirish  
+✅ To'lovlar tarixi API  
+
+**Ready for Testing!** 🚀
