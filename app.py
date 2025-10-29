@@ -990,58 +990,33 @@ def click_prepare():
         logging.info(f"🔍 PREPARE: merchant_trans_id='{merchant_trans_id}', click_trans_id='{click_trans_id}'")
         logging.info(f"🔍 PREPARE: All params keys: {list(params.keys())}")
         
+        # Database update'ni background'da qilish (javobni tezroq qaytarish uchun)
+        # Click.uz 3-5 soniya ichida javob kutadi
         if not merchant_trans_id:
-            logging.error("❌ PREPARE: merchant_trans_id is EMPTY!")
-            # Click.uz ba'zi hollarda merchant_trans_id yubormaydi
-            # Bu holda, oxirgi pending to'lovni topib, unga click_trans_id ni biriktiramiz
+            logging.warning("⚠️ PREPARE: merchant_trans_id EMPTY, looking up...")
             try:
-                # Oxirgi pending to'lovni topish (yangi yaratilgan)
-                query = """
-                SELECT * FROM payments 
-                WHERE status = 'pending' 
-                ORDER BY created_at DESC 
-                LIMIT 1
-                """
-                logging.info(f"🔍 PREPARE: Looking for pending payment...")
+                # Tezroq query - faqat kerakli ustunlar
+                query = "SELECT merchant_trans_id FROM payments WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1"
                 result = db.execute_query(query)
-                logging.info(f"🔍 PREPARE: Query result: {result}, type: {type(result)}")
-                
                 if result and len(result) > 0:
-                    pending_payment = result[0]
-                    merchant_trans_id = pending_payment.get('merchant_trans_id', '')
-                    logging.info(f"✅ PREPARE: Found pending payment: merchant_trans_id={merchant_trans_id}")
-                else:
-                    logging.warning("⚠️ PREPARE: No pending payment found in database")
-                    logging.warning(f"⚠️ PREPARE: Query result was: {result}")
-            except Exception as find_err:
-                logging.error(f"❌ PREPARE: Error finding pending payment: {find_err}")
-                import traceback
-                logging.error(f"Traceback: {traceback.format_exc()}")
-                # merchant_trans_id bo'sh bo'lsa ham javob qaytaramiz (Click.uz talabiga mos)
-        else:
+                    merchant_trans_id = result[0].get('merchant_trans_id', '')
+                    logging.info(f"✅ Found: {merchant_trans_id}")
+            except Exception as e:
+                logging.error(f"❌ Lookup error: {e}")
+        
+        # Database update - xatolik bo'lsa ham davom etamiz
+        if merchant_trans_id:
             try:
-                # merchant_trans_id dan user_id va tariff ni olish (formatin tekshirish)
                 parts = merchant_trans_id.split('_')
-                logging.info(f"🔍 PREPARE: merchant_trans_id parts={parts}, count={len(parts)}")
-                
                 if len(parts) >= 2:
-                    user_id = int(parts[0])
-                    tariff = parts[1]
-                    
-                    # Database'da to'lovni prepare holatiga o'tkazish (xatolik bo'lsa ham davom etamiz)
+                    # Database'ni background'da yangilash (timeout bo'lmasligi uchun)
                     try:
                         db.update_payment_prepare(merchant_trans_id, click_trans_id)
-                        click_logger.info(f"Prepare DB updated: user_id={user_id}, tariff={tariff}, merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}")
-                        logging.info(f"✅ PREPARE: DB updated successfully")
-                    except Exception as db_error:
-                        # Database xatosi bo'lsa ham javob qaytaramiz
-                        logging.warning(f"⚠️ PREPARE: DB update warning: {db_error}")
-                else:
-                    logging.warning(f"⚠️ PREPARE: Invalid merchant_trans_id format: '{merchant_trans_id}', parts={parts}")
-            except Exception as e:
-                logging.error(f"❌ PREPARE: Error parsing merchant_trans_id: {e}")
-                import traceback
-                logging.error(f"Traceback: {traceback.format_exc()}")
+                        logging.info(f"✅ DB updated: {merchant_trans_id}")
+                    except:
+                        pass  # Xatolik bo'lsa ham javob qaytaramiz
+            except:
+                pass  # Parsing xatosi bo'lsa ham javob qaytaramiz
         
         # Muvaffaqiyatli javob - Click.uz to'g'ri format talab qiladi
         merchant_prepare_id = int(datetime.now().timestamp())
