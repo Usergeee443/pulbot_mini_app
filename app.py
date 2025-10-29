@@ -988,16 +988,19 @@ def click_prepare():
         click_trans_id = params.get('click_trans_id')
         
         try:
-            # merchant_trans_id dan user_id va tariff ni olish
+            # merchant_trans_id dan user_id va tariff ni olish (formatin tekshirish)
             parts = merchant_trans_id.split('_')
             if len(parts) >= 2:
                 user_id = int(parts[0])
                 tariff = parts[1]
                 
-                # Database'da to'lovni prepare holatiga o'tkazish
-                db.update_payment_prepare(merchant_trans_id, click_trans_id)
-                
-                click_logger.info(f"Prepare success: user_id={user_id}, tariff={tariff}, merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
+                # Database'da to'lovni prepare holatiga o'tkazish (xatolik bo'lsa ham davom etamiz)
+                try:
+                    db.update_payment_prepare(merchant_trans_id, click_trans_id)
+                    click_logger.info(f"Prepare DB updated: user_id={user_id}, tariff={tariff}, merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}")
+                except Exception as db_error:
+                    # Database xatosi bo'lsa ham javob qaytaramiz
+                    logging.warning(f"DB update warning: {db_error}")
             else:
                 logging.warning(f"Invalid merchant_trans_id format: {merchant_trans_id}")
         except Exception as e:
