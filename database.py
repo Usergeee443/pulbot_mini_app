@@ -232,30 +232,45 @@ class Database:
     
     def create_payments_table(self):
         """To'lovlar jadvalini yaratish"""
-        query = """
-        CREATE TABLE IF NOT EXISTS payments (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id BIGINT NOT NULL,
-            click_trans_id VARCHAR(100) UNIQUE,
-            merchant_trans_id VARCHAR(255) NOT NULL,
-            amount DECIMAL(15,2) NOT NULL,
-            tariff VARCHAR(50) NOT NULL,
-            payment_method ENUM('click', 'payme', 'test') DEFAULT 'click',
-            status ENUM('pending', 'prepared', 'confirmed', 'cancelled', 'failed') DEFAULT 'pending',
-            error_code INT DEFAULT 0,
-            error_note VARCHAR(255),
-            prepare_time TIMESTAMP NULL,
-            complete_time TIMESTAMP NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_user_id (user_id),
-            INDEX idx_click_trans_id (click_trans_id),
-            INDEX idx_merchant_trans_id (merchant_trans_id),
-            INDEX idx_status (status),
-            INDEX idx_created_at (created_at)
-        )
-        """
-        return self.execute_query(query)
+        try:
+            # Avval eski jadvalni tekshirish va o'chirish (agar kerak bo'lsa)
+            try:
+                self.execute_query("DROP TABLE IF EXISTS payments")
+                logging.info("Eski payments jadvali o'chirildi")
+            except:
+                pass
+            
+            # Yangi jadvalni yaratish
+            query = """
+            CREATE TABLE payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                click_trans_id VARCHAR(100) UNIQUE,
+                merchant_trans_id VARCHAR(255) NOT NULL,
+                amount DECIMAL(15,2) NOT NULL,
+                tariff VARCHAR(50) NOT NULL,
+                payment_method ENUM('click', 'payme', 'test') DEFAULT 'click',
+                status ENUM('pending', 'prepared', 'confirmed', 'cancelled', 'failed') DEFAULT 'pending',
+                error_code INT DEFAULT 0,
+                error_note VARCHAR(255),
+                prepare_time TIMESTAMP NULL,
+                complete_time TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_click_trans_id (click_trans_id),
+                INDEX idx_merchant_trans_id (merchant_trans_id),
+                INDEX idx_status (status),
+                INDEX idx_created_at (created_at)
+            )
+            """
+            result = self.execute_query(query)
+            logging.info("Payments jadvali yaratildi")
+            return result
+        except Exception as e:
+            logging.error(f"Payments jadvali yaratishda xatolik: {e}")
+            # Agar jadval allaqachon mavjud bo'lsa, xato bermaslik
+            return None
     
     def create_payment_record(self, user_id, merchant_trans_id, amount, tariff, payment_method='click'):
         """Yangi to'lov yozuvi yaratish"""
