@@ -66,20 +66,8 @@
         if (tg) {
             tg.ready();
             tg.expand();
-            
-            // 3 soniyadan keyin avtomatik yopish
-            setTimeout(() => {
-                tg.close();
-            }, 3000);
-        } else {
-            // Brauzerda - yon sahifaga qaytish
-            setTimeout(() => {
-                if (window.opener) {
-                    window.close();
-                } else {
-                    window.location.href = '/';
-                }
-            }, 5000);
+            // Pull-to-close funksiyasini o'chirish
+            tg.disableVerticalSwipes();
         }
     </script>
 </body>
