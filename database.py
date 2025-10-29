@@ -350,21 +350,35 @@ class Database:
         logging.info(f"✅ activate_tariff: Updated users table for user_id={user_id}, tariff={tariff}, expires_at={expires_at}")
         
         # 2. User_subscriptions jadvaliga qo'shish (agar mavjud bo'lsa)
+        # Avval jadval mavjudligini tekshiramiz
         try:
-            subscription_query = """
-            INSERT INTO user_subscriptions (user_id, tariff, start_date, end_date, status, created_at, updated_at)
-            VALUES (%s, %s, NOW(), %s, 'active', NOW(), NOW())
-            ON DUPLICATE KEY UPDATE 
-                tariff = VALUES(tariff),
-                end_date = VALUES(end_date),
-                status = 'active',
-                updated_at = NOW()
+            # Jadval mavjudligini tekshirish
+            check_query = """
+            SELECT COUNT(*) as count 
+            FROM information_schema.tables 
+            WHERE table_schema = DATABASE() 
+            AND table_name = 'user_subscriptions'
             """
-            self.execute_query(subscription_query, (user_id, tariff, expires_at))
-            logging.info(f"✅ activate_tariff: Updated user_subscriptions for user_id={user_id}")
+            check_result = self.execute_query(check_query)
+            
+            if check_result and check_result[0]['count'] > 0:
+                # Jadval mavjud - yangilash
+                subscription_query = """
+                INSERT INTO user_subscriptions (user_id, tariff, start_date, end_date, status, created_at, updated_at)
+                VALUES (%s, %s, NOW(), %s, 'active', NOW(), NOW())
+                ON DUPLICATE KEY UPDATE 
+                    tariff = VALUES(tariff),
+                    end_date = VALUES(end_date),
+                    status = 'active',
+                    updated_at = NOW()
+                """
+                self.execute_query(subscription_query, (user_id, tariff, expires_at))
+                logging.info(f"✅ activate_tariff: Updated user_subscriptions for user_id={user_id}")
+            else:
+                logging.info(f"⚠️ user_subscriptions table not found, skipping subscription update")
         except Exception as sub_err:
-            # Agar user_subscriptions jadvali mavjud bo'lmasa, xatolikni ignore qilamiz
-            logging.warning(f"⚠️ user_subscriptions table not found or error: {sub_err}")
+            # Agar jadval mavjud bo'lmasa yoki ustunlar noto'g'ri bo'lsa, xatolikni ignore qilamiz
+            logging.warning(f"⚠️ user_subscriptions error (ignored): {sub_err}")
         
         return result
     
