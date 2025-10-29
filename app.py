@@ -65,13 +65,13 @@ def test_payment():
         months = int(months)
         user_id = int(user_id)
         
-        # Narxni belgilash
+        # Narxni belgilash (test uchun 1 oy = 1000 so'm)
         prices = {
-            1: 29990,
+            1: 1000,  # Test uchun 1000 so'm
             3: 79990,
             6: 149990
         }
-        amount = prices.get(months, 29990)
+        amount = prices.get(months, 1000)
         
         # Merchant trans ID yaratish
         import time
