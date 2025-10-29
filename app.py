@@ -1051,7 +1051,7 @@ def click_complete():
         click_logger.info(f"COMPLETE_REQUEST: {params}")
         logging.info(f"Click Complete received: {params}")
         
-        # Majburiy maydonlarni tekshirish
+        # Majburiy maydonlarni tekshirish (Complete endpoint'da service_id majburiy emas)
         required_fields = ['click_trans_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
         for field in required_fields:
             if field not in params:
@@ -1061,9 +1061,37 @@ def click_complete():
                     "error_note": f"Missing parameter: {field}"
                 }), 400
         
-        # Sign string ni tekshirish
-        if not verify_click_signature(params, CLICK_SECRET_KEY):
-            logging.error("Invalid signature")
+        # Complete endpoint uchun signature tekshiruvi
+        # Complete endpoint'da service_id bo'lmasligi mumkin, shuning uchun alohida yondashamiz
+        click_trans_id = params.get('click_trans_id', '')
+        merchant_trans_id = params.get('merchant_trans_id', '')
+        amount = params.get('amount', '')
+        action = params.get('action', '')
+        sign_time = params.get('sign_time', '')
+        received_sign = params.get('sign_string', '')
+        
+        # Complete endpoint signature formulasi
+        # Variant 1: service_id bilan (agar bo'lsa)
+        service_id = params.get('service_id', CLICK_SERVICE_ID)
+        sign_string_with_service = f"{click_trans_id}{service_id}{CLICK_SECRET_KEY}{merchant_trans_id}{amount}{action}{sign_time}"
+        calculated_sign_with_service = hashlib.md5(sign_string_with_service.encode('utf-8')).hexdigest()
+        
+        # Variant 2: service_id siz (Complete endpoint uchun ba'zi hollarda)
+        sign_string_without_service = f"{click_trans_id}{CLICK_SECRET_KEY}{merchant_trans_id}{amount}{action}{sign_time}"
+        calculated_sign_without_service = hashlib.md5(sign_string_without_service.encode('utf-8')).hexdigest()
+        
+        # Signature tekshiruvi (ikkala variantni ham tekshiramiz)
+        signature_valid = (calculated_sign_with_service == received_sign) or (calculated_sign_without_service == received_sign)
+        
+        # Debug logging
+        logging.info(f"Complete signature check: valid={signature_valid}")
+        logging.info(f"Received sign: {received_sign}")
+        logging.info(f"Calculated (with service_id): {calculated_sign_with_service}")
+        logging.info(f"Calculated (without service_id): {calculated_sign_without_service}")
+        click_logger.info(f"COMPLETE_SIGNATURE_DEBUG: received={received_sign}, calc_with_service={calculated_sign_with_service}, calc_without={calculated_sign_without_service}, valid={signature_valid}")
+        
+        if not signature_valid:
+            logging.error(f"Invalid signature - received: {received_sign}")
             return jsonify({
                 "error": -1,
                 "error_note": "SIGN CHECK FAILED"
@@ -1071,8 +1099,7 @@ def click_complete():
         
         # Error code ni tekshirish (0 = muvaffaqiyatli)
         error_code = int(params.get('error', -1))
-        click_trans_id = params.get('click_trans_id')
-        merchant_trans_id = params.get('merchant_trans_id')
+        # click_trans_id va merchant_trans_id allaqachon topilgan
         amount = params.get('amount')
         
         if error_code == 0:
