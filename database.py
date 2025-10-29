@@ -362,15 +362,14 @@ class Database:
             check_result = self.execute_query(check_query)
             
             if check_result and check_result[0]['count'] > 0:
-                # Jadval mavjud - yangilash
+                # Jadval mavjud - yangilash (to'g'ri ustun nomlari bilan)
                 subscription_query = """
-                INSERT INTO user_subscriptions (user_id, tariff, start_date, end_date, status, created_at, updated_at)
-                VALUES (%s, %s, NOW(), %s, 'active', NOW(), NOW())
+                INSERT INTO user_subscriptions (user_id, tariff, expires_at, is_active, created_at)
+                VALUES (%s, %s, %s, 1, NOW())
                 ON DUPLICATE KEY UPDATE 
                     tariff = VALUES(tariff),
-                    end_date = VALUES(end_date),
-                    status = 'active',
-                    updated_at = NOW()
+                    expires_at = VALUES(expires_at),
+                    is_active = 1
                 """
                 self.execute_query(subscription_query, (user_id, tariff, expires_at))
                 logging.info(f"✅ activate_tariff: Updated user_subscriptions for user_id={user_id}")
