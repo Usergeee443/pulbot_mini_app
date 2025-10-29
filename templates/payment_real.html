@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To'lov - Balans AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .tariff-card {
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+        .tariff-card.selected {
+            border-color: #10b981;
+            transform: scale(1.02);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+        .discount-badge {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4 min-h-screen">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Tarif tanlang</h1>
+            <p class="text-gray-600">To'lovni Click orqali amalga oshiring</p>
+        </div>
+
+        <form id="paymentForm" method="POST" action="/payment" class="space-y-6">
+            <!-- User ID (hidden) -->
+            <input type="hidden" id="user_id" name="user_id" value="{{ user_id if user_id else '' }}">
+
+            <!-- Tariff Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-3">
+                    Tarif turi
+                </label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="tariff-card bg-purple-50 rounded-xl p-4 cursor-pointer" data-tariff="PLUS">
+                        <div class="text-center">
+                            <div class="text-xl font-bold text-purple-700 mb-1">PLUS</div>
+                            <div class="text-sm text-gray-600">29 990 so'm/oy</div>
+                        </div>
+                    </div>
+                    <div class="tariff-card bg-indigo-50 rounded-xl p-4 cursor-pointer" data-tariff="PRO">
+                        <div class="text-center">
+                            <div class="text-xl font-bold text-indigo-700 mb-1">PRO</div>
+                            <div class="text-sm text-gray-600">59 990 so'm/oy</div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="tariff" name="tariff" required>
+            </div>
+
+            <!-- Duration Selection -->
+            <div>
+                <label for="months" class="block text-sm font-medium text-gray-700 mb-3">
+                    Muddat
+                </label>
+                <div class="space-y-3">
+                    <label class="flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-purple-400 transition duration-selector">
+                        <span class="font-medium text-gray-700">1 oy</span>
+                        <span class="text-lg font-bold text-gray-800" id="price_1">29 990 so'm</span>
+                        <input type="radio" name="months" value="1" class="ml-4" required>
+                    </label>
+                    <label class="flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-purple-400 transition duration-selector relative">
+                        <span class="font-medium text-gray-700">
+                            12 oy
+                            <span class="discount-badge inline-block ml-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">-10%</span>
+                        </span>
+                        <span class="text-lg font-bold text-gray-800" id="price_12">323 892 so'm</span>
+                        <input type="radio" name="months" value="12" class="ml-4" required>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Price Display -->
+            <div class="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl p-6 text-white text-center">
+                <div class="text-sm mb-1">Jami to'lov</div>
+                <div class="text-3xl font-bold" id="totalPrice">0 so'm</div>
+                <div class="text-sm mt-2 opacity-90" id="discountInfo"></div>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                id="submitBtn"
+                class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-4 px-6 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled
+            >
+                To'lovni Click orqali amalga oshirish
+            </button>
+
+            <div class="text-center text-xs text-gray-500 mt-4">
+                To'lovni amalga oshirish orqali siz <a href="/terms" class="text-purple-600">Foydalanish shartlari</a> ga rozilik bildirasiz.
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Tariff va narx ma'lumotlari
+        const tariffPrices = {
+            'PLUS': {
+                1: 29990,
+                12: 29990 * 12 * 0.9  // 10% chegirma
+            },
+            'PRO': {
+                1: 59990,
+                12: 59990 * 12 * 0.9  // 10% chegirma
+            }
+        };
+
+        let selectedTariff = null;
+        let selectedMonths = null;
+
+        // Tariff tanlash
+        document.querySelectorAll('.tariff-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedTariff = this.dataset.tariff;
+                document.getElementById('tariff').value = selectedTariff;
+                updatePrice();
+            });
+        });
+
+        // Muddat tanlash
+        document.querySelectorAll('input[name="months"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                selectedMonths = parseInt(this.value);
+                updatePrice();
+            });
+        });
+
+        // Narxni yangilash
+        function updatePrice() {
+            const totalPriceEl = document.getElementById('totalPrice');
+            const discountInfoEl = document.getElementById('discountInfo');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (!selectedTariff || !selectedMonths) {
+                totalPriceEl.textContent = '0 so\'m';
+                discountInfoEl.textContent = '';
+                submitBtn.disabled = true;
+                return;
+            }
+
+            const price = tariffPrices[selectedTariff][selectedMonths];
+            const originalPrice = selectedMonths === 12 
+                ? tariffPrices[selectedTariff][1] * 12 
+                : price;
+            
+            totalPriceEl.textContent = formatPrice(price) + ' so\'m';
+            
+            if (selectedMonths === 12) {
+                const discount = originalPrice - price;
+                discountInfoEl.textContent = `Asl narx: ${formatPrice(originalPrice)} so'm. Chegirma: ${formatPrice(discount)} so'm`;
+            } else {
+                discountInfoEl.textContent = '';
+            }
+
+            submitBtn.disabled = false;
+        }
+
+        // Narxni formatlash
+        function formatPrice(price) {
+            return new Intl.NumberFormat('uz-UZ').format(Math.round(price));
+        }
+
+        // Narxni boshlang'ich holatga o'rnatish
+        document.querySelectorAll('input[name="months"]').forEach(radio => {
+            const months = parseInt(radio.value);
+            const priceEl = document.getElementById(`price_${months}`);
+            // Boshlang'ich holatda PLUS tarifini ko'rsatamiz
+            priceEl.textContent = formatPrice(tariffPrices['PLUS'][months]) + ' so\'m';
+        });
+
+        // Form submit
+        document.getElementById('paymentForm').addEventListener('submit', function(e) {
+            if (!selectedTariff || !selectedMonths) {
+                e.preventDefault();
+                alert('Iltimos, tarif va muddatni tanlang');
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>
+

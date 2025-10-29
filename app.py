@@ -46,6 +46,85 @@ def payment():
     """To'lov sahifasi"""
     return render_template('payment.html')
 
+@app.route('/payment', methods=['GET', 'POST'])
+def payment():
+    """Real to'lov sahifasi - Plus yoki Pro tarif"""
+    if request.method == 'GET':
+        user_id = request.args.get('user_id', CLICK_MERCHANT_USER_ID)
+        return render_template('payment_real.html', user_id=user_id)
+    
+    try:
+        user_id = request.form.get('user_id', CLICK_MERCHANT_USER_ID)
+        tariff = request.form.get('tariff', 'PLUS').upper()
+        months = request.form.get('months')
+        
+        if not months or months not in ['1', '12']:
+            return jsonify({
+                'error': 'Invalid months selection'
+            }), 400
+        
+        if tariff not in ['PLUS', 'PRO']:
+            return jsonify({
+                'error': 'Invalid tariff selection'
+            }), 400
+        
+        months = int(months)
+        user_id = int(user_id)
+        
+        # Narxni belgilash
+        prices = {
+            'PLUS': {
+                1: 29990,
+                12: int(29990 * 12 * 0.9)  # 10% chegirma
+            },
+            'PRO': {
+                1: 59990,
+                12: int(59990 * 12 * 0.9)  # 10% chegirma
+            }
+        }
+        amount = prices.get(tariff, prices['PLUS']).get(months, 29990)
+        
+        # Merchant trans ID yaratish
+        import time
+        timestamp = int(time.time())
+        merchant_trans_id = f"{user_id}_{tariff}_{months}_{timestamp}"
+        
+        # Database'ga to'lov yozuvini yaratish
+        try:
+            db.create_payment_record(user_id, merchant_trans_id, amount, tariff, 'click')
+        except Exception as e:
+            logging.error(f"Error creating payment record: {e}")
+        
+        # Click.uz URL yaratish
+        import urllib.parse
+        click_url = (
+            f"https://my.click.uz/services/pay"
+            f"?service_id={CLICK_SERVICE_ID}"
+            f"&merchant_id={CLICK_MERCHANT_ID}"
+            f"&transaction_param={urllib.parse.quote(merchant_trans_id)}"
+            f"&amount={amount}"
+            f"&return_url={urllib.parse.quote('https://balansai.onrender.com/payment-success')}"
+        )
+        
+        logging.info(f"Payment redirect: user_id={user_id}, tariff={tariff}, months={months}, amount={amount}")
+        logging.info(f"Merchant Trans ID: {merchant_trans_id}")
+        click_logger.info(f"PAYMENT: user_id={user_id}, tariff={tariff}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
+        
+        return redirect(click_url)
+    except Exception as e:
+        logging.error(f"Payment error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/payment-success', methods=['GET'])
+def payment_success():
+    """To'lov muvaffaqiyatli bo'lganidan keyin sahifa"""
+    payment_id = request.args.get('paymentId')
+    payment_status = request.args.get('paymentStatus')
+    
+    return render_template('payment_success.html', 
+                         payment_id=payment_id, 
+                         payment_status=payment_status)
+
 @app.route('/test-payment', methods=['GET', 'POST'])
 def test_payment():
     """Click.uz test to'lov sahifasi"""
