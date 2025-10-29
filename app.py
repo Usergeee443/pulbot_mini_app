@@ -1406,9 +1406,9 @@ def manual_complete_payment(merchant_trans_id):
     Manual to'lovni confirmed qilish (debug uchun)
     Faqat production'da ishlatilmagan bo'lishi kerak
     """
-                        try:
-                            # merchant_trans_id format: {user_id}_{tariff}_{months}_{timestamp}
-                            parts = merchant_trans_id.split('_')
+    try:
+        # merchant_trans_id format: {user_id}_{tariff}_{months}_{timestamp}
+        parts = merchant_trans_id.split('_')
         
         if len(parts) >= 2:
             user_id = int(parts[0])
