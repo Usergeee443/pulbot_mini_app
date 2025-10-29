@@ -281,8 +281,10 @@ class Database:
         return self.execute_query(query, (user_id, merchant_trans_id, amount, tariff, payment_method))
     
     def update_payment_prepare(self, merchant_trans_id, click_trans_id):
-        """To'lov prepare holatini yangilash"""
-        from datetime import datetime
+        """To'lov prepare holatini yangilash (UZT vaqti bilan)"""
+        from datetime import datetime, timedelta
+        # Uzbekistan vaqti (UTC+5)
+        uzb_time = datetime.now() + timedelta(hours=5)
         query = """
         UPDATE payments 
         SET click_trans_id = %s, 
@@ -290,11 +292,13 @@ class Database:
             prepare_time = %s
         WHERE merchant_trans_id = %s
         """
-        return self.execute_query(query, (click_trans_id, datetime.now(), merchant_trans_id))
+        return self.execute_query(query, (click_trans_id, uzb_time, merchant_trans_id))
     
     def update_payment_complete(self, merchant_trans_id, status='confirmed', error_code=0, error_note='Success'):
-        """To'lov complete holatini yangilash"""
-        from datetime import datetime
+        """To'lov complete holatini yangilash (UZT vaqti bilan)"""
+        from datetime import datetime, timedelta
+        # Uzbekistan vaqti (UTC+5)
+        uzb_time = datetime.now() + timedelta(hours=5)
         query = """
         UPDATE payments 
         SET status = %s,
@@ -303,7 +307,7 @@ class Database:
             complete_time = %s
         WHERE merchant_trans_id = %s
         """
-        return self.execute_query(query, (status, error_code, error_note, datetime.now(), merchant_trans_id))
+        return self.execute_query(query, (status, error_code, error_note, uzb_time, merchant_trans_id))
     
     def get_payment_by_merchant_trans_id(self, merchant_trans_id):
         """Merchant trans ID bo'yicha to'lovni olish"""
@@ -330,8 +334,11 @@ class Database:
     def activate_tariff(self, user_id, tariff, months=1):
         """Tarifni faollashtirish va muddatini belgilash"""
         from datetime import datetime, timedelta
+        import logging
+        
         expires_at = datetime.now() + timedelta(days=30 * months)
         
+        # 1. Users jadvalini yangilash
         query = """
         UPDATE users 
         SET tariff = %s,
@@ -339,7 +346,27 @@ class Database:
             updated_at = NOW()
         WHERE user_id = %s
         """
-        return self.execute_query(query, (tariff, expires_at, user_id))
+        result = self.execute_query(query, (tariff, expires_at, user_id))
+        logging.info(f"✅ activate_tariff: Updated users table for user_id={user_id}, tariff={tariff}, expires_at={expires_at}")
+        
+        # 2. User_subscriptions jadvaliga qo'shish (agar mavjud bo'lsa)
+        try:
+            subscription_query = """
+            INSERT INTO user_subscriptions (user_id, tariff, start_date, end_date, status, created_at, updated_at)
+            VALUES (%s, %s, NOW(), %s, 'active', NOW(), NOW())
+            ON DUPLICATE KEY UPDATE 
+                tariff = VALUES(tariff),
+                end_date = VALUES(end_date),
+                status = 'active',
+                updated_at = NOW()
+            """
+            self.execute_query(subscription_query, (user_id, tariff, expires_at))
+            logging.info(f"✅ activate_tariff: Updated user_subscriptions for user_id={user_id}")
+        except Exception as sub_err:
+            # Agar user_subscriptions jadvali mavjud bo'lmasa, xatolikni ignore qilamiz
+            logging.warning(f"⚠️ user_subscriptions table not found or error: {sub_err}")
+        
+        return result
     
     def get_user_tariff(self, user_id):
         """Foydalanuvchi tarifini olish"""
