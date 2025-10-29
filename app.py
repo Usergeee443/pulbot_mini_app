@@ -918,9 +918,11 @@ def click_prepare():
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
         
-        # Logga yozish (datetime + request.body formatida)
+        # Logga yozish (datetime + request.body formatida) - asinxron
         click_logger.info(f"PREPARE_REQUEST: {params}")
-        logging.info(f"Click Prepare received: {params}")
+        
+        # Minimal logging - tez javob uchun
+        logging.info(f"Click Prepare: merchant_trans_id={params.get('merchant_trans_id')}, click_trans_id={params.get('click_trans_id')}")
         
         # Majburiy maydonlarni tekshirish
         required_fields = ['click_trans_id', 'service_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string']
@@ -1001,15 +1003,18 @@ def click_prepare():
         except Exception as e:
             logging.error(f"Error parsing merchant_trans_id: {e}")
         
-        # Muvaffaqiyatli javob
+        # Muvaffaqiyatli javob - Click.uz to'g'ri format talab qiladi
+        merchant_prepare_id = int(datetime.now().timestamp())
         response = {
+            "error": 0,
+            "error_note": "Success",
             "click_trans_id": int(click_trans_id),
             "merchant_trans_id": merchant_trans_id,
-            "merchant_prepare_id": int(datetime.now().timestamp()),
-            "error": 0,
-            "error_note": "Success"
+            "merchant_prepare_id": merchant_prepare_id
         }
         click_logger.info(f"PREPARE_RESPONSE: {response}")
+        
+        # JSON javobni tez qaytarish (timeout oldini olish uchun)
         return jsonify(response), 200
         
     except Exception as e:
