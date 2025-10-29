@@ -1251,62 +1251,52 @@ def click_complete():
                         logging.error(f"❌ Error finding merchant_trans_id: {find_err}")
                         raise ValueError(f"Cannot find merchant_trans_id: {find_err}")
                 
-                if not merchant_trans_id or merchant_trans_id.strip() == '':
-                    logging.error("❌ merchant_trans_id is still empty after lookup!")
-                    raise ValueError("merchant_trans_id is empty")
-                else:
+                if merchant_trans_id and merchant_trans_id.strip():
                     parts = merchant_trans_id.split('_')
-                    logging.info(f"🔍 merchant_trans_id parts: {parts}, count: {len(parts)}")
                     
                     if len(parts) >= 2:
                         try:
                             user_id = int(parts[0])
                             tariff = parts[1].upper()
                             
-                            # Agar months ham mavjud bo'lsa (format: user_id_tariff_months_timestamp)
+                            # months (format: user_id_tariff_months_timestamp)
                             months = 1
-                            if len(parts) >= 3:
-                                try:
-                                    months = int(parts[2])
-                                except ValueError:
-                                    months = 1
+                            if len(parts) >= 3 and parts[2].isdigit():
+                                months = int(parts[2])
                             
-                            logging.info(f"✅ Parsed: user_id={user_id}, tariff={tariff}, months={months}")
-                            
-                            # Database'da to'lovni confirmed holatiga o'tkazish (asinxron)
-                            # Background thread'da tariff faollashtirishni qilamiz
+                            # Background thread - darhol javob qaytarish uchun
                             import threading
                             
                             def update_payment_and_activate_tariff():
                                 try:
                                     db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
-                                    logging.info(f"✅ Payment confirmed: {merchant_trans_id}")
-                                    
                                     db.activate_tariff(user_id, tariff, months)
-                                    logging.info(f"✅ Tariff activated: user_id={user_id}, tariff={tariff}")
+                                    logging.info(f"✅ Background: Payment confirmed & tariff activated")
                                 except Exception as e:
-                                    logging.error(f"❌ Background update error: {e}")
+                                    logging.error(f"❌ Background error: {e}")
                             
-                            # Background thread'da ishlatish (tez javob qaytarish uchun)
                             thread = threading.Thread(target=update_payment_and_activate_tariff)
                             thread.daemon = True
                             thread.start()
                         
-                        except (ValueError, IndexError) as parse_err:
-                            logging.error(f"❌ Parse error: {parse_err}, parts: {parts}")
-                            db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (parse error: {str(parse_err)})')
-                    else:
-                        logging.warning(f"⚠️ Invalid merchant_trans_id format: {merchant_trans_id}, parts: {parts}")
-                        db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (invalid format, parts={len(parts)})')
+                        except Exception as parse_err:
+                            # Background'da update qilish
+                            import threading
+                            def error_update():
+                                try:
+                                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success')
+                                except: pass
+                            threading.Thread(target=error_update, daemon=True).start()
                         
             except Exception as e:
-                logging.error(f"❌ Error in complete processing: {e}")
-                import traceback
-                logging.error(f"Traceback: {traceback.format_exc()}")
-                try:
-                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (error: {str(e)})')
-                except:
-                    pass
+                logging.error(f"❌ Complete error: {e}")
+                # Background'da update qilish
+                import threading
+                def error_update():
+                    try:
+                        db.update_payment_complete(merchant_trans_id if merchant_trans_id else '', status='confirmed', error_code=0, error_note='Success')
+                    except: pass
+                threading.Thread(target=error_update, daemon=True).start()
             
             response = {
                 "click_trans_id": int(click_trans_id),
