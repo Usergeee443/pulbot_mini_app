@@ -1200,20 +1200,24 @@ def click_complete():
                             
                             logging.info(f"✅ Parsed: user_id={user_id}, tariff={tariff}, months={months}")
                             
-                            # Database'da to'lovni confirmed holatiga o'tkazish
-                            try:
-                                db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
-                                logging.info(f"✅ Payment status updated to confirmed")
-                            except Exception as db_err:
-                                logging.error(f"❌ DB update error: {db_err}")
+                            # Database'da to'lovni confirmed holatiga o'tkazish (asinxron)
+                            # Background thread'da tariff faollashtirishni qilamiz
+                            import threading
                             
-                            # Foydalanuvchi tarifini faollashtirish
-                            try:
-                                db.activate_tariff(user_id, tariff, months)
-                                logging.info(f"✅ Tariff activated: user_id={user_id}, tariff={tariff}, months={months}")
-                            except Exception as tariff_err:
-                                logging.error(f"❌ Tariff activation error: {tariff_err}")
-                                # Tariff faollashtirishda xatolik bo'lsa ham davom etamiz
+                            def update_payment_and_activate_tariff():
+                                try:
+                                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
+                                    logging.info(f"✅ Payment confirmed: {merchant_trans_id}")
+                                    
+                                    db.activate_tariff(user_id, tariff, months)
+                                    logging.info(f"✅ Tariff activated: user_id={user_id}, tariff={tariff}")
+                                except Exception as e:
+                                    logging.error(f"❌ Background update error: {e}")
+                            
+                            # Background thread'da ishlatish (tez javob qaytarish uchun)
+                            thread = threading.Thread(target=update_payment_and_activate_tariff)
+                            thread.daemon = True
+                            thread.start()
                         
                         except (ValueError, IndexError) as parse_err:
                             logging.error(f"❌ Parse error: {parse_err}, parts: {parts}")
