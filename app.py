@@ -86,15 +86,20 @@ def test_payment():
         
         # Click.uz URL yaratish
         # Click.uz dokumentatsiyasiga ko'ra: merchant_trans_id parametri ishlatiladi
+        # Eslatma: Ba'zi versiyalarda transaction_param ishlatiladi
+        import urllib.parse
         click_url = (
             f"https://my.click.uz/services/pay"
             f"?service_id={CLICK_SERVICE_ID}"
             f"&merchant_id={CLICK_MERCHANT_ID}"
-            f"&merchant_trans_id={merchant_trans_id}"
+            f"&merchant_trans_id={urllib.parse.quote(merchant_trans_id)}"
             f"&amount={amount}"
         )
         
-        logging.info(f"Test payment redirect: user_id={user_id}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
+        logging.info(f"Test payment redirect: user_id={user_id}, months={months}, amount={amount}")
+        logging.info(f"Merchant Trans ID: {merchant_trans_id}")
+        logging.info(f"Click URL: {click_url}")
+        click_logger.info(f"TEST_PAYMENT: user_id={user_id}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
         
         # Click.uz'ga redirect
         return redirect(click_url)
@@ -893,18 +898,29 @@ def verify_click_signature(params, secret_key):
         logging.error(f"Signature verification error: {e}")
         return False
 
-@app.route('/api/click/prepare', methods=['POST'])
+@app.route('/api/click/prepare', methods=['GET', 'POST'])
 def click_prepare():
     """
     Click.uz Prepare URL
     To'lovni boshlashdan oldin tekshiruv
     """
+    # GET so'rov - debug/test uchun
+    if request.method == 'GET':
+        return jsonify({
+            "status": "ok",
+            "message": "Click.uz Prepare Endpoint is ready",
+            "method": "POST",
+            "callback_url": "https://balansai.onrender.com/api/click/prepare",
+            "description": "Bu endpoint Click.uz serveridan POST so'rovi bilan chaqiriladi"
+        }), 200
+    
     try:
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
         
         # Logga yozish (datetime + request.body formatida)
         click_logger.info(f"PREPARE_REQUEST: {params}")
+        logging.info(f"Click Prepare received: {params}")
         
         # Majburiy maydonlarni tekshirish
         required_fields = ['click_trans_id', 'service_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string']
@@ -1003,18 +1019,29 @@ def click_prepare():
             "error_note": "Transaction not found"
         }), 500
 
-@app.route('/api/click/complete', methods=['POST'])
+@app.route('/api/click/complete', methods=['GET', 'POST'])
 def click_complete():
     """
     Click.uz Complete URL
     To'lov yakunlangandan keyin natijani qaytarish
     """
+    # GET so'rov - debug/test uchun
+    if request.method == 'GET':
+        return jsonify({
+            "status": "ok",
+            "message": "Click.uz Complete Endpoint is ready",
+            "method": "POST",
+            "callback_url": "https://balansai.onrender.com/api/click/complete",
+            "description": "Bu endpoint Click.uz serveridan POST so'rovi bilan chaqiriladi"
+        }), 200
+    
     try:
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
         
         # Logga yozish (datetime + request.body formatida)
         click_logger.info(f"COMPLETE_REQUEST: {params}")
+        logging.info(f"Click Complete received: {params}")
         
         # Majburiy maydonlarni tekshirish
         required_fields = ['click_trans_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
