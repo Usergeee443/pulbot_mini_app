@@ -95,9 +95,9 @@ def payment():
             f"https://my.click.uz/services/pay"
             f"?service_id={CLICK_SERVICE_ID}"
             f"&merchant_id={CLICK_MERCHANT_ID}"
-            f"&transaction_param={urllib.parse.quote(merchant_trans_id)}"
             f"&amount={amount}"
-            f"&click_param={urllib.parse.quote(str(user_id))}"  # Abonent identifikatori (faqat user_id)
+            f"&transaction_param={urllib.parse.quote(merchant_trans_id)}"  # Backend uchun yashirin
+            f"&customer={urllib.parse.quote(str(user_id))}"  # Buyurtma raqami (faqat user_id)
             f"&return_url={urllib.parse.quote('https://balansai.onrender.com/payment-success')}"
         )
         
