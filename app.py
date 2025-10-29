@@ -1082,8 +1082,8 @@ def click_complete():
         click_logger.info(f"COMPLETE_REQUEST: {params}")
         logging.info(f"Click Complete received: {params}")
         
-        # Majburiy maydonlarni tekshirish (Complete endpoint'da service_id majburiy emas)
-        required_fields = ['click_trans_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
+        # Majburiy maydonlarni tekshirish (Complete endpoint'da merchant_trans_id majburiy emas - Click.uz yubormasligi mumkin)
+        required_fields = ['click_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
         for field in required_fields:
             if field not in params:
                 logging.error(f"Missing field: {field}")
@@ -1091,6 +1091,10 @@ def click_complete():
                     "error": -8,
                     "error_note": f"Missing parameter: {field}"
                 }), 400
+        
+        # merchant_trans_id majburiy emas (database'dan topish mumkin)
+        if 'merchant_trans_id' not in params and 'transaction_param' not in params:
+            logging.warning("⚠️ COMPLETE: merchant_trans_id not in params, will try to find from database")
         
         # Complete endpoint uchun signature tekshiruvi
         # Complete endpoint'da service_id bo'lmasligi mumkin, shuning uchun alohida yondashamiz
