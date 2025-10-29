@@ -610,7 +610,7 @@
             setTimeout(() => {
                 document.getElementById('tariffTitle').textContent = data.title;
                 document.getElementById('tariffDesc').textContent = data.desc;
-                document.getElementById('actionBtnText').textContent = `${data.monthly.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm evaziga yangilanish`;
+                updateActionButton();
 
                 // Update features
                 featuresList.innerHTML = data.features.map(feature => `
@@ -645,15 +645,27 @@
             
             slider.style.left = offsetLeft + 'px';
             slider.style.width = btnRect.width + 'px';
+            
+            // Boshlang'ich narxlarni yangilash
+            updateActionButton();
+            updateSheetPrices();
         });
 
         function updateSheetPrices() {
             const data = tariffData[currentTariff];
             const monthly = data.monthly;
-            const yearly = monthly * 12 * 0.8; // 20% discount
+            const yearly = monthly * 12 * 0.9; // 10% discount (12 oy uchun)
 
             document.getElementById('price1Month').textContent = `${monthly.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
             document.getElementById('price12Month').textContent = `${Math.round(yearly).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
+        }
+
+        function updateActionButton() {
+            const data = tariffData[currentTariff];
+            const price = currentDuration === 1 
+                ? data.monthly 
+                : Math.round(data.monthly * 12 * 0.9);
+            document.getElementById('actionBtnText').textContent = `${price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm evaziga yangilanish`;
         }
 
         function openBottomSheet() {
@@ -677,6 +689,9 @@
                 card.classList.remove('selected');
             });
             element.classList.add('selected');
+            
+            // Action button narxini yangilash
+            updateActionButton();
         }
 
         function handleClickPayment() {
