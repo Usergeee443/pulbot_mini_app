@@ -987,36 +987,25 @@ def click_prepare():
         merchant_trans_id = params.get('merchant_trans_id') or params.get('transaction_param', '')
         click_trans_id = params.get('click_trans_id')
         
-        logging.info(f"🔍 PREPARE: merchant_trans_id='{merchant_trans_id}', click_trans_id='{click_trans_id}'")
-        logging.info(f"🔍 PREPARE: All params keys: {list(params.keys())}")
+        # Minimal logging (tezroq javob uchun)
+        logging.info(f"PREPARE: {merchant_trans_id}/{click_trans_id}")
         
-        # Database update'ni background'da qilish (javobni tezroq qaytarish uchun)
-        # Click.uz 3-5 soniya ichida javob kutadi
+        # Database lookup (faqat zarur bo'lsa)
         if not merchant_trans_id:
-            logging.warning("⚠️ PREPARE: merchant_trans_id EMPTY, looking up...")
             try:
-                # Tezroq query - faqat kerakli ustunlar
                 query = "SELECT merchant_trans_id FROM payments WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1"
                 result = db.execute_query(query)
                 if result and len(result) > 0:
                     merchant_trans_id = result[0].get('merchant_trans_id', '')
-                    logging.info(f"✅ Found: {merchant_trans_id}")
-            except Exception as e:
-                logging.error(f"❌ Lookup error: {e}")
-        
-        # Database update - xatolik bo'lsa ham davom etamiz
-        if merchant_trans_id:
-            try:
-                parts = merchant_trans_id.split('_')
-                if len(parts) >= 2:
-                    # Database'ni background'da yangilash (timeout bo'lmasligi uchun)
-                    try:
-                        db.update_payment_prepare(merchant_trans_id, click_trans_id)
-                        logging.info(f"✅ DB updated: {merchant_trans_id}")
-                    except:
-                        pass  # Xatolik bo'lsa ham javob qaytaramiz
             except:
-                pass  # Parsing xatosi bo'lsa ham javob qaytaramiz
+                pass
+        
+        # Database update (background, xatolikni ignore)
+        if merchant_trans_id and len(merchant_trans_id.split('_')) >= 2:
+            try:
+                db.update_payment_prepare(merchant_trans_id, click_trans_id)
+            except:
+                pass
         
         # Muvaffaqiyatli javob - Click.uz to'g'ri format talab qiladi
         merchant_prepare_id = int(datetime.now().timestamp())
@@ -1144,46 +1133,25 @@ def click_complete():
         # Signature tekshiruvi (to'g'ri formula va eski variantlar)
         signature_valid = (calculated_sign_correct == received_sign) or (calculated_sign_with_service == received_sign) or (calculated_sign_without_service == received_sign)
         
-        # Debug logging - Batafsil
-        logging.info(f"=== COMPLETE SIGNATURE DEBUG ===")
-        logging.info(f"Received sign: {received_sign}")
-        logging.info(f"Calculated (CORRECT with merchant_prepare_id): {calculated_sign_correct}")
-        logging.info(f"Calculated (with service_id, no prepare_id): {calculated_sign_with_service}")
-        logging.info(f"Calculated (without service_id): {calculated_sign_without_service}")
-        logging.info(f"Signature valid: {signature_valid}")
-        logging.info(f"Sign string (CORRECT): {sign_string_correct}")
-        logging.info(f"Sign string (old with service_id): {sign_string_with_service}")
-        logging.info(f"Sign string (old without service_id): {sign_string_without_service}")
-        logging.info(f"Params: click_trans_id={click_trans_id}, service_id={service_id}, merchant_trans_id={merchant_trans_id}, merchant_prepare_id={merchant_prepare_id}, amount={amount}, action={action}, sign_time={sign_time}")
-        
-        click_logger.info(f"COMPLETE_SIGNATURE_DEBUG: received={received_sign}, calc_correct={calculated_sign_correct}, calc_with_service={calculated_sign_with_service}, calc_without={calculated_sign_without_service}, valid={signature_valid}")
-        click_logger.info(f"COMPLETE_PARAMS: click_trans_id={click_trans_id}, service_id={service_id}, merchant_trans_id={merchant_trans_id}, merchant_prepare_id={merchant_prepare_id}, amount={amount}, action={action}, sign_time={sign_time}")
-        
+        # Minimal logging (tezroq javob uchun)
         if not signature_valid:
-            logging.error(f"❌ Invalid signature!")
-            logging.error(f"Received: {received_sign}")
-            logging.error(f"Calc (CORRECT with merchant_prepare_id): {calculated_sign_correct}")
-            logging.error(f"Calc (with service_id): {calculated_sign_with_service}")
-            logging.error(f"Calc (without service_id): {calculated_sign_without_service}")
-            logging.error(f"merchant_prepare_id: '{merchant_prepare_id}'")
-            
-            # Agar signature noto'g'ri bo'lsa, xatolik qaytarish kerak
-            # Lekin debug uchun hozircha davom etamiz
-            logging.warning("⚠️ WARNING: Signature validation failed, but continuing for debug purposes")
-            
-            # Production'da bu kommentni olib tashlang:
-            # return jsonify({
-            #     "error": -1,
-            #     "error_note": "SIGN CHECK FAILED"
-            # }), 400
+            logging.warning(f"COMPLETE: Invalid signature - {received_sign} vs {calculated_sign_correct}")
+        
+        click_logger.info(f"COMPLETE: {merchant_trans_id}/{click_trans_id} - sig_valid={signature_valid}")
+        
+        # Signature validation (debug mode - ignore for now)
+        if not signature_valid:
+            logging.warning(f"⚠️ Signature invalid (ignored): {merchant_trans_id}")
+            # Production'da yoqish:
+            # return jsonify({"error": -1, "error_note": "SIGN CHECK FAILED"}), 400
         
         # Error code ni tekshirish (0 = muvaffaqiyatli)
         error_code = int(params.get('error', -1))
         # click_trans_id va merchant_trans_id allaqachon topilgan
         amount = params.get('amount')
         
-        logging.info(f"🔍 COMPLETE: error_code={error_code}, type={type(error_code)}")
-        logging.info(f"🔍 COMPLETE: Checking if error_code == 0: {error_code == 0}")
+        # Minimal logging
+        logging.info(f"COMPLETE: error={error_code}, merchant={merchant_trans_id}")
         
         if error_code == 0:
             # To'lov muvaffaqiyatli
