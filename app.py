@@ -1227,77 +1227,43 @@ def click_complete():
         logging.info(f"COMPLETE: error={error_code}, merchant={merchant_trans_id}")
         
         if error_code == 0:
-            # To'lov muvaffaqiyatli
-            logging.info(f"Payment confirmed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
+            # Darhol javob qaytarish (background'da update)
+            import threading
             
-            try:
-                # merchant_trans_id format: {user_id}_PLUS_{months}_{timestamp}
-                logging.info(f"🔍 Parsing merchant_trans_id: '{merchant_trans_id}'")
-                
-                if not merchant_trans_id or merchant_trans_id.strip() == '':
-                    logging.error("❌ merchant_trans_id is EMPTY! Trying click_trans_id...")
+            def background_update():
+                try:
+                    local_merchant_trans_id = merchant_trans_id
+                    local_click_trans_id = click_trans_id
                     
-                    # click_trans_id orqali database'dan topish
-                    try:
-                        payment = db.get_payment_by_click_trans_id(click_trans_id)
+                    # Agar merchant_trans_id bo'sh bo'lsa, database'dan topish
+                    if not local_merchant_trans_id or not local_merchant_trans_id.strip():
+                        payment = db.get_payment_by_click_trans_id(local_click_trans_id)
                         if payment and payment.get('merchant_trans_id'):
-                            merchant_trans_id = payment['merchant_trans_id']
-                            logging.info(f"✅ Found merchant_trans_id from DB using click_trans_id: {merchant_trans_id}")
-                        else:
-                            logging.error(f"❌ No payment found with click_trans_id: {click_trans_id}")
-                            db.update_payment_complete('', status='confirmed', error_code=0, error_note='Success (empty merchant_trans_id, no DB match)')
-                            raise ValueError("Cannot find merchant_trans_id")
-                    except Exception as find_err:
-                        logging.error(f"❌ Error finding merchant_trans_id: {find_err}")
-                        raise ValueError(f"Cannot find merchant_trans_id: {find_err}")
-                
-                if merchant_trans_id and merchant_trans_id.strip():
-                    parts = merchant_trans_id.split('_')
+                            local_merchant_trans_id = payment['merchant_trans_id']
                     
-                    if len(parts) >= 2:
-                        try:
+                    if local_merchant_trans_id and local_merchant_trans_id.strip():
+                        parts = local_merchant_trans_id.split('_')
+                        if len(parts) >= 2:
                             user_id = int(parts[0])
                             tariff = parts[1].upper()
-                            
-                            # months (format: user_id_tariff_months_timestamp)
                             months = 1
                             if len(parts) >= 3 and parts[2].isdigit():
                                 months = int(parts[2])
                             
-                            # Background thread - darhol javob qaytarish uchun
-                            import threading
-                            
-                            def update_payment_and_activate_tariff():
-                                try:
-                                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
-                                    db.activate_tariff(user_id, tariff, months)
-                                    logging.info(f"✅ Background: Payment confirmed & tariff activated")
-                                except Exception as e:
-                                    logging.error(f"❌ Background error: {e}")
-                            
-                            thread = threading.Thread(target=update_payment_and_activate_tariff)
-                            thread.daemon = True
-                            thread.start()
-                        
-                        except Exception as parse_err:
-                            # Background'da update qilish
-                            import threading
-                            def error_update():
-                                try:
-                                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success')
-                                except: pass
-                            threading.Thread(target=error_update, daemon=True).start()
-                        
-            except Exception as e:
-                logging.error(f"❌ Complete error: {e}")
-                # Background'da update qilish
-                import threading
-                def error_update():
-                    try:
-                        db.update_payment_complete(merchant_trans_id if merchant_trans_id else '', status='confirmed', error_code=0, error_note='Success')
-                    except: pass
-                threading.Thread(target=error_update, daemon=True).start()
+                            db.update_payment_complete(local_merchant_trans_id, status='confirmed', error_code=error_code, error_note='Success')
+                            db.activate_tariff(user_id, tariff, months)
+                            logging.info(f"✅ Background: {local_merchant_trans_id} - tariff activated")
+                    else:
+                        logging.error(f"❌ Background: merchant_trans_id not found")
+                except Exception as e:
+                    logging.error(f"❌ Background error: {e}")
             
+            # Background thread'ni ishga tushirish (darhol)
+            thread = threading.Thread(target=background_update)
+            thread.daemon = True
+            thread.start()
+            
+            # Darhol javob qaytarish
             response = {
                 "click_trans_id": int(click_trans_id),
                 "merchant_trans_id": merchant_trans_id,
@@ -1305,7 +1271,7 @@ def click_complete():
                 "error": 0,
                 "error_note": "Success"
             }
-            click_logger.info(f"COMPLETE_RESPONSE_SUCCESS: {response}")
+            click_logger.info(f"COMPLETE_RESPONSE: {response}")
             return jsonify(response), 200
         else:
             # To'lov muvaffaqiyatsiz
