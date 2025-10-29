@@ -1064,11 +1064,29 @@ def click_complete():
         # Complete endpoint uchun signature tekshiruvi
         # Complete endpoint'da service_id bo'lmasligi mumkin, shuning uchun alohida yondashamiz
         click_trans_id = params.get('click_trans_id', '')
-        merchant_trans_id = params.get('merchant_trans_id', '')
+        merchant_trans_id = params.get('merchant_trans_id', '') or params.get('transaction_param', '')
         amount = params.get('amount', '')
         action = params.get('action', '')
         sign_time = params.get('sign_time', '')
         received_sign = params.get('sign_string', '')
+        
+        # Debug: Barcha parametrlarni ko'rsatish
+        logging.info(f"🔍 COMPLETE ENDPOINT DEBUG:")
+        logging.info(f"All params keys: {list(params.keys())}")
+        logging.info(f"merchant_trans_id from params: {params.get('merchant_trans_id')}")
+        logging.info(f"transaction_param from params: {params.get('transaction_param')}")
+        logging.info(f"Final merchant_trans_id: {merchant_trans_id}")
+        
+        if not merchant_trans_id:
+            logging.error("❌ merchant_trans_id is EMPTY! Trying to get from database...")
+            # Agar merchant_trans_id bo'sh bo'lsa, click_trans_id orqali database'dan topish
+            try:
+                payment = db.get_payment_by_click_trans_id(click_trans_id)
+                if payment:
+                    merchant_trans_id = payment.get('merchant_trans_id', '')
+                    logging.info(f"✅ Found merchant_trans_id from DB: {merchant_trans_id}")
+            except Exception as db_err:
+                logging.error(f"❌ Could not get merchant_trans_id from DB: {db_err}")
         
         # Complete endpoint signature formulasi
         # Variant 1: service_id bilan (agar bo'lsa)
@@ -1123,11 +1141,28 @@ def click_complete():
             
             try:
                 # merchant_trans_id format: {user_id}_PLUS_{months}_{timestamp}
-                logging.info(f"🔍 Parsing merchant_trans_id: {merchant_trans_id}")
+                logging.info(f"🔍 Parsing merchant_trans_id: '{merchant_trans_id}'")
                 
                 if not merchant_trans_id or merchant_trans_id.strip() == '':
-                    logging.error("❌ merchant_trans_id is empty!")
-                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success (empty merchant_trans_id)')
+                    logging.error("❌ merchant_trans_id is EMPTY! Trying click_trans_id...")
+                    
+                    # click_trans_id orqali database'dan topish
+                    try:
+                        payment = db.get_payment_by_click_trans_id(click_trans_id)
+                        if payment and payment.get('merchant_trans_id'):
+                            merchant_trans_id = payment['merchant_trans_id']
+                            logging.info(f"✅ Found merchant_trans_id from DB using click_trans_id: {merchant_trans_id}")
+                        else:
+                            logging.error(f"❌ No payment found with click_trans_id: {click_trans_id}")
+                            db.update_payment_complete('', status='confirmed', error_code=0, error_note='Success (empty merchant_trans_id, no DB match)')
+                            raise ValueError("Cannot find merchant_trans_id")
+                    except Exception as find_err:
+                        logging.error(f"❌ Error finding merchant_trans_id: {find_err}")
+                        raise ValueError(f"Cannot find merchant_trans_id: {find_err}")
+                
+                if not merchant_trans_id or merchant_trans_id.strip() == '':
+                    logging.error("❌ merchant_trans_id is still empty after lookup!")
+                    raise ValueError("merchant_trans_id is empty")
                 else:
                     parts = merchant_trans_id.split('_')
                     logging.info(f"🔍 merchant_trans_id parts: {parts}, count: {len(parts)}")
