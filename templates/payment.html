@@ -468,17 +468,17 @@
                 <div class="price-slider" id="priceSlider"></div>
                 <div class="price-btn selected" onclick="selectPrice('plus', this)">
                     <div class="price-label">Plus</div>
-                    <div class="price-amount">15 000 so'm/oy</div>
+                    <div class="price-amount">29 990 so'm/oy</div>
                 </div>
                 <div class="price-btn" onclick="selectPrice('pro', this)">
                     <div class="price-label">Pro</div>
-                    <div class="price-amount">35 000 so'm/oy</div>
+                    <div class="price-amount">59 990 so'm/oy</div>
                 </div>
             </div>
         </div>
 
         <button class="action-btn" onclick="openBottomSheet()">
-            <span id="actionBtnText">15 000 so'm evaziga yangilanish</span>
+                    <span id="actionBtnText">29 990 so'm evaziga yangilanish</span>
         </button>
 
         <div class="legal-text">
@@ -498,22 +498,30 @@
             <div class="duration-card selected" onclick="selectDuration(1, this)">
                 <div class="duration-left">
                     <div class="duration-label">1 oy</div>
-                    <div class="duration-price" id="price1Month">15 000 so'm</div>
+                    <div class="duration-price" id="price1Month">29 990 so'm</div>
                 </div>
             </div>
             <div class="duration-card" onclick="selectDuration(12, this)">
                 <div class="duration-left">
                     <div class="duration-label">12 oy</div>
-                    <div class="duration-price" id="price12Month">144 000 so'm</div>
+                    <div class="duration-price" id="price12Month">323 892 so'm</div>
                 </div>
-                <div class="duration-badge">20% chegirma</div>
+                <div class="duration-badge">10% chegirma</div>
             </div>
         </div>
 
         <div class="payment-methods">
             <div class="payment-section-title">To'lov usuli</div>
-            <div class="payment-method-card">
-                <div class="coming-soon-text">Click integratsiyasi tugatimoqda...</div>
+            <div class="payment-method-card click-payment" onclick="handleClickPayment()">
+                <div class="payment-method-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="payment-method-name">Click</div>
+                <div class="payment-method-check">✓</div>
             </div>
         </div>
 
@@ -543,7 +551,7 @@
             plus: {
                 title: 'Plus',
                 desc: 'Tezroq, aqlliroq va qulayroq balans yuritish.',
-                monthly: 15000,
+                monthly: 29990,  // REAL narx
                 features: [
                     'Aqilliroq AI',
                     'Oyiga 800 ta gacha tranzaksiya',
@@ -555,7 +563,7 @@
             pro: {
                 title: 'Pro',
                 desc: 'AI bilan yanada chuqurroq nazorat va tahlil.',
-                monthly: 35000,
+                monthly: 59990,  // REAL narx
                 features: [
                     'Eng Aqilliroq AI',
                     'Oyiga cheksiz tranzaksiya',
@@ -671,45 +679,60 @@
             element.classList.add('selected');
         }
 
+        function handleClickPayment() {
+            hapticFeedback();
+            processPayment();
+        }
+
         async function processPayment() {
             hapticFeedback();
 
-            const userId = tg?.initDataUnsafe?.user?.id || 123456789;
+            // Telegram'dan user_id olish
+            let userId = null;
+            if (tg?.initDataUnsafe?.user?.id) {
+                userId = tg.initDataUnsafe.user.id;
+            } else if (tg?.initData) {
+                // initData'dan user_id ni parse qilish
+                try {
+                    const params = new URLSearchParams(tg.initData);
+                    const userStr = params.get('user');
+                    if (userStr) {
+                        const user = JSON.parse(decodeURIComponent(userStr));
+                        userId = user.id;
+                    }
+                } catch (e) {
+                    console.error('Error parsing initData:', e);
+                }
+            }
+
+            if (!userId) {
+                if (tg) {
+                    tg.showAlert('❌ User ID topilmadi. Iltimos, Telegram orqali kirishingiz kerak.');
+                } else {
+                    alert('❌ User ID topilmadi');
+                }
+                return;
+            }
+
             const data = tariffData[currentTariff];
-            const amount = currentDuration === 1 ? data.monthly : data.monthly * 12 * 0.8;
+            // 10% chegirma (12 oy uchun)
+            const amount = currentDuration === 1 
+                ? data.monthly 
+                : Math.round(data.monthly * 12 * 0.9);
 
             try {
-                const response = await fetch('/api/process-payment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        tariff: currentTariff.toUpperCase(),
-                        months: currentDuration,
-                        amount: Math.round(amount),
-                        payment_method: 'test'
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    closeBottomSheet();
-                    if (tg) {
-                        tg.showAlert('✅ To\'lov muvaffaqiyatli amalga oshirildi!', () => {
-                            tg.close();
-                        });
-                    } else {
-                        alert('✅ To\'lov muvaffaqiyatli!');
-                        window.location.href = '/';
-                    }
-                } else {
-                    if (tg) {
-                        tg.showAlert('❌ Xatolik: ' + (result.message || 'To\'lovni amalga oshirib bo\'lmadi'));
-                    } else {
-                        alert('❌ Xatolik: ' + (result.message || 'To\'lovni amalga oshirib bo\'lmadi'));
-                    }
-                }
+                // Form yaratish va POST qilish
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/payment';
+                
+                form.appendChild(createHiddenInput('user_id', userId));
+                form.appendChild(createHiddenInput('tariff', currentTariff.toUpperCase()));
+                form.appendChild(createHiddenInput('months', currentDuration.toString()));
+                
+                document.body.appendChild(form);
+                form.submit();
+                
             } catch (error) {
                 console.error('Payment error:', error);
                 if (tg) {
@@ -718,6 +741,14 @@
                     alert('❌ To\'lovni amalga oshirishda xatolik');
                 }
             }
+        }
+
+        function createHiddenInput(name, value) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            return input;
         }
     </script>
 </body>

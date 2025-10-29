@@ -45,8 +45,7 @@ def miniapp():
 def payment():
     """Real to'lov sahifasi - Plus yoki Pro tarif"""
     if request.method == 'GET':
-        user_id = request.args.get('user_id', CLICK_MERCHANT_USER_ID)
-        return render_template('payment_real.html', user_id=user_id)
+        return render_template('payment.html')
     
     try:
         user_id = request.form.get('user_id', CLICK_MERCHANT_USER_ID)

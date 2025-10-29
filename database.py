@@ -350,8 +350,18 @@ class Database:
         logging.info(f"✅ activate_tariff: Updated users table for user_id={user_id}, tariff={tariff}, expires_at={expires_at}")
         
         # 2. User_subscriptions jadvaliga qo'shish (agar mavjud bo'lsa)
-        # Avval jadval mavjudligini tekshiramiz
+        # Avval user'ni users jadvalida mavjudligini tekshiramiz
         try:
+            # User mavjudligini tekshirish
+            user_check = self.get_user_data(user_id)
+            if not user_check or len(user_check) == 0:
+                # Agar user mavjud bo'lmasa, yaratamiz
+                try:
+                    self.add_user(user_id)
+                    logging.info(f"✅ Created user: {user_id}")
+                except Exception as create_err:
+                    logging.warning(f"⚠️ Could not create user: {create_err}")
+            
             # Jadval mavjudligini tekshirish
             check_query = """
             SELECT COUNT(*) as count 
