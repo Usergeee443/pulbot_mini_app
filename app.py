@@ -1002,15 +1002,21 @@ def click_prepare():
                 ORDER BY created_at DESC 
                 LIMIT 1
                 """
+                logging.info(f"🔍 PREPARE: Looking for pending payment...")
                 result = db.execute_query(query)
+                logging.info(f"🔍 PREPARE: Query result: {result}, type: {type(result)}")
+                
                 if result and len(result) > 0:
                     pending_payment = result[0]
                     merchant_trans_id = pending_payment.get('merchant_trans_id', '')
                     logging.info(f"✅ PREPARE: Found pending payment: merchant_trans_id={merchant_trans_id}")
                 else:
-                    logging.warning("⚠️ PREPARE: No pending payment found")
+                    logging.warning("⚠️ PREPARE: No pending payment found in database")
+                    logging.warning(f"⚠️ PREPARE: Query result was: {result}")
             except Exception as find_err:
                 logging.error(f"❌ PREPARE: Error finding pending payment: {find_err}")
+                import traceback
+                logging.error(f"Traceback: {traceback.format_exc()}")
                 # merchant_trans_id bo'sh bo'lsa ham javob qaytaramiz (Click.uz talabiga mos)
         else:
             try:
