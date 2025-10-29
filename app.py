@@ -1197,6 +1197,9 @@ def click_complete():
         # click_trans_id va merchant_trans_id allaqachon topilgan
         amount = params.get('amount')
         
+        logging.info(f"🔍 COMPLETE: error_code={error_code}, type={type(error_code)}")
+        logging.info(f"🔍 COMPLETE: Checking if error_code == 0: {error_code == 0}")
+        
         if error_code == 0:
             # To'lov muvaffaqiyatli
             logging.info(f"Payment confirmed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
