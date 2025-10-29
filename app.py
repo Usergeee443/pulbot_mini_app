@@ -988,10 +988,30 @@ def click_prepare():
         click_trans_id = params.get('click_trans_id')
         
         logging.info(f"🔍 PREPARE: merchant_trans_id='{merchant_trans_id}', click_trans_id='{click_trans_id}'")
+        logging.info(f"🔍 PREPARE: All params keys: {list(params.keys())}")
         
         if not merchant_trans_id:
             logging.error("❌ PREPARE: merchant_trans_id is EMPTY!")
-            # merchant_trans_id bo'sh bo'lsa ham javob qaytaramiz (Click.uz talabiga mos)
+            # Click.uz ba'zi hollarda merchant_trans_id yubormaydi
+            # Bu holda, oxirgi pending to'lovni topib, unga click_trans_id ni biriktiramiz
+            try:
+                # Oxirgi pending to'lovni topish (yangi yaratilgan)
+                query = """
+                SELECT * FROM payments 
+                WHERE status = 'pending' 
+                ORDER BY created_at DESC 
+                LIMIT 1
+                """
+                result = db.execute_query(query)
+                if result and len(result) > 0:
+                    pending_payment = result[0]
+                    merchant_trans_id = pending_payment.get('merchant_trans_id', '')
+                    logging.info(f"✅ PREPARE: Found pending payment: merchant_trans_id={merchant_trans_id}")
+                else:
+                    logging.warning("⚠️ PREPARE: No pending payment found")
+            except Exception as find_err:
+                logging.error(f"❌ PREPARE: Error finding pending payment: {find_err}")
+                # merchant_trans_id bo'sh bo'lsa ham javob qaytaramiz (Click.uz talabiga mos)
         else:
             try:
                 # merchant_trans_id dan user_id va tariff ni olish (formatin tekshirish)
@@ -1095,9 +1115,30 @@ def click_complete():
                 payment = db.get_payment_by_click_trans_id(click_trans_id)
                 if payment:
                     merchant_trans_id = payment.get('merchant_trans_id', '')
-                    logging.info(f"✅ Found merchant_trans_id from DB: {merchant_trans_id}")
+                    logging.info(f"✅ COMPLETE: Found merchant_trans_id from DB using click_trans_id: {merchant_trans_id}")
+                else:
+                    # Agar click_trans_id orqali topilmasa, oxirgi pending to'lovni topish
+                    logging.info(f"⚠️ COMPLETE: No payment with click_trans_id={click_trans_id}, searching for latest pending...")
+                    query = """
+                    SELECT * FROM payments 
+                    WHERE status = 'pending' 
+                    ORDER BY created_at DESC 
+                    LIMIT 1
+                    """
+                    result = db.execute_query(query)
+                    if result and len(result) > 0:
+                        pending_payment = result[0]
+                        merchant_trans_id = pending_payment.get('merchant_trans_id', '')
+                        # click_trans_id ni yangilash
+                        try:
+                            db.update_payment_prepare(merchant_trans_id, click_trans_id)
+                            logging.info(f"✅ COMPLETE: Found and updated pending payment: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}")
+                        except Exception as update_err:
+                            logging.error(f"❌ COMPLETE: Error updating payment: {update_err}")
+                    else:
+                        logging.error(f"❌ COMPLETE: No pending payment found in database")
             except Exception as db_err:
-                logging.error(f"❌ Could not get merchant_trans_id from DB: {db_err}")
+                logging.error(f"❌ COMPLETE: Could not get merchant_trans_id from DB: {db_err}")
         
         # Complete endpoint signature formulasi
         # Variant 1: service_id bilan (agar bo'lsa)
