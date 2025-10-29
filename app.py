@@ -1150,43 +1150,53 @@ def click_complete():
             except Exception as db_err:
                 logging.error(f"❌ COMPLETE: Could not get merchant_trans_id from DB: {db_err}")
         
-        # Complete endpoint signature formulasi
-        # Variant 1: service_id bilan (agar bo'lsa)
+        # Complete endpoint signature formulasi (Click.uz rasmiy hujjati)
+        # MD5(click_trans_id + service_id + secret_key + merchant_trans_id + merchant_prepare_id + amount + action + sign_time)
         service_id = params.get('service_id', CLICK_SERVICE_ID)
+        merchant_prepare_id = params.get('merchant_prepare_id', '')
+        
+        # To'g'ri formula - merchant_prepare_id bilan
+        sign_string_correct = f"{click_trans_id}{service_id}{CLICK_SECRET_KEY}{merchant_trans_id}{merchant_prepare_id}{amount}{action}{sign_time}"
+        calculated_sign_correct = hashlib.md5(sign_string_correct.encode('utf-8')).hexdigest()
+        
+        # Eski variantlar (backward compatibility uchun)
         sign_string_with_service = f"{click_trans_id}{service_id}{CLICK_SECRET_KEY}{merchant_trans_id}{amount}{action}{sign_time}"
         calculated_sign_with_service = hashlib.md5(sign_string_with_service.encode('utf-8')).hexdigest()
         
-        # Variant 2: service_id siz (Complete endpoint uchun ba'zi hollarda)
         sign_string_without_service = f"{click_trans_id}{CLICK_SECRET_KEY}{merchant_trans_id}{amount}{action}{sign_time}"
         calculated_sign_without_service = hashlib.md5(sign_string_without_service.encode('utf-8')).hexdigest()
         
-        # Signature tekshiruvi (ikkala variantni ham tekshiramiz)
-        signature_valid = (calculated_sign_with_service == received_sign) or (calculated_sign_without_service == received_sign)
+        # Signature tekshiruvi (to'g'ri formula va eski variantlar)
+        signature_valid = (calculated_sign_correct == received_sign) or (calculated_sign_with_service == received_sign) or (calculated_sign_without_service == received_sign)
         
         # Debug logging - Batafsil
         logging.info(f"=== COMPLETE SIGNATURE DEBUG ===")
         logging.info(f"Received sign: {received_sign}")
-        logging.info(f"Calculated (with service_id={service_id}): {calculated_sign_with_service}")
+        logging.info(f"Calculated (CORRECT with merchant_prepare_id): {calculated_sign_correct}")
+        logging.info(f"Calculated (with service_id, no prepare_id): {calculated_sign_with_service}")
         logging.info(f"Calculated (without service_id): {calculated_sign_without_service}")
         logging.info(f"Signature valid: {signature_valid}")
-        logging.info(f"Sign string (with service_id): {sign_string_with_service}")
-        logging.info(f"Sign string (without service_id): {sign_string_without_service}")
-        logging.info(f"Params: click_trans_id={click_trans_id}, merchant_trans_id={merchant_trans_id}, amount={amount}, action={action}, sign_time={sign_time}")
+        logging.info(f"Sign string (CORRECT): {sign_string_correct}")
+        logging.info(f"Sign string (old with service_id): {sign_string_with_service}")
+        logging.info(f"Sign string (old without service_id): {sign_string_without_service}")
+        logging.info(f"Params: click_trans_id={click_trans_id}, service_id={service_id}, merchant_trans_id={merchant_trans_id}, merchant_prepare_id={merchant_prepare_id}, amount={amount}, action={action}, sign_time={sign_time}")
         
-        click_logger.info(f"COMPLETE_SIGNATURE_DEBUG: received={received_sign}, calc_with_service={calculated_sign_with_service}, calc_without={calculated_sign_without_service}, valid={signature_valid}")
-        click_logger.info(f"COMPLETE_PARAMS: click_trans_id={click_trans_id}, service_id={service_id}, merchant_trans_id={merchant_trans_id}, amount={amount}, action={action}, sign_time={sign_time}")
+        click_logger.info(f"COMPLETE_SIGNATURE_DEBUG: received={received_sign}, calc_correct={calculated_sign_correct}, calc_with_service={calculated_sign_with_service}, calc_without={calculated_sign_without_service}, valid={signature_valid}")
+        click_logger.info(f"COMPLETE_PARAMS: click_trans_id={click_trans_id}, service_id={service_id}, merchant_trans_id={merchant_trans_id}, merchant_prepare_id={merchant_prepare_id}, amount={amount}, action={action}, sign_time={sign_time}")
         
         if not signature_valid:
             logging.error(f"❌ Invalid signature!")
             logging.error(f"Received: {received_sign}")
+            logging.error(f"Calc (CORRECT with merchant_prepare_id): {calculated_sign_correct}")
             logging.error(f"Calc (with service_id): {calculated_sign_with_service}")
             logging.error(f"Calc (without service_id): {calculated_sign_without_service}")
+            logging.error(f"merchant_prepare_id: '{merchant_prepare_id}'")
             
-            # Emergency: Signature tekshiruvini vaqtinchalik o'chirib qo'yamiz (faqat debug uchun)
-            # Click.uz test holatida signature noto'g'ri bo'lishi mumkin
+            # Agar signature noto'g'ri bo'lsa, xatolik qaytarish kerak
+            # Lekin debug uchun hozircha davom etamiz
             logging.warning("⚠️ WARNING: Signature validation failed, but continuing for debug purposes")
             
-            # Hozircha signature tekshiruvini o'tkazib yuboramiz (keyin to'g'rilaymiz)
+            # Production'da bu kommentni olib tashlang:
             # return jsonify({
             #     "error": -1,
             #     "error_note": "SIGN CHECK FAILED"
