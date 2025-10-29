@@ -85,15 +85,15 @@ def test_payment():
             logging.error(f"Error creating payment record: {e}")
         
         # Click.uz URL yaratish
-        # Click.uz dokumentatsiyasiga ko'ra: merchant_trans_id parametri ishlatiladi
-        # Eslatma: Ba'zi versiyalarda transaction_param ishlatiladi
+        # Click.uz dokumentatsiyasiga ko'ra: transaction_param ishlatiladi (merchant_trans_id emas!)
         import urllib.parse
         click_url = (
             f"https://my.click.uz/services/pay"
             f"?service_id={CLICK_SERVICE_ID}"
             f"&merchant_id={CLICK_MERCHANT_ID}"
-            f"&merchant_trans_id={urllib.parse.quote(merchant_trans_id)}"
+            f"&transaction_param={urllib.parse.quote(merchant_trans_id)}"
             f"&amount={amount}"
+            f"&return_url={urllib.parse.quote('https://balansai.onrender.com/test-payment')}"
         )
         
         logging.info(f"Test payment redirect: user_id={user_id}, months={months}, amount={amount}")
