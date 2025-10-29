@@ -1122,30 +1122,61 @@ def click_complete():
             logging.info(f"Payment confirmed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, amount={amount}")
             
             try:
-                # merchant_trans_id dan user_id va tariff ni olish
-                parts = merchant_trans_id.split('_')
-                if len(parts) >= 2:
-                    user_id = int(parts[0])
-                    tariff = parts[1].upper()
-                    
-                    # Agar months ham mavjud bo'lsa (format: user_id_tariff_months_timestamp)
-                    months = 1
-                    if len(parts) >= 3 and parts[2].isdigit():
-                        months = int(parts[2])
-                    
-                    # Database'da to'lovni confirmed holatiga o'tkazish
-                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
-                    
-                    # Foydalanuvchi tarifini faollashtirish
-                    db.activate_tariff(user_id, tariff, months)
-                    
-                    logging.info(f"Tariff activated: user_id={user_id}, tariff={tariff}, months={months}")
+                # merchant_trans_id format: {user_id}_PLUS_{months}_{timestamp}
+                logging.info(f"🔍 Parsing merchant_trans_id: {merchant_trans_id}")
+                
+                if not merchant_trans_id or merchant_trans_id.strip() == '':
+                    logging.error("❌ merchant_trans_id is empty!")
+                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success (empty merchant_trans_id)')
                 else:
-                    logging.warning(f"Invalid merchant_trans_id format: {merchant_trans_id}")
-                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success (format warning)')
+                    parts = merchant_trans_id.split('_')
+                    logging.info(f"🔍 merchant_trans_id parts: {parts}, count: {len(parts)}")
+                    
+                    if len(parts) >= 2:
+                        try:
+                            user_id = int(parts[0])
+                            tariff = parts[1].upper()
+                            
+                            # Agar months ham mavjud bo'lsa (format: user_id_tariff_months_timestamp)
+                            months = 1
+                            if len(parts) >= 3:
+                                try:
+                                    months = int(parts[2])
+                                except ValueError:
+                                    months = 1
+                            
+                            logging.info(f"✅ Parsed: user_id={user_id}, tariff={tariff}, months={months}")
+                            
+                            # Database'da to'lovni confirmed holatiga o'tkazish
+                            try:
+                                db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
+                                logging.info(f"✅ Payment status updated to confirmed")
+                            except Exception as db_err:
+                                logging.error(f"❌ DB update error: {db_err}")
+                            
+                            # Foydalanuvchi tarifini faollashtirish
+                            try:
+                                db.activate_tariff(user_id, tariff, months)
+                                logging.info(f"✅ Tariff activated: user_id={user_id}, tariff={tariff}, months={months}")
+                            except Exception as tariff_err:
+                                logging.error(f"❌ Tariff activation error: {tariff_err}")
+                                # Tariff faollashtirishda xatolik bo'lsa ham davom etamiz
+                        
+                        except (ValueError, IndexError) as parse_err:
+                            logging.error(f"❌ Parse error: {parse_err}, parts: {parts}")
+                            db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (parse error: {str(parse_err)})')
+                    else:
+                        logging.warning(f"⚠️ Invalid merchant_trans_id format: {merchant_trans_id}, parts: {parts}")
+                        db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (invalid format, parts={len(parts)})')
+                        
             except Exception as e:
-                logging.error(f"Error activating tariff: {e}")
-                db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (activation error: {str(e)})')
+                logging.error(f"❌ Error in complete processing: {e}")
+                import traceback
+                logging.error(f"Traceback: {traceback.format_exc()}")
+                try:
+                    db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note=f'Success (error: {str(e)})')
+                except:
+                    pass
             
             response = {
                 "click_trans_id": int(click_trans_id),
