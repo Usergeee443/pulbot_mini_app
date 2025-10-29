@@ -65,15 +65,15 @@ def payment():
         months = int(months)
         user_id = int(user_id)
         
-        # Narxni belgilash
+        # Narxni belgilash (TEST uchun: Plus=1000, Pro=2000)
         prices = {
             'PLUS': {
-                1: 29990,
-                12: int(29990 * 12 * 0.9)  # 10% chegirma
+                1: 1000,  # TEST: 1000 so'm
+                12: int(1000 * 12 * 0.9)  # TEST: 10% chegirma
             },
             'PRO': {
-                1: 59990,
-                12: int(59990 * 12 * 0.9)  # 10% chegirma
+                1: 2000,  # TEST: 2000 so'm
+                12: int(2000 * 12 * 0.9)  # TEST: 10% chegirma
             }
         }
         amount = prices.get(tariff, prices['PLUS']).get(months, 29990)
