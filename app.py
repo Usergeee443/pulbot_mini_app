@@ -1269,6 +1269,47 @@ def create_payment():
             'error': str(e)
         }), 500
 
+@app.route('/api/click/manual-complete/<merchant_trans_id>', methods=['POST'])
+def manual_complete_payment(merchant_trans_id):
+    """
+    Manual to'lovni confirmed qilish (debug uchun)
+    Faqat production'da ishlatilmagan bo'lishi kerak
+    """
+    try:
+        # merchant_trans_id format: {user_id}_PLUS_{months}_{timestamp}
+        parts = merchant_trans_id.split('_')
+        
+        if len(parts) >= 2:
+            user_id = int(parts[0])
+            tariff = parts[1].upper()
+            months = 1
+            if len(parts) >= 3 and parts[2].isdigit():
+                months = int(parts[2])
+            
+            # Database'da to'lovni confirmed holatiga o'tkazish
+            db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Manually completed')
+            
+            # Foydalanuvchi tarifini faollashtirish
+            db.activate_tariff(user_id, tariff, months)
+            
+            return jsonify({
+                'success': True,
+                'message': f'Tariff activated: user_id={user_id}, tariff={tariff}, months={months}',
+                'merchant_trans_id': merchant_trans_id
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid merchant_trans_id format'
+            }), 400
+            
+    except Exception as e:
+        logging.error(f"Manual complete error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # ==================== CLICK.UZ END ====================
 
 if __name__ == '__main__':
