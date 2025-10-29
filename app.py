@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect
 from flask_cors import CORS
 import os
 import requests
@@ -45,6 +45,65 @@ def miniapp():
 def payment():
     """To'lov sahifasi"""
     return render_template('payment.html')
+
+@app.route('/test-payment', methods=['GET', 'POST'])
+def test_payment():
+    """Click.uz test to'lov sahifasi"""
+    if request.method == 'GET':
+        return render_template('payment_test.html')
+    
+    # POST so'rov - Click.uz'ga redirect
+    try:
+        user_id = request.form.get('user_id', CLICK_MERCHANT_USER_ID)
+        months = request.form.get('months')
+        
+        if not months or months not in ['1', '3', '6']:
+            return jsonify({
+                'error': 'Invalid months selection'
+            }), 400
+        
+        months = int(months)
+        user_id = int(user_id)
+        
+        # Narxni belgilash
+        prices = {
+            1: 29990,
+            3: 79990,
+            6: 149990
+        }
+        amount = prices.get(months, 29990)
+        
+        # Merchant trans ID yaratish
+        import time
+        timestamp = int(time.time())
+        merchant_trans_id = f"{user_id}_PLUS_{months}_{timestamp}"
+        
+        # Database'ga to'lov yozuvini yaratish
+        try:
+            db.create_payment_record(user_id, merchant_trans_id, amount, 'PLUS', 'click')
+        except Exception as e:
+            logging.error(f"Error creating payment record: {e}")
+        
+        # Click.uz URL yaratish
+        # Click.uz dokumentatsiyasiga ko'ra: merchant_trans_id parametri ishlatiladi
+        click_url = (
+            f"https://my.click.uz/services/pay"
+            f"?service_id={CLICK_SERVICE_ID}"
+            f"&merchant_id={CLICK_MERCHANT_ID}"
+            f"&merchant_trans_id={merchant_trans_id}"
+            f"&amount={amount}"
+        )
+        
+        logging.info(f"Test payment redirect: user_id={user_id}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
+        
+        # Click.uz'ga redirect
+        return redirect(click_url)
+        
+    except Exception as e:
+        logging.error(f"Test payment error: {e}")
+        return jsonify({
+            'error': str(e)
+        }), 500
 
 @app.route('/terms')
 def terms():
@@ -834,39 +893,12 @@ def verify_click_signature(params, secret_key):
         logging.error(f"Signature verification error: {e}")
         return False
 
-@app.route('/api/click/prepare', methods=['GET', 'POST'])
+@app.route('/api/click/prepare', methods=['POST'])
 def click_prepare():
     """
     Click.uz Prepare URL
     To'lovni boshlashdan oldin tekshiruv
     """
-    # GET so'rov - test uchun
-    if request.method == 'GET':
-        return jsonify({
-            "status": "ok",
-            "message": "Click.uz Prepare Endpoint",
-            "method": "POST",
-            "description": "Bu endpoint Click.uz serveridan POST so'rovi bilan chaqiriladi",
-            "required_fields": [
-                "click_trans_id",
-                "service_id",
-                "merchant_trans_id",
-                "amount",
-                "action",
-                "sign_time",
-                "sign_string"
-            ],
-            "example_request": {
-                "click_trans_id": "123456789",
-                "service_id": "85417",
-                "merchant_trans_id": "123456_PLUS_1_1730034567",
-                "amount": "10000",
-                "action": "1",
-                "sign_time": "1730034567",
-                "sign_string": "calculated_md5_hash"
-            }
-        }), 200
-    
     try:
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
@@ -971,39 +1003,12 @@ def click_prepare():
             "error_note": "Transaction not found"
         }), 500
 
-@app.route('/api/click/complete', methods=['GET', 'POST'])
+@app.route('/api/click/complete', methods=['POST'])
 def click_complete():
     """
     Click.uz Complete URL
     To'lov yakunlangandan keyin natijani qaytarish
     """
-    # GET so'rov - test uchun
-    if request.method == 'GET':
-        return jsonify({
-            "status": "ok",
-            "message": "Click.uz Complete Endpoint",
-            "method": "POST",
-            "description": "Bu endpoint Click.uz serveridan POST so'rovi bilan chaqiriladi",
-            "required_fields": [
-                "click_trans_id",
-                "merchant_trans_id",
-                "amount",
-                "action",
-                "sign_time",
-                "sign_string",
-                "error"
-            ],
-            "example_request": {
-                "click_trans_id": "123456789",
-                "merchant_trans_id": "123456_PLUS_1_1730034567",
-                "amount": "10000",
-                "action": "1",
-                "sign_time": "1730034567",
-                "sign_string": "calculated_md5_hash",
-                "error": "0"
-            }
-        }), 200
-    
     try:
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
