@@ -38,6 +38,8 @@ class BalansAI {
                 console.log('Telegram WebApp detected');
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
+                // Pull-to-close funksiyasini o'chirish
+                window.Telegram.WebApp.disableVerticalSwipes();
                 
                 // Init data ni tekshirish
                 const initData = window.Telegram.WebApp.initData;
