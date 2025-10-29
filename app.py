@@ -1174,7 +1174,7 @@ if __name__ == '__main__':
         print(f"❌ Database xatoligi: {e}")
     
     # Flask app ishga tushirish
-    port = int(os.environ.get('PORT', 8080))
+    port = int(os.environ.get('PORT', 8081))
     print(f"🚀 Flask app ishga tushmoqda: http://localhost:{port}")
     print(f"🔐 Click.uz endpoints:")
     print(f"   - Prepare: https://balansai.onrender.com/api/click/prepare")
