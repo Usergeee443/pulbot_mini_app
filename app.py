@@ -104,6 +104,7 @@ def payment():
         
         logging.info(f"Payment redirect: user_id={user_id}, tariff={tariff}, months={months}, amount={amount}")
         logging.info(f"Merchant Trans ID: {merchant_trans_id}")
+        logging.info(f"Click URL: {click_url}")
         click_logger.info(f"PAYMENT: user_id={user_id}, tariff={tariff}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
         
         return redirect(click_url)
@@ -154,6 +155,8 @@ def payment_pro():
             f"&return_url={urllib.parse.quote('https://balansai.onrender.com/payment-success')}"
         )
 
+        logging.info(f"PAYMENT_PRO: user_id={user_id}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
+        logging.info(f"Click URL PRO: {click_url}")
         click_logger.info(f"PAYMENT_PRO: user_id={user_id}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
         return redirect(click_url)
     except Exception as e:
