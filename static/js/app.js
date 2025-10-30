@@ -109,15 +109,17 @@ class BalansAI {
             // Event listeners darhol
             this.setupEventListeners();
             
-            // Asosiy UI ko'rsatish (ma'lumotlarsiz)
-            this.hideLoading();
-            
-            console.log('BalansAI initialized successfully');
-            
-            // Ma'lumotlarni keyin yuklash (parallel)
-            this.loadAllData().then(() => {
+            // Ma'lumotlarni kutib yuklash
+            try {
+                await this.loadAllData();
                 this.updateUI();
-            }).catch(err => console.error('Background load:', err));
+            } catch (error) {
+                console.error('Load data error:', error);
+            }
+            
+            // Loading ni yashirish
+            this.hideLoading();
+            console.log('BalansAI initialized successfully');
             
         } catch (error) {
             console.error('Init error:', error);
@@ -190,7 +192,10 @@ class BalansAI {
         this.updateStats();
         this.updateTariffBadge();
         this.updateDebts();
-        this.updateCharts();
+        // Grafiklarni keyinchalik render qilish (on-demand)
+        requestAnimationFrame(() => {
+            this.updateCharts();
+        });
     }
 
     updateBalanceCard() {
@@ -387,48 +392,39 @@ class BalansAI {
         }
         this.charts = {};
         
-        // Kichik kechikish - grafiklarni render qilish uchun
-        setTimeout(() => {
-            const tariff = this.data.tariff || 'Bepul';
-            
-            // Bepul tarifida faqat asosiy grafik
-            if (tariff === 'Bepul' || tariff === 'FREE') {
-                console.log('Creating basic chart for Bepul tariff');
-                this.createBasicChart();
-                // Plus/Biznes/Oila grafiklarni qulf qilish
-                this.lockPremiumCharts();
-            } 
-            // Plus, Biznes, Oila - 5 ta grafik (katta/kichik harflar bilan)
-            else if (tariff === 'Plus' || tariff === 'PLUS' || 
-                     tariff === 'Biznes' || tariff === 'BIZNES' ||
-                     tariff === 'Oila' || tariff === 'OILA') {
-                console.log('Creating plus/business/family charts for tariff:', tariff);
-                this.createPremiumCharts();
-                
-                // Max grafiklarni qulf qilish
-                setTimeout(() => {
-                    console.log('Locking max charts after creating premium charts');
-                    this.lockMaxCharts();
-                }, 200);
-            }
-            // Max, Biznes Plus, Biznes Max, Oila Plus, Oila Max - 10 ta grafik
-            else if (tariff === 'Max' || tariff === 'MAX' || 
-                     tariff === 'Biznes Plus' || tariff === 'BIZNES PLUS' ||
-                     tariff === 'Biznes Max' || tariff === 'BIZNES MAX' ||
-                     tariff === 'Oila Plus' || tariff === 'OILA PLUS' ||
-                     tariff === 'Oila Max' || tariff === 'OILA MAX') {
-                console.log('Creating max charts for tariff:', tariff);
-                this.createMaxCharts();
-            }
-            else {
-                // Default - asosiy grafik (noma'lum tarif)
-                console.log('Unknown tariff:', tariff, '- creating default basic chart');
-                this.createBasicChart();
-                this.lockPremiumCharts();
-            }
-            
-            console.log('Charts created:', Object.keys(this.charts));
-        }, 100);
+        // Grafiklarni darhol render qilish
+        const tariff = this.data.tariff || 'Bepul';
+        
+        // Bepul tarifida faqat asosiy grafik
+        if (tariff === 'Bepul' || tariff === 'FREE') {
+            console.log('Creating basic chart for Bepul tariff');
+            this.createBasicChart();
+            this.lockPremiumCharts();
+        } 
+        // Plus, Biznes, Oila - 5 ta grafik
+        else if (tariff === 'Plus' || tariff === 'PLUS' || 
+                 tariff === 'Biznes' || tariff === 'BIZNES' ||
+                 tariff === 'Oila' || tariff === 'OILA') {
+            console.log('Creating plus/business/family charts for tariff:', tariff);
+            this.createPremiumCharts();
+            requestAnimationFrame(() => this.lockMaxCharts());
+        }
+        // Max - 10 ta grafik
+        else if (tariff === 'Max' || tariff === 'MAX' || 
+                 tariff === 'Biznes Plus' || tariff === 'BIZNES PLUS' ||
+                 tariff === 'Biznes Max' || tariff === 'BIZNES MAX' ||
+                 tariff === 'Oila Plus' || tariff === 'OILA PLUS' ||
+                 tariff === 'Oila Max' || tariff === 'OILA MAX') {
+            console.log('Creating max charts for tariff:', tariff);
+            this.createMaxCharts();
+        }
+        else {
+            console.log('Unknown tariff:', tariff, '- creating default basic chart');
+            this.createBasicChart();
+            this.lockPremiumCharts();
+        }
+        
+        console.log('Charts created:', Object.keys(this.charts));
     }
 
     lockPremiumCharts() {
