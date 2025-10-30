@@ -1157,8 +1157,10 @@ def click_complete():
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
         
-        # Minimal logging
+        # Debug logging
         click_logger.info(f"COMPLETE_REQUEST: {params}")
+        logging.info(f"COMPLETE_ALL_PARAMS: {params}")
+        logging.info(f"COMPLETE_KEYS: {list(params.keys())}")
         
         # Majburiy maydonlar
         required_fields = ['click_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
@@ -1189,14 +1191,19 @@ def click_complete():
         # Signature tekshiruvi
         signature_valid = (calculated_sign_correct == received_sign)
         
+        logging.info(f"SIGNATURE: valid={signature_valid}, calculated={calculated_sign_correct}, received={received_sign}")
+        logging.info(f"SIGN_PARAMS: click_trans_id={click_trans_id}, service_id={service_id}, merchant_trans_id={merchant_trans_id}, merchant_prepare_id={merchant_prepare_id}, amount={amount}, action={action}, sign_time={sign_time}")
+        
         # Signature validation (strict, unless explicitly allowed via env)
         if not signature_valid:
             allow_debug = os.getenv('CLICK_ALLOW_DEBUG_SIGNATURE', 'false').lower() == 'true'
+            logging.warning(f"Signature invalid: allow_debug={allow_debug}")
             if not allow_debug:
                 return jsonify({"error": -1, "error_note": "SIGN CHECK FAILED"}), 400
         
         # Error code
         error_code = int(params.get('error', -1))
+        logging.info(f"ERROR_CODE: {error_code}")
         
         if error_code == 0:
             # Darhol javob qaytarish (eng tez ko'rsatish)
@@ -1208,6 +1215,7 @@ def click_complete():
                 "error_note": "Success"
             }
             click_logger.info(f"COMPLETE_RESPONSE: {response}")
+            logging.info(f"✅ SENDING SUCCESS RESPONSE: {response}")
             
             # Background update (thread)
             def background_update():
