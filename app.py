@@ -1179,6 +1179,8 @@ def click_complete():
         sign_time = params.get('sign_time', '')
         received_sign = params.get('sign_string', '')
         
+        logging.info(f"RAW_PARAMS: merchant_trans_id={params.get('merchant_trans_id')}, transaction_param={params.get('transaction_param')}, final={merchant_trans_id}")
+        
         # Complete endpoint signature formulasi (Click.uz rasmiy hujjati)
         # MD5(click_trans_id + service_id + secret_key + merchant_trans_id + merchant_prepare_id + amount + action + sign_time)
         service_id = params.get('service_id', CLICK_SERVICE_ID)
