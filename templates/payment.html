@@ -20,12 +20,16 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             color: #000000;
-            overflow-x: hidden;
+            overflow: hidden; /* scrollbars yo'q */
             -webkit-user-select: none;
             user-select: none;
             touch-action: pan-y;
             -webkit-text-size-adjust: 100%;
         }
+
+        /* Scrollbarni yashirish (iOS/Android/WebKit) */
+        * { scrollbar-width: none; -ms-overflow-style: none; }
+        *::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
         .payment-container {
             width: 100%;
@@ -412,10 +416,16 @@
         .hidden {
             display: none;
         }
+
+        /* Success banner */
+        .success-banner { display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: #e8f8ee; color: #137a2a; border: 1px solid #c6eed3; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 2000; }
+        .success-banner.show { display: inline-block; }
     </style>
 </head>
 <body>
     <!-- Plus Tarif View -->
+    <div class="success-banner" id="successBanner">✅ Obunangiz faol. Qayta to'lov kerak emas.</div>
+
     <div class="payment-container" id="mainView">
         <!-- Gradient overlay -->
         <div class="gradient-overlay plus" id="gradientOverlay"></div>
@@ -477,7 +487,7 @@
             </div>
         </div>
 
-        <button class="action-btn" onclick="openBottomSheet()">
+        <button class="action-btn" id="openSheetBtn" onclick="openBottomSheet()">
                     <span id="actionBtnText">1 000 so'm evaziga yangilanish</span>
         </button>
 
@@ -525,7 +535,7 @@
             </div>
         </div>
 
-        <button class="sheet-action-btn" onclick="processPayment()">
+        <button class="sheet-action-btn" id="payBtn" onclick="processPayment()">
             To'lash
         </button>
     </div>
@@ -651,6 +661,9 @@
             // Boshlang'ich narxlarni yangilash
             updateActionButton();
             updateSheetPrices();
+
+            // Obuna aktiv bo'lsa — to'lashni bloklash
+            checkSubscriptionAndLock();
         });
 
         function updateSheetPrices() {
@@ -699,6 +712,30 @@
         function handleClickPayment() {
             hapticFeedback();
             processPayment();
+        }
+
+        // Subscription lock: agar PLUS/PRO aktiv bo'lsa — to'lashni bloklash
+        async function checkSubscriptionAndLock() {
+            try {
+                let userId = null;
+                if (tg?.initDataUnsafe?.user?.id) userId = tg.initDataUnsafe.user.id;
+                else if (tg?.initData) {
+                    const params = new URLSearchParams(tg.initData);
+                    const userStr = params.get('user');
+                    if (userStr) userId = JSON.parse(decodeURIComponent(userStr)).id;
+                }
+                if (!userId) return;
+                const res = await fetch(`/api/user/tariff/${userId}`);
+                const json = await res.json();
+                const code = (json?.data?.tariff || 'Bepul').toString().toUpperCase();
+                if (code === 'PLUS' || code === 'PRO') {
+                    document.getElementById('successBanner').classList.add('show');
+                    document.getElementById('openSheetBtn').setAttribute('disabled', 'true');
+                    document.getElementById('payBtn').setAttribute('disabled', 'true');
+                }
+            } catch (e) {
+                console.log('check sub error', e);
+            }
         }
 
         async function processPayment() {

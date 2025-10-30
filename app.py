@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, redirect
+from flask import Flask, render_template, jsonify, request, redirect, abort
 from flask_cors import CORS
 import os
 import requests
@@ -110,6 +110,55 @@ def payment():
         logging.error(f"Payment error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/payment-pro', methods=['GET', 'POST'])
+def payment_pro():
+    """Faqat PRO uchun alohida sahifa"""
+    if request.method == 'GET':
+        return render_template('payment_pro.html')
+
+    try:
+        user_id = request.form.get('user_id', CLICK_MERCHANT_USER_ID)
+        months = request.form.get('months')
+
+        if not months or months not in ['1', '12']:
+            return jsonify({'error': 'Invalid months selection'}), 400
+
+        months = int(months)
+        user_id = int(user_id)
+
+        # TEST narxlar: PRO 1 oy = 2000, 12 oy = 2000*12*0.9
+        prices = { 1: 2000, 12: int(2000 * 12 * 0.9) }
+        amount = prices.get(months, 2000)
+
+        # Merchant trans ID (har doim PRO)
+        import time
+        timestamp = int(time.time())
+        merchant_trans_id = f"{user_id}_PRO_{months}_{timestamp}"
+
+        # DB yozish
+        try:
+            db.create_payment_record(user_id, merchant_trans_id, amount, 'PRO', 'click')
+        except Exception as e:
+            logging.error(f"Error creating payment record (PRO): {e}")
+
+        # Click URL
+        import urllib.parse
+        click_url = (
+            f"https://my.click.uz/services/pay"
+            f"?service_id={CLICK_SERVICE_ID}"
+            f"&merchant_id={CLICK_MERCHANT_ID}"
+            f"&amount={amount}"
+            f"&transaction_param={urllib.parse.quote(merchant_trans_id)}"
+            f"&customer={urllib.parse.quote(str(user_id))}"
+            f"&return_url={urllib.parse.quote('https://balansai.onrender.com/payment-success')}"
+        )
+
+        click_logger.info(f"PAYMENT_PRO: user_id={user_id}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
+        return redirect(click_url)
+    except Exception as e:
+        logging.error(f"Payment PRO error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/payment-success', methods=['GET'])
 def payment_success():
     """To'lov muvaffaqiyatli bo'lganidan keyin sahifa"""
@@ -123,6 +172,12 @@ def payment_success():
 @app.route('/test-payment', methods=['GET', 'POST'])
 def test_payment():
     """Click.uz test to'lov sahifasi"""
+    # Simple protection: require key in query (?key=...) or header X-Test-Key
+    TEST_PAYMENT_KEY = os.getenv('TEST_PAYMENT_KEY', '')
+    if TEST_PAYMENT_KEY:
+        provided_key = request.args.get('key') or request.headers.get('X-Test-Key')
+        if provided_key != TEST_PAYMENT_KEY:
+            return abort(404)
     if request.method == 'GET':
         return render_template('payment_test.html')
     
@@ -1213,11 +1268,12 @@ def click_complete():
         
         click_logger.info(f"COMPLETE: {merchant_trans_id}/{click_trans_id} - sig_valid={signature_valid}")
         
-        # Signature validation (debug mode - ignore for now)
+        # Signature validation (strict, unless explicitly allowed via env)
         if not signature_valid:
-            logging.warning(f"⚠️ Signature invalid (ignored): {merchant_trans_id}")
-            # Production'da yoqish:
-            # return jsonify({"error": -1, "error_note": "SIGN CHECK FAILED"}), 400
+            allow_debug = os.getenv('CLICK_ALLOW_DEBUG_SIGNATURE', 'false').lower() == 'true'
+            logging.warning(f"⚠️ Signature invalid: {merchant_trans_id}, allow_debug={allow_debug}")
+            if not allow_debug:
+                return jsonify({"error": -1, "error_note": "SIGN CHECK FAILED"}), 400
         
         # Error code ni tekshirish (0 = muvaffaqiyatli)
         error_code = int(params.get('error', -1))
