@@ -1000,7 +1000,7 @@ except (PermissionError, FileNotFoundError):
 
 click_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
 click_logger.addHandler(click_file_handler)
-click_logger.propagate = False
+click_logger.propagate = True  # Render.com stdout'ga ham yozish uchun
 
 def verify_click_signature(params, secret_key):
     """
