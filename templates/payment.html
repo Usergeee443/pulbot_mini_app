@@ -645,6 +645,11 @@
 
             // Update bottom sheet prices
             updateSheetPrices();
+
+            // Agar obuna holati ma'lum bo'lsa, lock holatini yangilash
+            if (window.__USER_TARIFF_CODE__) {
+                updateLockByTariff(window.__USER_TARIFF_CODE__);
+            }
         }
 
         // Initialize slider position on page load
@@ -662,7 +667,7 @@
             updateActionButton();
             updateSheetPrices();
 
-            // Obuna aktiv bo'lsa — to'lashni bloklash
+            // Obuna holatini tekshirish va lock holatini qo'llash
             checkSubscriptionAndLock();
         });
 
@@ -728,13 +733,30 @@
                 const res = await fetch(`/api/user/tariff/${userId}`);
                 const json = await res.json();
                 const code = (json?.data?.tariff || 'Bepul').toString().toUpperCase();
-                if (code === 'PLUS' || code === 'PRO') {
-                    document.getElementById('successBanner').classList.add('show');
-                    document.getElementById('openSheetBtn').setAttribute('disabled', 'true');
-                    document.getElementById('payBtn').setAttribute('disabled', 'true');
-                }
+                window.__USER_TARIFF_CODE__ = code;
+                updateLockByTariff(code);
             } catch (e) {
                 console.log('check sub error', e);
+            }
+        }
+
+        // Foydalanuvchining aktiv tarifiga qarab lock holatini qo'llash
+        function updateLockByTariff(userCode) {
+            const banner = document.getElementById('successBanner');
+            const openBtn = document.getElementById('openSheetBtn');
+            const payBtn = document.getElementById('payBtn');
+            const selectedCode = currentTariff.toUpperCase();
+            // Faqat tanlangan tarif bilan bir xil bo'lsa bloklanadi
+            const shouldBlock = (userCode === selectedCode);
+            if (shouldBlock) {
+                banner.textContent = `✅ Sizda allaqachon ${selectedCode} obuna faol. Qayta to'lov shart emas.`;
+                banner.classList.add('show');
+                openBtn?.setAttribute('disabled', 'true');
+                payBtn?.setAttribute('disabled', 'true');
+            } else {
+                banner.classList.remove('show');
+                openBtn?.removeAttribute('disabled');
+                payBtn?.removeAttribute('disabled');
             }
         }
 
