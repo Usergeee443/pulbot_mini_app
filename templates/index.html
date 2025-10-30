@@ -127,7 +127,7 @@
                     </div>
 
                     <!-- PLUS: Eng ko'p xarajatlar -->
-                    <div class="analytics-card premium-feature">
+                    <div class="analytics-card">
                         <h4>Eng ko'p xarajatlar (Top 5)</h4>
                         <div id="topExpensesTable" class="analytics-table">
                             <!-- Dinamikasi to'ldiriladi -->
@@ -135,7 +135,7 @@
                     </div>
 
                     <!-- PLUS: Daromad Topligi -->
-                    <div class="analytics-card premium-feature">
+                    <div class="analytics-card">
                         <h4>Daromad Topligi</h4>
                         <div id="topIncomeSources" class="analytics-table">
                             <!-- Dinamikasi to'ldiriladi -->
@@ -143,7 +143,7 @@
                     </div>
 
                     <!-- PLUS: Butun umurdagi Daromad o'sishi -->
-                    <div class="analytics-card premium-feature">
+                    <div class="analytics-card">
                         <h4>Barcha vaqt bo'yicha Daromad o'sishi</h4>
                         <canvas id="lifetimeIncomeChart"></canvas>
                     </div>
@@ -247,65 +247,7 @@
                 </div>
             </div>
 
-            <!-- AI Chat sahifasi - Fullscreen -->
-            <div id="ai-chat" class="tab-content ai-chat-fullscreen">
-                <!-- Header -->
-                <div class="ai-chat-header">
-                    <button class="ai-chat-back" onclick="app.closeAiChat()">
-                        <span class="back-icon">✕</span>
-                    </button>
-                    <div class="ai-chat-title">
-                        <div class="ai-avatar-header">
-                            <div class="avatar-circle">B</div>
-                        </div>
-                        <div class="ai-info">
-                            <div class="ai-name-header">Balans AI</div>
-                            <div class="ai-status-header" id="aiChatTariff">PLUS</div>
-                        </div>
-                    </div>
-                    <button class="ai-chat-menu">
-                        <span>⋮</span>
-                    </button>
-                </div>
-
-                <!-- Messages container -->
-                <div class="ai-messages" id="aiMessages">
-                    <div class="message ai-message">
-                        <div class="message-avatar ai-robot-avatar">🤖</div>
-                        <div class="message-content">
-                            <div class="message-text">
-                                Salom! Men sizning moliyaviy maslahatchi. Savollaringizni yozishingiz yoki mikrofon gapirishingiz mumkin.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Input area -->
-                <div class="ai-input-area">
-                    <button class="ai-voice-btn" id="aiVoiceBtnChat" title="Ovozli xabar">
-                        <span>🎤</span>
-                    </button>
-                    <div class="ai-input-wrapper">
-                        <textarea 
-                            id="aiInputChat" 
-                            class="ai-input" 
-                            placeholder="Savolingizni yozing..."
-                            rows="1"
-                        ></textarea>
-                    </div>
-                    <button class="ai-send-btn" id="aiSendBtnChat" title="Yuborish">
-                        <span>➤</span>
-                    </button>
-                </div>
-
-                <!-- Voice status -->
-                <div class="ai-voice-status" id="aiVoiceStatusChat" style="display: none;">
-                    <div class="voice-status-content">
-                        <div class="voice-status-icon">🎤</div>
-                        <div class="voice-status-text">Eshitilmoqda...</div>
-                    </div>
-                </div>
-            </div>
+            <!-- AI Chat sahifasi olib tashlandi -->
 
             <!-- Qarzlar sahifasi -->
             <div id="debts" class="tab-content">
@@ -358,6 +300,42 @@
             </button>
         </nav>
     </div>
+
+    <!-- MAX cheklovi va tezroq yuklash uchun inline skript -->
+    <script>
+        (function(){
+            // Voice-chat MAX-only: non-MAX uchun xabar ko'rsatish
+            const vcLock = document.getElementById('voiceChatLock');
+            const vcBtn = document.getElementById('voiceControlBtn');
+            try {
+                let userId = window.USER_ID;
+                if (!userId && window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+                    userId = Telegram.WebApp.initDataUnsafe.user.id;
+                }
+                if (userId) {
+                    fetch(`/api/user/tariff/${userId}`).then(r=>r.json()).then(j=>{
+                        const code = (j?.data?.tariff||'Bepul').toString().toUpperCase();
+                        const isMax = code === 'MAX';
+                        if (vcLock) vcLock.style.display = isMax ? 'none' : '';
+                        if (vcBtn) vcBtn.disabled = !isMax;
+                    }).catch(()=>{});
+                } else {
+                    if (vcLock) vcLock.style.display = '';
+                    if (vcBtn) vcBtn.disabled = true;
+                }
+            } catch(e) {}
+
+            // Fast-load fallback: 800ms dan keyin asosiy appni ko'rsatish (agar yashirin qolsa)
+            setTimeout(()=>{
+                const app = document.getElementById('app');
+                const loading = document.getElementById('loadingScreen');
+                if (app && loading && app.style.display === 'none') {
+                    app.style.display = '';
+                    loading.style.display = 'none';
+                }
+            }, 800);
+        })();
+    </script>
 
     <!-- Transaction Detail Modal -->
     <div id="transactionModal" class="modal" style="display: none;">
