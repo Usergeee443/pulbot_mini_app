@@ -13,6 +13,7 @@ class BalansAI {
             limits: {}
         };
         this.charts = {};
+        this.chartsLoaded = false;
         this.isRealTimeMode = false;
         this.realTimeRecognition = null;
         this.isVoiceChatActive = false;
@@ -192,10 +193,7 @@ class BalansAI {
         this.updateStats();
         this.updateTariffBadge();
         this.updateDebts();
-        // Grafiklarni keyinchalik render qilish (on-demand)
-        requestAnimationFrame(() => {
-            this.updateCharts();
-        });
+        // Grafiklarni keyinroq yuklash (analytics tabida)
     }
 
     updateBalanceCard() {
@@ -1655,6 +1653,14 @@ class BalansAI {
         }
 
         this.currentTab = tabName;
+        
+        // Analytics tabiga kirganda grafiklarni yuklash
+        if (tabName === 'analytics' && !this.chartsLoaded) {
+            this.chartsLoaded = true;
+            requestAnimationFrame(() => {
+                this.updateCharts();
+            });
+        }
     }
     
     openAiChat() {
