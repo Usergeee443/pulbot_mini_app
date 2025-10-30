@@ -178,7 +178,12 @@ class BalansAI {
 
     async fetchData(url) {
         try {
-            const response = await fetch(url);
+            // 10 soniya timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
             return await response.json();
         } catch (error) {
             console.error(`Fetch error for ${url}:`, error);
