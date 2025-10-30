@@ -650,21 +650,19 @@ input, textarea, [contenteditable] {
 /* Bottom Navigation */
 .bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--tg-theme-section-bg-color);
-    border-top: 1px solid var(--tg-theme-secondary-bg-color);
+    left: 16px;
+    right: 16px;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 6px);
     display: flex;
-    padding: 12px 16px calc(max(8px, env(safe-area-inset-bottom)) + 6px);
-    z-index: 1000;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 -8px 40px rgba(0,0,0,0.07) inset;
-    gap: 14px;
     justify-content: space-between;
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #ffffff; /* oq fonda aniq */
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 28px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 2px 10px rgba(0,0,0,0.06);
+    z-index: 2000;
 }
 
 .nav-item {
@@ -672,7 +670,7 @@ input, textarea, [contenteditable] {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px 8px;
+    padding: 10px 8px;
     border: none;
     background: none;
     cursor: pointer;
@@ -707,6 +705,17 @@ input, textarea, [contenteditable] {
 
 .nav-item.active .nav-icon-svg {
     transform: scale(1.06);
+}
+
+/* Dark rejimda ham aniq ko'rinishi uchun */
+@media (prefers-color-scheme: dark) {
+    .bottom-nav {
+        background: #111418; /* qorong'i fon uchun toza panel */
+        border-color: rgba(255,255,255,0.06);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.35);
+    }
+    .nav-item { color: #9CA3AF; }
+    .nav-item.active { color: #1E88E5; }
 }
 
 /* Buttons */
