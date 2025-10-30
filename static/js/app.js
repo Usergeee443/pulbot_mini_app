@@ -30,10 +30,7 @@ class BalansAI {
         try {
             console.log('BalansAI initializing...');
             
-            // Loading ko'rsatish
-            this.showLoading();
-            
-            // Telegram WebApp tekshirish
+            // Telegram WebApp tekshirish - darhol
             if (window.Telegram && window.Telegram.WebApp) {
                 console.log('Telegram WebApp detected');
                 window.Telegram.WebApp.ready();
@@ -109,31 +106,18 @@ class BalansAI {
                 }
             }
 
-            // Ma'lumotlarni yuklash
-            try {
-                await this.loadAllData();
-            } catch (error) {
-                console.error('Load data error:', error);
-            }
+            // Event listeners darhol
+            this.setupEventListeners();
             
-            // UI ni yangilash
-            try {
-                this.updateUI();
-            } catch (error) {
-                console.error('Update UI error:', error);
-            }
-            
-            // Event listeners
-            try {
-                this.setupEventListeners();
-            } catch (error) {
-                console.error('Setup event listeners error:', error);
-            }
-            
-            // Loading ni yashirish
+            // Asosiy UI ko'rsatish (ma'lumotlarsiz)
             this.hideLoading();
             
             console.log('BalansAI initialized successfully');
+            
+            // Ma'lumotlarni keyin yuklash (parallel)
+            this.loadAllData().then(() => {
+                this.updateUI();
+            }).catch(err => console.error('Background load:', err));
             
         } catch (error) {
             console.error('Init error:', error);
