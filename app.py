@@ -53,6 +53,29 @@ def miniapp():
 def payment():
     """Real to'lov sahifasi - Plus yoki Pro tarif"""
     if request.method == 'GET':
+        # User ID olish
+        user_id = None
+        try:
+            # Telegram'dan user_id olish mumkin bo'lsa (keyinchalik)
+            pass
+        except:
+            pass
+        
+        # Tarifni tekshirish va redirect
+        if user_id:
+            try:
+                tariff_info = db.get_user_tariff(user_id)
+                user_tariff = tariff_info.get('tariff', 'Bepul').upper()
+                
+                if user_tariff == 'PLUS':
+                    # Plus bo'lsa PRO sahifasiga yo'naltir
+                    return redirect('/payment-pro')
+                elif user_tariff == 'PRO':
+                    # PRO bo'lsa block (sahifa ko'rsatilsin lekin to'lov shart emas)
+                    return render_template('payment.html', show_blocked=True)
+            except:
+                pass
+        
         return render_template('payment.html')
     
     try:

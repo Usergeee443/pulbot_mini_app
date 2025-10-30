@@ -3,71 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To'lov muvaffaqiyatli - Balans AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Muvaffaqiyatli - Balans AI</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .success-icon {
-            animation: scaleIn 0.5s ease-out;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #F8F9FA;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 320px;
+            width: 100%;
+        }
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: #10B981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            animation: scaleIn 0.4s ease-out;
         }
         @keyframes scaleIn {
-            from {
-                transform: scale(0);
-                opacity: 0;
-            }
-            to {
-                transform: scale(1);
-                opacity: 1;
-            }
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+        p {
+            font-size: 15px;
+            color: #6B7280;
+            line-height: 1.5;
         }
     </style>
 </head>
-<body class="flex items-center justify-center p-4 min-h-screen">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center">
-        <div class="success-icon mb-6">
-            <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
+<body>
+    <div class="container">
+        <div class="icon">
+            <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+            </svg>
         </div>
-        
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Muvaffaqiyatli!</h1>
-        <p class="text-gray-600 mb-6">
-            To'lovingiz muvaffaqiyatli qabul qilindi.<br>
-            Tarifingiz faollashtirildi.
-        </p>
-        
-        {% if payment_id %}
-        <div class="bg-gray-50 rounded-lg p-4 mb-6">
-            <div class="text-sm text-gray-500 mb-1">To'lov raqami</div>
-            <div class="text-lg font-mono font-semibold text-gray-800">{{ payment_id }}</div>
-        </div>
-        {% endif %}
-        
-        <button 
-            onclick="window.close()"
-            class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-4 px-6 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition duration-300 shadow-lg"
-        >
-            Yopish
-        </button>
-        
-        <p class="text-xs text-gray-500 mt-4">
-            Agar sahifa avtomatik yopilmasa, yuqoridagi tugmani bosing.
-        </p>
+        <h1>Muvaffaqiyatli!</h1>
+        <p>Tarifingiz faollashtirildi</p>
     </div>
     
     <script>
-        // Telegram WebApp yoki brauzer bo'yicha yopish
         const tg = window.Telegram?.WebApp;
         if (tg) {
             tg.ready();
             tg.expand();
-            // Pull-to-close funksiyasini o'chirish
             tg.disableVerticalSwipes();
+            // 1.5 soniyadan so'ng Telegram'ga qaytish
+            setTimeout(() => {
+                tg.close();
+            }, 1500);
+        } else {
+            // Brauzerda ham yopish
+            setTimeout(() => {
+                window.close();
+            }, 1500);
         }
     </script>
 </body>
