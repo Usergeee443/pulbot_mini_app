@@ -1177,9 +1177,8 @@ def click_complete():
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
         
-        # Logga yozish (datetime + request.body formatida)
+        # Minimal logging
         click_logger.info(f"COMPLETE_REQUEST: {params}")
-        logging.info(f"Click Complete received: {params}")
         
         # Majburiy maydonlarni tekshirish (Complete endpoint'da merchant_trans_id majburiy emas - Click.uz yubormasligi mumkin)
         required_fields = ['click_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
@@ -1204,44 +1203,9 @@ def click_complete():
         sign_time = params.get('sign_time', '')
         received_sign = params.get('sign_string', '')
         
-        # Debug: Barcha parametrlarni ko'rsatish
-        logging.info(f"🔍 COMPLETE ENDPOINT DEBUG:")
-        logging.info(f"All params keys: {list(params.keys())}")
-        logging.info(f"merchant_trans_id from params: {params.get('merchant_trans_id')}")
-        logging.info(f"transaction_param from params: {params.get('transaction_param')}")
-        logging.info(f"Final merchant_trans_id: {merchant_trans_id}")
-        
+        # merchant_trans_id tezlashtirish
         if not merchant_trans_id:
-            logging.error("❌ merchant_trans_id is EMPTY! Trying to get from database...")
-            # Agar merchant_trans_id bo'sh bo'lsa, click_trans_id orqali database'dan topish
-            try:
-                payment = db.get_payment_by_click_trans_id(click_trans_id)
-                if payment:
-                    merchant_trans_id = payment.get('merchant_trans_id', '')
-                    logging.info(f"✅ COMPLETE: Found merchant_trans_id from DB using click_trans_id: {merchant_trans_id}")
-                else:
-                    # Agar click_trans_id orqali topilmasa, oxirgi pending to'lovni topish
-                    logging.info(f"⚠️ COMPLETE: No payment with click_trans_id={click_trans_id}, searching for latest pending...")
-                    query = """
-                    SELECT * FROM payments 
-                    WHERE status = 'pending' 
-                    ORDER BY created_at DESC 
-                    LIMIT 1
-                    """
-                    result = db.execute_query(query)
-                    if result and len(result) > 0:
-                        pending_payment = result[0]
-                        merchant_trans_id = pending_payment.get('merchant_trans_id', '')
-                        # click_trans_id ni yangilash
-                        try:
-                            db.update_payment_prepare(merchant_trans_id, click_trans_id)
-                            logging.info(f"✅ COMPLETE: Found and updated pending payment: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}")
-                        except Exception as update_err:
-                            logging.error(f"❌ COMPLETE: Error updating payment: {update_err}")
-                    else:
-                        logging.error(f"❌ COMPLETE: No pending payment found in database")
-            except Exception as db_err:
-                logging.error(f"❌ COMPLETE: Could not get merchant_trans_id from DB: {db_err}")
+            logging.warning("⚠️ merchant_trans_id empty, will find in background")
         
         # Complete endpoint signature formulasi (Click.uz rasmiy hujjati)
         # MD5(click_trans_id + service_id + secret_key + merchant_trans_id + merchant_prepare_id + amount + action + sign_time)
@@ -1252,51 +1216,49 @@ def click_complete():
         sign_string_correct = f"{click_trans_id}{service_id}{CLICK_SECRET_KEY}{merchant_trans_id}{merchant_prepare_id}{amount}{action}{sign_time}"
         calculated_sign_correct = hashlib.md5(sign_string_correct.encode('utf-8')).hexdigest()
         
-        # Eski variantlar (backward compatibility uchun)
-        sign_string_with_service = f"{click_trans_id}{service_id}{CLICK_SECRET_KEY}{merchant_trans_id}{amount}{action}{sign_time}"
-        calculated_sign_with_service = hashlib.md5(sign_string_with_service.encode('utf-8')).hexdigest()
-        
-        sign_string_without_service = f"{click_trans_id}{CLICK_SECRET_KEY}{merchant_trans_id}{amount}{action}{sign_time}"
-        calculated_sign_without_service = hashlib.md5(sign_string_without_service.encode('utf-8')).hexdigest()
-        
-        # Signature tekshiruvi (to'g'ri formula va eski variantlar)
-        signature_valid = (calculated_sign_correct == received_sign) or (calculated_sign_with_service == received_sign) or (calculated_sign_without_service == received_sign)
-        
-        # Minimal logging (tezroq javob uchun)
-        if not signature_valid:
-            logging.warning(f"COMPLETE: Invalid signature - {received_sign} vs {calculated_sign_correct}")
-        
-        click_logger.info(f"COMPLETE: {merchant_trans_id}/{click_trans_id} - sig_valid={signature_valid}")
+        # Signature tekshiruvi
+        signature_valid = (calculated_sign_correct == received_sign)
         
         # Signature validation (strict, unless explicitly allowed via env)
         if not signature_valid:
             allow_debug = os.getenv('CLICK_ALLOW_DEBUG_SIGNATURE', 'false').lower() == 'true'
-            logging.warning(f"⚠️ Signature invalid: {merchant_trans_id}, allow_debug={allow_debug}")
             if not allow_debug:
                 return jsonify({"error": -1, "error_note": "SIGN CHECK FAILED"}), 400
         
-        # Error code ni tekshirish (0 = muvaffaqiyatli)
+        # Error code
         error_code = int(params.get('error', -1))
-        # click_trans_id va merchant_trans_id allaqachon topilgan
-        amount = params.get('amount')
-        
-        # Minimal logging
-        logging.info(f"COMPLETE: error={error_code}, merchant={merchant_trans_id}")
         
         if error_code == 0:
-            # Darhol javob qaytarish (background'da update)
-            import threading
+            # Darhol javob qaytarish (eng tez ko'rsatish)
+            response = {
+                "click_trans_id": int(click_trans_id),
+                "merchant_trans_id": merchant_trans_id,
+                "merchant_confirm_id": int(datetime.now().timestamp()),
+                "error": 0,
+                "error_note": "Success"
+            }
+            click_logger.info(f"COMPLETE_RESPONSE: {response}")
             
+            # Background update (thread)
+            import threading
             def background_update():
                 try:
                     local_merchant_trans_id = merchant_trans_id
                     local_click_trans_id = click_trans_id
                     
-                    # Agar merchant_trans_id bo'sh bo'lsa, database'dan topish
+                    # merchant_trans_id topish
                     if not local_merchant_trans_id or not local_merchant_trans_id.strip():
                         payment = db.get_payment_by_click_trans_id(local_click_trans_id)
                         if payment and payment.get('merchant_trans_id'):
                             local_merchant_trans_id = payment['merchant_trans_id']
+                        else:
+                            # Oxirgi pending topish
+                            query = "SELECT * FROM payments WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1"
+                            result = db.execute_query(query)
+                            if result and len(result) > 0:
+                                local_merchant_trans_id = result[0].get('merchant_trans_id', '')
+                                if local_merchant_trans_id:
+                                    db.update_payment_prepare(local_merchant_trans_id, local_click_trans_id)
                     
                     if local_merchant_trans_id and local_merchant_trans_id.strip():
                         parts = local_merchant_trans_id.split('_')
@@ -1306,29 +1268,16 @@ def click_complete():
                             months = 1
                             if len(parts) >= 3 and parts[2].isdigit():
                                 months = int(parts[2])
-                            
                             db.update_payment_complete(local_merchant_trans_id, status='confirmed', error_code=error_code, error_note='Success')
                             db.activate_tariff(user_id, tariff, months)
-                            logging.info(f"✅ Background: {local_merchant_trans_id} - tariff activated")
-                    else:
-                        logging.error(f"❌ Background: merchant_trans_id not found")
+                            logging.info(f"✅ Background: {local_merchant_trans_id} - activated")
                 except Exception as e:
                     logging.error(f"❌ Background error: {e}")
             
-            # Background thread'ni ishga tushirish (darhol)
             thread = threading.Thread(target=background_update)
             thread.daemon = True
             thread.start()
             
-            # Darhol javob qaytarish
-            response = {
-                "click_trans_id": int(click_trans_id),
-                "merchant_trans_id": merchant_trans_id,
-                "merchant_confirm_id": int(datetime.now().timestamp()),
-                "error": 0,
-                "error_note": "Success"
-            }
-            click_logger.info(f"COMPLETE_RESPONSE: {response}")
             return jsonify(response), 200
         else:
             # To'lov muvaffaqiyatsiz
