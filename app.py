@@ -1107,17 +1107,13 @@ def click_prepare():
         merchant_trans_id = params.get('merchant_trans_id') or params.get('transaction_param', '')
         click_trans_id = params.get('click_trans_id')
         
-        
-        # Database update (background, xatolikni ignore)
+        # Database update (synchronous, minimal) — click_trans_id ni darhol saqlash
         if merchant_trans_id and len(merchant_trans_id.split('_')) >= 2:
-            def bg_update():
-                try:
-                    db.update_payment_prepare(merchant_trans_id, click_trans_id)
-                except:
-                    pass
-            thread = threading.Thread(target=bg_update)
-            thread.daemon = True
-            thread.start()
+            try:
+                db.update_payment_prepare(merchant_trans_id, click_trans_id)
+            except Exception as _:
+                # DB xatosi bo'lsa ham Click'ga darhol javob beramiz
+                pass
         
         # Muvaffaqiyatli javob - Click.uz to'g'ri format talab qiladi
         merchant_prepare_id = int(datetime.now().timestamp())
