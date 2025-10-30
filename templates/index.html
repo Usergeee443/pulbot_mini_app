@@ -337,19 +337,24 @@
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="nav-item active" data-tab="home">
-                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/home.svg') }}')"></span>
+                <span class="nav-icon-svg" style="-webkit-mask-image: url('{{ url_for('static', filename='icons/home.svg') }}'); mask-image: url('{{ url_for('static', filename='icons/home.svg') }}');"></span>
+                <div class="nav-label">Asosiy</div>
             </button>
             <button class="nav-item" data-tab="transactions">
-                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/wallet-search.svg') }}')"></span>
+                <span class="nav-icon-svg" style="-webkit-mask-image: url('{{ url_for('static', filename='icons/wallet-search.svg') }}'); mask-image: url('{{ url_for('static', filename='icons/wallet-search.svg') }}');"></span>
+                <div class="nav-label">Tranzaksiya</div>
             </button>
             <button class="nav-item" data-tab="analytics">
-                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/chart-square.svg') }}')"></span>
+                <span class="nav-icon-svg" style="-webkit-mask-image: url('{{ url_for('static', filename='icons/chart-square.svg') }}'); mask-image: url('{{ url_for('static', filename='icons/chart-square.svg') }}');"></span>
+                <div class="nav-label">Tahlillar</div>
             </button>
             <button class="nav-item" data-tab="voice-chat">
-                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/microscope.svg') }}')"></span>
+                <span class="nav-icon-svg" style="-webkit-mask-image: url('{{ url_for('static', filename='icons/microscope.svg') }}'); mask-image: url('{{ url_for('static', filename='icons/microscope.svg') }}');"></span>
+                <div class="nav-label">Suhbat</div>
             </button>
             <button class="nav-item" data-tab="debts">
-                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/receipt-edit.svg') }}')"></span>
+                <span class="nav-icon-svg" style="-webkit-mask-image: url('{{ url_for('static', filename='icons/receipt-edit.svg') }}'); mask-image: url('{{ url_for('static', filename='icons/receipt-edit.svg') }}');"></span>
+                <div class="nav-label">Qarzlar</div>
             </button>
         </nav>
     </div>
