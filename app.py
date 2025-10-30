@@ -4,6 +4,7 @@ import os
 import requests
 import hashlib
 import logging
+import threading
 from datetime import datetime, timedelta
 from database import Database
 from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY, CLICK_SECRET_KEY, CLICK_SERVICE_ID, CLICK_MERCHANT_ID, CLICK_MERCHANT_USER_ID
@@ -1020,11 +1021,8 @@ def verify_click_signature(params, secret_key):
         
         received_sign = params.get('sign_string', '')
         
-        logging.info(f"Signature verification: calculated={calculated_sign}, received={received_sign}")
-        
         return calculated_sign == received_sign
     except Exception as e:
-        logging.error(f"Signature verification error: {e}")
         return False
 
 @app.route('/api/click/prepare', methods=['GET', 'POST'])
@@ -1047,17 +1045,13 @@ def click_prepare():
         # Formadan ma'lumotlarni olish
         params = request.form.to_dict()
         
-        # Logga yozish (datetime + request.body formatida) - asinxron
+        # Minimal logging
         click_logger.info(f"PREPARE_REQUEST: {params}")
-        
-        # Minimal logging - tez javob uchun
-        logging.info(f"Click Prepare: merchant_trans_id={params.get('merchant_trans_id')}, click_trans_id={params.get('click_trans_id')}")
         
         # Majburiy maydonlarni tekshirish
         required_fields = ['click_trans_id', 'service_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string']
         for field in required_fields:
             if field not in params:
-                logging.error(f"Missing field: {field}")
                 return jsonify({
                     "error": -8,
                     "error_note": f"Missing parameter: {field}"
@@ -1065,7 +1059,6 @@ def click_prepare():
         
         # Sign string ni tekshirish
         if not verify_click_signature(params, CLICK_SECRET_KEY):
-            logging.error("Invalid signature")
             return jsonify({
                 "error": -1,
                 "error_note": "SIGN CHECK FAILED"
@@ -1073,7 +1066,6 @@ def click_prepare():
         
         # Service ID ni tekshirish
         if params.get('service_id') != CLICK_SERVICE_ID:
-            logging.error(f"Invalid service_id: {params.get('service_id')}")
             return jsonify({
                 "error": -5,
                 "error_note": "Service ID not found"
@@ -1081,7 +1073,6 @@ def click_prepare():
         
         # Merchant ID ni tekshirish (agar mavjud bo'lsa)
         if 'merchant_id' in params and params.get('merchant_id') != CLICK_MERCHANT_ID:
-            logging.error(f"Invalid merchant_id: {params.get('merchant_id')}")
             return jsonify({
                 "error": -6,
                 "error_note": "Merchant ID not found"
@@ -1091,13 +1082,11 @@ def click_prepare():
         try:
             amount = float(params.get('amount', 0))
             if amount < 1000:
-                logging.error(f"Amount too small: {amount}")
                 return jsonify({
                     "error": -2,
                     "error_note": "Incorrect parameter amount"
                 }), 400
         except ValueError:
-            logging.error(f"Invalid amount: {params.get('amount')}")
             return jsonify({
                 "error": -2,
                 "error_note": "Incorrect parameter amount"
@@ -1106,7 +1095,6 @@ def click_prepare():
         # Action tekshiruvi (0 yoki 1 bo'lishi kerak)
         action = params.get('action')
         if action not in ['0', '1']:
-            logging.error(f"Invalid action: {action}")
             return jsonify({
                 "error": -3,
                 "error_note": "Action not found"
@@ -1116,25 +1104,17 @@ def click_prepare():
         merchant_trans_id = params.get('merchant_trans_id') or params.get('transaction_param', '')
         click_trans_id = params.get('click_trans_id')
         
-        # Minimal logging (tezroq javob uchun)
-        logging.info(f"PREPARE: {merchant_trans_id}/{click_trans_id}")
-        
-        # Database lookup (faqat zarur bo'lsa)
-        if not merchant_trans_id:
-            try:
-                query = "SELECT merchant_trans_id FROM payments WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1"
-                result = db.execute_query(query)
-                if result and len(result) > 0:
-                    merchant_trans_id = result[0].get('merchant_trans_id', '')
-            except:
-                pass
         
         # Database update (background, xatolikni ignore)
         if merchant_trans_id and len(merchant_trans_id.split('_')) >= 2:
-            try:
-                db.update_payment_prepare(merchant_trans_id, click_trans_id)
-            except:
-                pass
+            def bg_update():
+                try:
+                    db.update_payment_prepare(merchant_trans_id, click_trans_id)
+                except:
+                    pass
+            thread = threading.Thread(target=bg_update)
+            thread.daemon = True
+            thread.start()
         
         # Muvaffaqiyatli javob - Click.uz to'g'ri format talab qiladi
         merchant_prepare_id = int(datetime.now().timestamp())
@@ -1180,32 +1160,22 @@ def click_complete():
         # Minimal logging
         click_logger.info(f"COMPLETE_REQUEST: {params}")
         
-        # Majburiy maydonlarni tekshirish (Complete endpoint'da merchant_trans_id majburiy emas - Click.uz yubormasligi mumkin)
+        # Majburiy maydonlar
         required_fields = ['click_trans_id', 'amount', 'action', 'sign_time', 'sign_string', 'error']
         for field in required_fields:
             if field not in params:
-                logging.error(f"Missing field: {field}")
                 return jsonify({
                     "error": -8,
                     "error_note": f"Missing parameter: {field}"
                 }), 400
         
-        # merchant_trans_id majburiy emas (database'dan topish mumkin)
-        if 'merchant_trans_id' not in params and 'transaction_param' not in params:
-            logging.warning("⚠️ COMPLETE: merchant_trans_id not in params, will try to find from database")
-        
-        # Complete endpoint uchun signature tekshiruvi
-        # Complete endpoint'da service_id bo'lmasligi mumkin, shuning uchun alohida yondashamiz
+        # Parametrlarni olish
         click_trans_id = params.get('click_trans_id', '')
         merchant_trans_id = params.get('merchant_trans_id', '') or params.get('transaction_param', '')
         amount = params.get('amount', '')
         action = params.get('action', '')
         sign_time = params.get('sign_time', '')
         received_sign = params.get('sign_string', '')
-        
-        # merchant_trans_id tezlashtirish
-        if not merchant_trans_id:
-            logging.warning("⚠️ merchant_trans_id empty, will find in background")
         
         # Complete endpoint signature formulasi (Click.uz rasmiy hujjati)
         # MD5(click_trans_id + service_id + secret_key + merchant_trans_id + merchant_prepare_id + amount + action + sign_time)
@@ -1240,7 +1210,6 @@ def click_complete():
             click_logger.info(f"COMPLETE_RESPONSE: {response}")
             
             # Background update (thread)
-            import threading
             def background_update():
                 try:
                     local_merchant_trans_id = merchant_trans_id
@@ -1280,14 +1249,15 @@ def click_complete():
             
             return jsonify(response), 200
         else:
-            # To'lov muvaffaqiyatsiz
-            logging.warning(f"Payment failed: merchant_trans_id={merchant_trans_id}, click_trans_id={click_trans_id}, error={error_code}")
-            
-            try:
-                # Database'da to'lovni failed holatiga o'tkazish
-                db.update_payment_complete(merchant_trans_id, status='failed', error_code=error_code, error_note='Transaction cancelled')
-            except Exception as e:
-                logging.error(f"Error updating payment status: {e}")
+            # To'lov muvaffaqiyatsiz - background'da update
+            def bg_fail_update():
+                try:
+                    db.update_payment_complete(merchant_trans_id, status='failed', error_code=error_code, error_note='Transaction cancelled')
+                except:
+                    pass
+            thread = threading.Thread(target=bg_fail_update)
+            thread.daemon = True
+            thread.start()
             
             response = {
                 "click_trans_id": int(click_trans_id),
