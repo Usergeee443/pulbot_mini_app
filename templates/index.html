@@ -337,28 +337,19 @@
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="nav-item active" data-tab="home">
-                <div class="nav-icon">🏠</div>
-                <div class="nav-label">Asosiy</div>
+                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/home.svg') }}')"></span>
             </button>
             <button class="nav-item" data-tab="transactions">
-                <div class="nav-icon">📋</div>
-                <div class="nav-label">Tranzaksiyalar</div>
+                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/wallet-search.svg') }}')"></span>
             </button>
             <button class="nav-item" data-tab="analytics">
-                <div class="nav-icon">📊</div>
-                <div class="nav-label">Tahlillar</div>
+                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/chart-square.svg') }}')"></span>
             </button>
-            <button class="nav-item" data-tab="ai-chat" id="aiChatNavBtn">
-                <div class="nav-icon">🤖</div>
-                <div class="nav-label">AI Chat</div>
-            </button>
-            <button class="nav-item" data-tab="voice-chat1">
-                <div class="nav-icon">🎙️</div>
-                <div class="nav-label">Soon...</div>
+            <button class="nav-item" data-tab="voice-chat">
+                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/microscope.svg') }}')"></span>
             </button>
             <button class="nav-item" data-tab="debts">
-                <div class="nav-icon">💰</div>
-                <div class="nav-label">Qarzlar</div>
+                <span class="nav-icon-svg" style="--icon: url('{{ url_for('static', filename='icons/receipt-edit.svg') }}')"></span>
             </button>
         </nav>
     </div>
