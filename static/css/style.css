@@ -48,6 +48,17 @@ body {
     user-select: none;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
+    touch-action: pan-y;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overscroll-behavior: none;
+}
+
+html {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
 }
 
 /* Matn belgilashni o'chirish */
@@ -106,6 +117,21 @@ input, textarea, [contenteditable] {
 .app {
     min-height: 100vh;
     background: var(--tg-theme-bg-color);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollbar yashirish barcha brauzerlar uchun */
+.app::-webkit-scrollbar,
+*::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+.app {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 /* Header */
@@ -158,16 +184,22 @@ input, textarea, [contenteditable] {
     display: none;
     padding: 20px;
     min-height: calc(100vh - 140px);
+    animation: fadeIn 0.25s ease-out;
 }
 
 .tab-content.active {
     display: block;
-    animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { 
+        opacity: 0; 
+        transform: translateY(8px) scale(0.98); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+    }
 }
 
 /* Section */
@@ -687,6 +719,10 @@ input, textarea, [contenteditable] {
 
 .nav-item:hover {
     transform: translateY(-1px);
+}
+
+.nav-item:active {
+    transform: scale(0.95);
 }
 
 /* SVG ikonlarni ranglash uchun mask texnikasi */

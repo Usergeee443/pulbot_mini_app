@@ -2,7 +2,7 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Balans AI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -304,6 +304,13 @@
     <!-- MAX cheklovi va tezroq yuklash uchun inline skript -->
     <script>
         (function(){
+            // WebApp avtomatik fullscreen
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.expand();
+                Telegram.WebApp.setHeaderColor('#ffffff');
+                Telegram.WebApp.setBackgroundColor('#ffffff');
+            }
+            
             // Voice-chat MAX-only: non-MAX uchun xabar ko'rsatish
             const vcLock = document.getElementById('voiceChatLock');
             const vcBtn = document.getElementById('voiceControlBtn');
