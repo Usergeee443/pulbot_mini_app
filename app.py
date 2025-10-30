@@ -13,6 +13,13 @@ from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY, CLICK_SECRET_KEY, C
 app = Flask(__name__)
 CORS(app)
 
+# Logging konfiguratsiyasi (Render.com uchun stdout'ga yozish)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+
 # Database yaratish
 db = Database()
 
