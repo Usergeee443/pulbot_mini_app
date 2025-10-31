@@ -332,15 +332,16 @@
                 }
             } catch(e) {}
 
-            // Fast-load fallback: 10 soniyadan keyin asosiy appni ko'rsatish (agar yashirin qolsa)
+            // Emergency fallback: 30 soniyadan keyin appni ko'rsatish (ma'lumotlar o'chmaslik uchun)
             setTimeout(()=>{
                 const app = document.getElementById('app');
                 const loading = document.getElementById('loadingScreen');
-                if (app && loading && app.style.display === 'none') {
+                if (app && loading && loading.style.display !== 'none') {
+                    console.warn('Emergency fallback: showing app after 30s timeout');
                     app.style.display = '';
                     loading.style.display = 'none';
                 }
-            }, 10000);
+            }, 30000);
         })();
     </script>
 
