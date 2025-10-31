@@ -21,16 +21,15 @@
 
         .payment-container { width: 100%; min-height: 100vh; position: relative; display: flex; flex-direction: column; background: white; }
         .gradient-overlay { position: absolute; top: 0; left: 0; right: 0; height: 35%; z-index: 0; transition: opacity 0.5s ease; background: linear-gradient(180deg, #7CB3FF 00%, #ffffff 100%); }
-        .payment-header { text-align: center; padding: 60px 20px 40px; position: relative; z-index: 1; transition: opacity 0.4s ease; }
+        .payment-header { text-align: center; padding: 20px 20px 20px; position: relative; z-index: 1; transition: opacity 0.4s ease; }
         .payment-header h1 { font-size: 64px; font-weight: 900; color: #FFFFFF; letter-spacing: -1px; }
-        .payment-header p { font-size: 18px; color: white; line-height: 1.4; font-weight: 450; padding: 0 20px; }
+        .payment-header p { font-size: 18px; color: white; line-height: 1.4; font-weight: 450; padding: 0 0px; }
         .content-area { padding: 0 20px 220px; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; z-index: 1; flex: 1; }
         .features-list { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 16px; transition: opacity 0.4s ease; background: white; border: 0.5px solid #E0E0E0; border-radius: 24px; padding: 18px 18px; }
         .feature-item { display: flex; align-items: flex-start; gap: 12px; }
         .feature-icon { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
         .feature-icon svg { width: 22px; height: 22px; stroke: #5A8EF4; stroke-width: 2.5; }
         .feature-text { font-size: 16px; color: rgba(0,0,0,0.85); line-height: 1.5; font-weight: 400; }
-
         /* Success banner */
         .success-banner { display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: #e8f8ee; color: #137a2a; border: 1px solid #c6eed3; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 2000; }
         .success-banner.show { display: inline-block; }
@@ -82,11 +81,12 @@
             <div class="features-list" id="featuresList">
                 <div class="feature-item">
                     <div class="feature-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8.37988 12.0001L10.7899 14.4201L15.6199 9.58008" stroke="#5A8EF4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10.7499 2.45031C11.4399 1.86031 12.5699 1.86031 13.2699 2.45031L14.8499 3.81031C15.1499 4.07031 15.7099 4.28031 16.1099 4.28031H17.8099C18.8699 4.28031 19.7399 5.15031 19.7399 6.21031V7.91031C19.7399 8.30031 19.9499 8.87031 20.2099 9.17031L21.5699 10.7503C22.1599 11.4403 22.1599 12.5703 21.5699 13.2703L20.2099 14.8503C19.9499 15.1503 19.7399 15.7103 19.7399 16.1103V17.8103C19.7399 18.8703 18.8699 19.7403 17.8099 19.7403H16.1099C15.7199 19.7403 15.1499 19.9503 14.8499 20.2103L13.2699 21.5703C12.5799 22.1603 11.4499 22.1603 10.7499 21.5703L9.16988 20.2103C8.86988 19.9503 8.30988 19.7403 7.90988 19.7403H6.17988C5.11988 19.7403 4.24988 18.8703 4.24988 17.8103V16.1003C4.24988 15.7103 4.03988 15.1503 3.78988 14.8503L2.43988 13.2603C1.85988 12.5703 1.85988 11.4503 2.43988 10.7603L3.78988 9.17031C4.03988 8.87031 4.24988 8.31031 4.24988 7.92031V6.20031C4.24988 5.14031 5.11988 4.27031 6.17988 4.27031H7.90988C8.29988 4.27031 8.86988 4.06031 9.16988 3.80031L10.7499 2.45031Z" stroke="#5A8EF4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
-                    <div class="feature-text">Eng Aqilliroq AI</div>
+                    <div class="feature-text">Bu oddiy kuzatuv emas — bu siz bilan birga o‘ylaydigan, tahlil qiladigan va maslahat beradigan moliyaviy hamroh.</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -94,7 +94,7 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </div>
-                    <div class="feature-text">Oyiga cheksiz tranzaksiya</div>
+                    <div class="feature-text">AI bilan real vaqtda suhbatlashish mumkin</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -102,7 +102,7 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </div>
-                    <div class="feature-text">Ovozli xabar orqali tranzaksiya</div>
+                    <div class="feature-text">Har bir xarajat va daromadga fikr bildiradi</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -110,7 +110,7 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </div>
-                    <div class="feature-text">qo'shicha 10 ta tahlil</div>
+                    <div class="feature-text">Shaxsiy tahlil, maslahat va ogohlantirishlar</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -118,7 +118,7 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </div>
-                    <div class="feature-text">Realtaym ovozli AI moliyaviy suhbat imkoniyati</div>
+                    <div class="feature-text">Plus’dagi barcha imkoniyatlar + qo‘shimcha 5 ta grafik</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -126,7 +126,15 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </div>
-                    <div class="feature-text">AI bilan chat</div>
+                    <div class="feature-text">Oyiga 10 baravar ko‘p tranzaksiya limiti</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <div class="feature-text">Moliyaviy savollarga javob beruvchi AI maslahatchi</div>
                 </div>
             </div>
         </div>
