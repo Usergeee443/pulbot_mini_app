@@ -230,6 +230,22 @@ class Database:
         """
         return self.execute_query(query)
     
+    def create_app_settings_table(self):
+        """App settings jadvalini yaratish - 5 ta sahifani boshqarish uchun"""
+        query = """
+        CREATE TABLE IF NOT EXISTS app_settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            setting_key VARCHAR(50) UNIQUE NOT NULL,
+            setting_value ENUM('on', 'off', 'maintenance') DEFAULT 'on',
+            description TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_setting_key (setting_key)
+        )
+        """
+        result = self.execute_query(query)
+        logging.info("App_settings jadvali yaratildi/yoki mavjud")
+        return result
+    
     def create_payments_table(self):
         """To'lovlar jadvalini yaratish"""
         try:
@@ -555,6 +571,31 @@ class Database:
             'total_received': 0,
             'net_balance': 0
         }
+    
+    def get_app_setting(self, setting_key):
+        """App sozlamasini olish"""
+        query = "SELECT setting_value FROM app_settings WHERE setting_key = %s"
+        result = self.execute_query(query, (setting_key,))
+        if result and len(result) > 0:
+            return result[0]['setting_value']
+        return 'on'  # Default: yoniq
+    
+    def update_app_setting(self, setting_key, setting_value, description=None):
+        """App sozlamasini yangilash"""
+        query = """
+        INSERT INTO app_settings (setting_key, setting_value, description)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE 
+            setting_value = VALUES(setting_value),
+            description = VALUES(description),
+            updated_at = NOW()
+        """
+        return self.execute_query(query, (setting_key, setting_value, description))
+    
+    def get_all_settings(self):
+        """Barcha app sozlamalarini olish"""
+        query = "SELECT * FROM app_settings ORDER BY setting_key"
+        return self.execute_query(query) or []
 
 # Global database instance
 db = Database()

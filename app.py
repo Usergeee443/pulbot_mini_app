@@ -510,15 +510,62 @@ def process_payment():
 def get_config():
     """Frontend uchun konfiguratsiya"""
     try:
+        # App settings ni olish
+        settings = db.get_all_settings()
+        settings_dict = {}
+        for s in settings:
+            settings_dict[s['setting_key']] = s['setting_value']
+        
         # Faqat zarur konfiguratsiyalarni yuborish (API keylar secret qolishi kerak)
         return jsonify({
             'success': True,
             'data': {
-                'openaiApiKey': None  # Security uchun client tarafida API key qo'llanilmaydi
+                'openaiApiKey': None,  # Security uchun client tarafida API key qo'llanilmaydi
+                'settings': settings_dict
             }
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/admin/settings', methods=['GET', 'POST'])
+def admin_settings():
+    """Admin uchun app settings boshqarish"""
+    try:
+        if request.method == 'GET':
+            # Barcha sozlamalarni olish
+            settings = db.get_all_settings()
+            return jsonify({
+                'success': True,
+                'data': settings
+            })
+        elif request.method == 'POST':
+            # Sozlamani yangilash
+            data = request.json
+            setting_key = data.get('setting_key')
+            setting_value = data.get('setting_value', 'on')
+            description = data.get('description')
+            
+            if not setting_key:
+                return jsonify({
+                    'success': False,
+                    'message': 'setting_key required'
+                }), 400
+            
+            if setting_value not in ['on', 'off', 'maintenance']:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid setting_value (on/off/maintenance)'
+                }), 400
+            
+            db.update_app_setting(setting_key, setting_value, description)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Setting updated successfully'
+            })
+    except Exception as e:
+        logging.error(f"Admin settings error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/tts', methods=['POST'])
 def text_to_speech():
@@ -1430,6 +1477,7 @@ if __name__ == '__main__':
         db.create_ai_requests_table()
         db.create_goals_table()
         db.create_payments_table()
+        db.create_app_settings_table()
         print("✅ Database jadvallari yaratildi")
     except Exception as e:
         print(f"❌ Database xatoligi: {e}")
