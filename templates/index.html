@@ -332,7 +332,7 @@
                 }
             } catch(e) {}
 
-            // Fast-load fallback: 800ms dan keyin asosiy appni ko'rsatish (agar yashirin qolsa)
+            // Fast-load fallback: 10 soniyadan keyin asosiy appni ko'rsatish (agar yashirin qolsa)
             setTimeout(()=>{
                 const app = document.getElementById('app');
                 const loading = document.getElementById('loadingScreen');
@@ -340,7 +340,7 @@
                     app.style.display = '';
                     loading.style.display = 'none';
                 }
-            }, 800);
+            }, 10000);
         })();
     </script>
 
