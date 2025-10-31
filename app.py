@@ -96,15 +96,15 @@ def payment():
         months = int(months)
         user_id = int(user_id)
         
-        # Narxni belgilash (TEST uchun: Plus=1000, Pro=2000)
+        # Narxni belgilash (PRODUCTION: Plus=19990, Pro=49990)
         prices = {
             'PLUS': {
-                1: 1000,  # TEST: 1000 so'm
-                12: int(1000 * 12 * 0.9)  # TEST: 10% chegirma
+                1: 19990,  # PRODUCTION: 19990 so'm
+                12: int(19990 * 12 * 0.9)  # PRODUCTION: 10% chegirma
             },
             'PRO': {
-                1: 2000,  # TEST: 2000 so'm
-                12: int(2000 * 12 * 0.9)  # TEST: 10% chegirma
+                1: 49990,  # PRODUCTION: 49990 so'm
+                12: int(49990 * 12 * 0.9)  # PRODUCTION: 10% chegirma
             }
         }
         amount = prices.get(tariff, prices['PLUS']).get(months, 29990)
@@ -158,9 +158,9 @@ def payment_pro():
         months = int(months)
         user_id = int(user_id)
 
-        # TEST narxlar: PRO 1 oy = 2000, 12 oy = 2000*12*0.9
-        prices = { 1: 2000, 12: int(2000 * 12 * 0.9) }
-        amount = prices.get(months, 2000)
+        # PRODUCTION narxlar: PRO 1 oy = 49990, 12 oy = 49990*12*0.9
+        prices = { 1: 49990, 12: int(49990 * 12 * 0.9) }
+        amount = prices.get(months, 49990)
 
         # Merchant trans ID (har doim PRO)
         import time
