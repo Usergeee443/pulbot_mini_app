@@ -1253,12 +1253,16 @@ def click_complete():
                 try:
                     local_merchant_trans_id = merchant_trans_id
                     local_click_trans_id = click_trans_id
+                    local_amount = float(amount) if amount else 0
                     
                     # merchant_trans_id topish
                     if not local_merchant_trans_id or not local_merchant_trans_id.strip():
                         payment = db.get_payment_by_click_trans_id(local_click_trans_id)
                         if payment and payment.get('merchant_trans_id'):
                             local_merchant_trans_id = payment['merchant_trans_id']
+                            # Amount ni payment'dan olish
+                            if not local_amount and payment.get('amount'):
+                                local_amount = float(payment.get('amount'))
                         else:
                             # Oxirgi pending topish
                             query = "SELECT * FROM payments WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1"
@@ -1267,6 +1271,9 @@ def click_complete():
                                 local_merchant_trans_id = result[0].get('merchant_trans_id', '')
                                 if local_merchant_trans_id:
                                     db.update_payment_prepare(local_merchant_trans_id, local_click_trans_id)
+                                # Amount ni payment'dan olish
+                                if not local_amount and result[0].get('amount'):
+                                    local_amount = float(result[0].get('amount'))
                     
                     if local_merchant_trans_id and local_merchant_trans_id.strip():
                         parts = local_merchant_trans_id.split('_')
@@ -1279,6 +1286,29 @@ def click_complete():
                             db.update_payment_complete(local_merchant_trans_id, status='confirmed', error_code=error_code, error_note='Success')
                             db.activate_tariff(user_id, tariff, months)
                             logging.info(f"✅ Background: {local_merchant_trans_id} - activated")
+                            
+                            # Bot serveriga bildirish
+                            try:
+                                bot_notify_url = "http://195.200.29.240:5005/payment-notify"
+                                notify_data = {
+                                    "user_id": user_id,
+                                    "amount": int(local_amount),
+                                    "status": "success"
+                                }
+                                notify_response = requests.post(
+                                    bot_notify_url,
+                                    json=notify_data,
+                                    timeout=5,
+                                    headers={'Content-Type': 'application/json'}
+                                )
+                                if notify_response.status_code == 200:
+                                    logging.info(f"✅ Bot serverga yuborildi: user_id={user_id}, amount={local_amount}")
+                                else:
+                                    logging.warning(f"⚠️ Bot server javob: {notify_response.status_code}")
+                            except requests.exceptions.Timeout:
+                                logging.error(f"Bot serverga yuborishda xatolik: Timeout (5 soniya)")
+                            except Exception as notify_err:
+                                logging.error(f"Bot serverga yuborishda xatolik: {notify_err}")
                 except Exception as e:
                     logging.error(f"❌ Background error: {e}")
             
