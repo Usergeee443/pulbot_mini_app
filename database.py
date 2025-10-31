@@ -332,13 +332,40 @@ class Database:
         return self.execute_query(query, (user_id, limit))
     
     def activate_tariff(self, user_id, tariff, months=1):
-        """Tarifni faollashtirish va muddatini belgilash"""
+        """Tarifni faollashtirish va muddatini belgilash - eng yuqori tarifni saqlaydi"""
         from datetime import datetime, timedelta
         import logging
         
         expires_at = datetime.now() + timedelta(days=30 * months)
         
-        # 1. Users jadvalini yangilash
+        # Tarif darajalari
+        tariff_priority = {
+            'PRO': 3,
+            'Pro': 3,
+            'PLUS': 2,
+            'Plus': 2,
+            'Bepul': 1,
+            'FREE': 1
+        }
+        
+        # Joriy tarifni olish
+        current_query = "SELECT tariff FROM users WHERE user_id = %s"
+        current_result = self.execute_query(current_query, (user_id,))
+        current_tariff = None
+        if current_result:
+            current_tariff = current_result[0].get('tariff')
+        
+        # Eng yuqori tarifni aniqlash
+        final_tariff = tariff
+        if current_tariff:
+            current_priority = tariff_priority.get(current_tariff, 0)
+            new_priority = tariff_priority.get(tariff, 0)
+            # Agar joriy tarif yuqorida bo'lsa, uni saqlash
+            if current_priority > new_priority:
+                final_tariff = current_tariff
+                logging.info(f"⚠️ activate_tariff: Keeping higher priority tariff: {current_tariff} > {tariff}")
+        
+        # 1. Users jadvalini yangilash (eng yuqori tarif bilan)
         query = """
         UPDATE users 
         SET tariff = %s,
@@ -346,8 +373,8 @@ class Database:
             updated_at = NOW()
         WHERE user_id = %s
         """
-        result = self.execute_query(query, (tariff, expires_at, user_id))
-        logging.info(f"✅ activate_tariff: Updated users table for user_id={user_id}, tariff={tariff}, expires_at={expires_at}")
+        result = self.execute_query(query, (final_tariff, expires_at, user_id))
+        logging.info(f"✅ activate_tariff: Updated users table for user_id={user_id}, tariff={final_tariff}, expires_at={expires_at}")
         
         # 2. User_subscriptions jadvaliga qo'shish (agar mavjud bo'lsa)
         # Avval user'ni users jadvalida mavjudligini tekshiramiz
@@ -381,8 +408,8 @@ class Database:
                     expires_at = VALUES(expires_at),
                     is_active = 1
                 """
-                self.execute_query(subscription_query, (user_id, tariff, expires_at))
-                logging.info(f"✅ activate_tariff: Updated user_subscriptions for user_id={user_id}")
+                self.execute_query(subscription_query, (user_id, final_tariff, expires_at))
+                logging.info(f"✅ activate_tariff: Updated user_subscriptions for user_id={user_id}, tariff={final_tariff}")
             else:
                 logging.info(f"⚠️ user_subscriptions table not found, skipping subscription update")
         except Exception as sub_err:
@@ -392,13 +419,78 @@ class Database:
         return result
     
     def get_user_tariff(self, user_id):
-        """Foydalanuvchi tarifini olish"""
-        query = "SELECT tariff FROM users WHERE user_id = %s"
+        """Foydalanuvchi tarifini olish - eng yuqori aktiv obunani qaytaradi"""
+        from datetime import datetime
+        
+        # Tarif darajalari (yuqoridan pastga)
+        tariff_priority = {
+            'PRO': 3,
+            'Pro': 3,
+            'PLUS': 2,
+            'Plus': 2,
+            'Bepul': 1,
+            'FREE': 1
+        }
+        
+        # 1. Avval users jadvalidan o'qish
+        query = "SELECT tariff, tariff_expires_at FROM users WHERE user_id = %s"
         result = self.execute_query(query, (user_id,))
+        user_tariff = None
         if result:
             user = result[0]
-            return user['tariff'] or 'Plus'  # Default: Plus
-        return 'Plus'  # Default: Plus
+            expires_at = user.get('tariff_expires_at')
+            # Agar muddat o'tmagan bo'lsa
+            if not expires_at or expires_at > datetime.now():
+                user_tariff = user.get('tariff')
+        
+        # 2. User_subscriptions jadvalidan eng yuqori aktiv obunani topish
+        try:
+            subscription_query = """
+            SELECT tariff, expires_at 
+            FROM user_subscriptions 
+            WHERE user_id = %s AND is_active = 1 AND expires_at > NOW()
+            ORDER BY 
+                CASE tariff
+                    WHEN 'PRO' THEN 3
+                    WHEN 'Plus' THEN 2
+                    WHEN 'PLUS' THEN 2
+                    WHEN 'Bepul' THEN 1
+                    ELSE 0
+                END DESC,
+                expires_at DESC
+            LIMIT 1
+            """
+            subscription_result = self.execute_query(subscription_query, (user_id,))
+            
+            if subscription_result:
+                subscription_tariff = subscription_result[0].get('tariff')
+                # Eng yuqori tarifni tanlash
+                if user_tariff:
+                    user_priority = tariff_priority.get(user_tariff, 0)
+                    sub_priority = tariff_priority.get(subscription_tariff, 0)
+                    if sub_priority > user_priority:
+                        user_tariff = subscription_tariff
+                else:
+                    user_tariff = subscription_tariff
+        except Exception as e:
+            logging.warning(f"⚠️ Could not check user_subscriptions: {e}")
+        
+        # 3. Users jadvalidagi tarifni yangilash (eng yuqori bilan)
+        if user_tariff:
+            # Agar users jadvalidagi tarif pastroq bo'lsa, yangilash
+            current_query = "SELECT tariff FROM users WHERE user_id = %s"
+            current_result = self.execute_query(current_query, (user_id,))
+            if current_result:
+                current_tariff = current_result[0].get('tariff')
+                current_priority = tariff_priority.get(current_tariff, 0)
+                new_priority = tariff_priority.get(user_tariff, 0)
+                
+                if new_priority > current_priority:
+                    # Eng yuqori tarifni saqlash
+                    update_query = "UPDATE users SET tariff = %s, updated_at = NOW() WHERE user_id = %s"
+                    self.execute_query(update_query, (user_tariff, user_id))
+        
+        return user_tariff or 'Bepul'  # Default: Bepul
     
     def update_user_tariff(self, user_id, tariff, expires_at=None):
         """Foydalanuvchi tarifini yangilash"""
