@@ -405,22 +405,20 @@ class BalansAI {
             this.createBasicChart();
             this.lockPremiumCharts();
         } 
-        // Plus - 5 ta grafik
-        else if (tariff === 'Plus' || tariff === 'PLUS') {
-            console.log('Creating plus charts for tariff:', tariff);
+        // Plus, Pro - 6 ta grafik (bir xil)
+        else if (tariff === 'Plus' || tariff === 'PLUS' || tariff === 'Pro' || tariff === 'PRO') {
+            console.log('Creating plus/pro charts for tariff:', tariff);
             this.createPremiumCharts();
-            requestAnimationFrame(() => this.lockMaxCharts());
         }
-        // Pro, Max - 10 ta grafik (barcha grafiklar)
-        else if (tariff === 'Pro' || tariff === 'PRO' ||
-                 tariff === 'Max' || tariff === 'MAX' || 
+        // Max - 10 ta grafik (barcha grafiklar)
+        else if (tariff === 'Max' || tariff === 'MAX' || 
                  tariff === 'Biznes Plus' || tariff === 'BIZNES PLUS' ||
                  tariff === 'Biznes Max' || tariff === 'BIZNES MAX' ||
                  tariff === 'Oila Plus' || tariff === 'OILA PLUS' ||
                  tariff === 'Oila Max' || tariff === 'OILA MAX' ||
                  tariff === 'Biznes' || tariff === 'BIZNES' ||
                  tariff === 'Oila' || tariff === 'OILA') {
-            console.log('Creating max/pro charts for tariff:', tariff);
+            console.log('Creating max charts for tariff:', tariff);
             this.createMaxCharts();
         }
         else {
