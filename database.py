@@ -596,6 +596,28 @@ class Database:
         """Barcha app sozlamalarini olish"""
         query = "SELECT * FROM app_settings ORDER BY setting_key"
         return self.execute_query(query) or []
+    
+    def seed_default_settings(self):
+        """Default app settings ni yaratish (faqat birinchi marta)"""
+        # Tekshirish: allaqachon mavjudmi?
+        existing = self.get_all_settings()
+        if existing:
+            logging.info("App settings allaqachon mavjud, seeding o'tkazilmaydi")
+            return
+        
+        # Default settings
+        default_settings = [
+            ('home', 'on', 'Asosiy sahifa - Balans'),
+            ('transactions', 'on', 'Tranzaksiyalar sahifasi'),
+            ('analytics', 'off', 'Tahlillar sahifasi'),  # Hozir off
+            ('debts', 'on', 'Qarzlar sahifasi'),
+            ('ai_chat', 'on', 'AI Chat sahifasi')
+        ]
+        
+        for key, value, desc in default_settings:
+            self.update_app_setting(key, value, desc)
+        
+        logging.info("Default app settings yaratildi")
 
 # Global database instance
 db = Database()

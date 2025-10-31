@@ -1478,6 +1478,7 @@ if __name__ == '__main__':
         db.create_goals_table()
         db.create_payments_table()
         db.create_app_settings_table()
+        db.seed_default_settings()  # Default settings ni yaratish
         print("✅ Database jadvallari yaratildi")
     except Exception as e:
         print(f"❌ Database xatoligi: {e}")
