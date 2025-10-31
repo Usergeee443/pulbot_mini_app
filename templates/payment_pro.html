@@ -152,13 +152,13 @@
             <div class="duration-card selected" onclick="selectDuration(1, this)">
                 <div class="duration-left">
                     <div class="duration-label">1 oy</div>
-                    <div class="duration-price" id="price1Month">2 000 so'm</div>
+                    <div class="duration-price" id="price1Month">49 990 so'm</div>
                 </div>
             </div>
             <div class="duration-card" onclick="selectDuration(12, this)">
                 <div class="duration-left">
                     <div class="duration-label">12 oy</div>
-                    <div class="duration-price" id="price12Month">21 600 so'm</div>
+                    <div class="duration-price" id="price12Month">539 892 so'm</div>
                 </div>
                 <div class="duration-badge">10% chegirma</div>
             </div>
@@ -206,10 +206,11 @@
             updateActionButton();
         }
         function updateActionButton() {
-            const price = currentDuration === 1 ? 2000 : Math.round(2000 * 12 * 0.9);
+            const monthly = 49990;
+            const price = currentDuration === 1 ? monthly : Math.round(monthly * 12 * 0.9);
             document.getElementById('actionBtnText').textContent = `${price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm evaziga yangilanish`;
-            document.getElementById('price1Month').textContent = `2 000 so'm`;
-            document.getElementById('price12Month').textContent = `21 600 so'm`;
+            document.getElementById('price1Month').textContent = `${monthly.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
+            document.getElementById('price12Month').textContent = `${Math.round(monthly * 12 * 0.9).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
         }
 
         // Subscription lock: agar PRO/PLUS aktiv bo'lsa — to'lashni bloklash
