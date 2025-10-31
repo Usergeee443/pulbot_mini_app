@@ -49,6 +49,14 @@ TARIFF_LIMITS = {
         'custom_categories': -1,  # Unlimited
         'charts_count': 5
     },
+    'Pro': {
+        'transactions_per_month': -1,  # Unlimited
+        'ai_requests_per_day': -1,  # Unlimited
+        'advanced_analytics': True,
+        'export_data': True,
+        'custom_categories': -1,  # Unlimited
+        'charts_count': 10
+    },
     'Max': {
         'transactions_per_month': -1,  # Unlimited
         'ai_requests_per_day': -1,  # Unlimited

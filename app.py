@@ -7,7 +7,7 @@ import logging
 import threading
 from datetime import datetime, timedelta
 from database import Database
-from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY, CLICK_SECRET_KEY, CLICK_SERVICE_ID, CLICK_MERCHANT_ID, CLICK_MERCHANT_USER_ID
+from config import DB_CONFIG, TARIFF_LIMITS, OPENAI_API_KEY, CLICK_SECRET_KEY, CLICK_SERVICE_ID, CLICK_MERCHANT_ID, CLICK_MERCHANT_USER_ID, BOT_TOKEN
 
 # Flask app yaratish
 app = Flask(__name__)
@@ -1287,28 +1287,27 @@ def click_complete():
                             db.activate_tariff(user_id, tariff, months)
                             logging.info(f"✅ Background: {local_merchant_trans_id} - activated")
                             
-                            # Bot serveriga bildirish
+                            # Botga to'g'ridan-to'g'ri xabar yuborish
                             try:
-                                bot_notify_url = "http://195.200.29.240:5005/payment-notify"
-                                notify_data = {
-                                    "user_id": user_id,
-                                    "amount": int(local_amount),
-                                    "status": "success"
-                                }
-                                notify_response = requests.post(
-                                    bot_notify_url,
-                                    json=notify_data,
-                                    timeout=5,
-                                    headers={'Content-Type': 'application/json'}
-                                )
-                                if notify_response.status_code == 200:
-                                    logging.info(f"✅ Bot serverga yuborildi: user_id={user_id}, amount={local_amount}")
-                                else:
-                                    logging.warning(f"⚠️ Bot server javob: {notify_response.status_code}")
-                            except requests.exceptions.Timeout:
-                                logging.error(f"Bot serverga yuborishda xatolik: Timeout (5 soniya)")
-                            except Exception as notify_err:
-                                logging.error(f"Bot serverga yuborishda xatolik: {notify_err}")
+                                if BOT_TOKEN:
+                                    # Telegram Bot API orqali xabar yuborish
+                                    telegram_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+                                    message_text = f"✅ To'lov {int(local_amount):,} so'm muvaffaqiyatli amalga oshirildi!\n\nTarifingiz faollashtirildi: {tariff}"
+                                    telegram_data = {
+                                        "chat_id": user_id,
+                                        "text": message_text
+                                    }
+                                    telegram_response = requests.post(
+                                        telegram_url,
+                                        json=telegram_data,
+                                        timeout=5
+                                    )
+                                    if telegram_response.status_code == 200:
+                                        logging.info(f"✅ Telegram xabar yuborildi: user_id={user_id}, amount={local_amount}")
+                                    else:
+                                        logging.warning(f"⚠️ Telegram javob: {telegram_response.status_code}")
+                            except Exception as telegram_err:
+                                logging.error(f"Botga xabar yuborishda xatolik: {telegram_err}")
                 except Exception as e:
                     logging.error(f"❌ Background error: {e}")
             
