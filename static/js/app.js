@@ -1619,6 +1619,61 @@ class BalansAI {
             return;
         }
         
+        // Sahifa holatini tekshirish (settings)
+        const settings = this.config.settings || {};
+        const pageSetting = settings[tabName];
+        
+        // Agar sahifa off yoki maintenance bo'lsa, "Ish olib borilmoqda" ko'rsatish
+        if (pageSetting === 'off' || pageSetting === 'maintenance') {
+            // Close AI Chat if it's open
+            const aiChat = document.getElementById('ai-chat');
+            if (aiChat && aiChat.style.display !== 'none') {
+                aiChat.style.display = 'none';
+            }
+            
+            // Show bottom navigation
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+                bottomNav.style.display = 'flex';
+            }
+            
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            const navItem = document.querySelector(`[data-tab="${tabName}"]`);
+            if (navItem) {
+                navItem.classList.add('active');
+            }
+            
+            // Show corresponding content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+                content.style.display = 'none';
+            });
+            
+            const tabContent = document.getElementById(tabName);
+            if (tabContent) {
+                tabContent.classList.add('active');
+                tabContent.style.display = 'block';
+                // "Ish olib borilmoqda" xabarini ko'rsatish
+                tabContent.innerHTML = `
+                    <div class="section" style="padding: 40px 20px; text-align: center;">
+                        <div style="font-size: 80px; margin-bottom: 20px;">🔧</div>
+                        <h2 style="color: #333; margin-bottom: 10px;">Ish olib borilmoqda</h2>
+                        <p style="color: #666; line-height: 1.6;">
+                            Ushbu funksiya hozirda ishlamayapti. <br>
+                            Qisqa muddatdan keyin qayta turing.
+                        </p>
+                    </div>
+                `;
+            }
+            
+            this.currentTab = tabName;
+            return;
+        }
+        
         // Close AI Chat if it's open
         const aiChat = document.getElementById('ai-chat');
         if (aiChat && aiChat.style.display !== 'none') {
@@ -1659,8 +1714,8 @@ class BalansAI {
 
         this.currentTab = tabName;
         
-        // Analytics tabiga kirganda grafiklarni yuklash
-        if (tabName === 'analytics' && !this.chartsLoaded) {
+        // Analytics tabiga kirganda grafiklarni yuklash (faqat on bo'lsa)
+        if (tabName === 'analytics' && !this.chartsLoaded && pageSetting === 'on') {
             this.chartsLoaded = true;
             requestAnimationFrame(() => {
                 this.updateCharts();
