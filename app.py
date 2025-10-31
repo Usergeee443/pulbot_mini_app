@@ -286,46 +286,39 @@ def privacy():
 # Asosiy API endpoints
 @app.route('/api/statistics/<int:user_id>')
 def get_statistics(user_id):
-    """Foydalanuvchi statistikalarini olish"""
+    """Foydalanuvchi statistikalarini olish - optimizatsiya qilingan"""
     try:
-        # Asosiy statistikalar
-        income_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'income'"
-        expense_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'expense'"
-        debt_query = "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE user_id = %s AND transaction_type = 'debt'"
+        # Bitta birlashgan query bilan barcha statistikani yuklash
+        aggregated_query = """
+        SELECT 
+            COALESCE(SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END), 0) as total_income,
+            COALESCE(SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END), 0) as total_expense,
+            COALESCE(SUM(CASE WHEN transaction_type = 'debt' THEN amount ELSE 0 END), 0) as total_debt,
+            COALESCE(SUM(CASE 
+                WHEN transaction_type = 'income' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())
+                THEN amount ELSE 0 END), 0) as monthly_income,
+            COALESCE(SUM(CASE 
+                WHEN transaction_type = 'expense' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())
+                THEN amount ELSE 0 END), 0) as monthly_expense
+        FROM transactions 
+        WHERE user_id = %s
+        """
         
-        income_result = db.execute_query(income_query, (user_id,))
-        expense_result = db.execute_query(expense_query, (user_id,))
-        debt_result = db.execute_query(debt_query, (user_id,))
+        stats_result = db.execute_query(aggregated_query, (user_id,))
         
-        total_income = income_result[0]['total'] if income_result else 0
-        total_expense = expense_result[0]['total'] if expense_result else 0
-        total_debt = debt_result[0]['total'] if debt_result else 0
+        if stats_result and len(stats_result) > 0:
+            total_income = float(stats_result[0].get('total_income', 0))
+            total_expense = float(stats_result[0].get('total_expense', 0))
+            total_debt = float(stats_result[0].get('total_debt', 0))
+            monthly_income = float(stats_result[0].get('monthly_income', 0))
+            monthly_expense = float(stats_result[0].get('monthly_expense', 0))
+        else:
+            total_income = total_expense = total_debt = monthly_income = monthly_expense = 0
         
         balance = total_income - total_expense - total_debt
         
-        # Oylik ma'lumotlar
-        monthly_income_query = """
-        SELECT COALESCE(SUM(amount), 0) as total 
-        FROM transactions 
-        WHERE user_id = %s AND transaction_type = 'income' 
-        AND MONTH(created_at) = MONTH(CURRENT_DATE()) 
-        AND YEAR(created_at) = YEAR(CURRENT_DATE())
-        """
-        monthly_expense_query = """
-        SELECT COALESCE(SUM(amount), 0) as total 
-        FROM transactions 
-        WHERE user_id = %s AND transaction_type = 'expense' 
-        AND MONTH(created_at) = MONTH(CURRENT_DATE()) 
-        AND YEAR(created_at) = YEAR(CURRENT_DATE())
-        """
-        
-        monthly_income_result = db.execute_query(monthly_income_query, (user_id,))
-        monthly_expense_result = db.execute_query(monthly_expense_query, (user_id,))
-        
-        monthly_income = monthly_income_result[0]['total'] if monthly_income_result else 0
-        monthly_expense = monthly_expense_result[0]['total'] if monthly_expense_result else 0
-        
-        # Kategoriya ma'lumotlari
+        # Parallel yuklash: Kategoriya va tranzaksiyalarni bir vaqtda
+        # (Agar kerak bo'lsa faqat)
         category_query = """
         SELECT category, COALESCE(SUM(amount), 0) as total 
         FROM transactions 
@@ -334,15 +327,15 @@ def get_statistics(user_id):
         ORDER BY total DESC 
         LIMIT 5
         """
-        category_result = db.execute_query(category_query, (user_id,))
         
-        # So'nggi tranzaksiyalar
         recent_transactions_query = """
         SELECT * FROM transactions 
         WHERE user_id = %s 
         ORDER BY created_at DESC 
         LIMIT 10
         """
+        
+        category_result = db.execute_query(category_query, (user_id,))
         recent_transactions = db.execute_query(recent_transactions_query, (user_id,))
         
         # transaction_type ni type ga qo'shish
@@ -355,16 +348,17 @@ def get_statistics(user_id):
             'success': True,
             'data': {
                 'balance': float(balance),
-                'total_income': float(total_income),
-                'total_expense': float(total_expense),
-                'total_debt': float(total_debt),
-                'monthly_income': float(monthly_income),
-                'monthly_expense': float(monthly_expense),
+                'total_income': total_income,
+                'total_expense': total_expense,
+                'total_debt': total_debt,
+                'monthly_income': monthly_income,
+                'monthly_expense': monthly_expense,
                 'category_data': category_result or [],
                 'recent_transactions': recent_transactions or []
             }
         })
     except Exception as e:
+        logging.error(f"Statistics error: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/debts/<int:user_id>')
