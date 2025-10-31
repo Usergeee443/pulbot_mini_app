@@ -355,7 +355,7 @@ class Database:
         if current_result:
             current_tariff = current_result[0].get('tariff')
         
-        # Eng yuqori tarifni aniqlash
+        # Eng yuqori tarifni aniqlash - yangi tarifni sotib olganda har doim yangilash
         final_tariff = tariff
         if current_tariff:
             current_priority = tariff_priority.get(current_tariff, 0)
@@ -364,6 +364,10 @@ class Database:
             if current_priority > new_priority:
                 final_tariff = current_tariff
                 logging.info(f"⚠️ activate_tariff: Keeping higher priority tariff: {current_tariff} > {tariff}")
+            elif new_priority >= current_priority:
+                # Yangi tarif yuqori yoki teng bo'lsa, yangilash
+                final_tariff = tariff
+                logging.info(f"✅ activate_tariff: Updating tariff: {current_tariff} → {tariff}")
         
         # 1. Users jadvalini yangilash (eng yuqori tarif bilan)
         query = """

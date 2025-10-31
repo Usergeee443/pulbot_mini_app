@@ -1261,7 +1261,7 @@ def click_complete():
                         if payment and payment.get('merchant_trans_id'):
                             local_merchant_trans_id = payment['merchant_trans_id']
                             # Amount ni payment'dan olish
-                            if not local_amount and payment.get('amount'):
+                            if local_amount == 0 and payment.get('amount'):
                                 local_amount = float(payment.get('amount'))
                         else:
                             # Oxirgi pending topish
@@ -1272,7 +1272,7 @@ def click_complete():
                                 if local_merchant_trans_id:
                                     db.update_payment_prepare(local_merchant_trans_id, local_click_trans_id)
                                 # Amount ni payment'dan olish
-                                if not local_amount and result[0].get('amount'):
+                                if local_amount == 0 and result[0].get('amount'):
                                     local_amount = float(result[0].get('amount'))
                     
                     if local_merchant_trans_id and local_merchant_trans_id.strip():
