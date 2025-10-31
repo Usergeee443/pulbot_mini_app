@@ -1613,8 +1613,54 @@ class BalansAI {
     switchTab(tabName) {
         console.log('Switching to tab:', tabName);
         
-        // AI Chat - fullscreen mode
+        // Sahifa holatini tekshirish (settings) - AI Chat ham uchun
+        const settings = this.config.settings || {};
+        const pageSetting = settings[tabName];
+        
+        // AI Chat - fullscreen mode (settings check bilan)
         if (tabName === 'ai-chat') {
+            // Agar ai_chat off yoki maintenance bo'lsa
+            if (pageSetting === 'off' || pageSetting === 'maintenance') {
+                // Show bottom navigation
+                const bottomNav = document.querySelector('.bottom-nav');
+                if (bottomNav) {
+                    bottomNav.style.display = 'flex';
+                }
+                
+                // Update active nav item
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                const navItem = document.querySelector(`[data-tab="${tabName}"]`);
+                if (navItem) {
+                    navItem.classList.add('active');
+                }
+                
+                // AI Chat container'ni "Ish olib borilmoqda" bilan to'ldirish
+                const aiChat = document.getElementById('ai-chat');
+                if (aiChat) {
+                    aiChat.style.cssText = 'display: flex !important; visibility: visible !important;';
+                    const messagesContainer = document.getElementById('aiMessages');
+                    if (messagesContainer) {
+                        messagesContainer.innerHTML = `
+                            <div style="padding: 40px 20px; text-align: center;">
+                                <div style="font-size: 80px; margin-bottom: 20px;">🔧</div>
+                                <h2 style="color: #333; margin-bottom: 10px;">Ish olib borilmoqda</h2>
+                                <p style="color: #666; line-height: 1.6;">
+                                    Ushbu funksiya hozirda ishlamayapti. <br>
+                                    Qisqa muddatdan keyin qayta turing.
+                                </p>
+                            </div>
+                        `;
+                    }
+                }
+                
+                this.currentTab = tabName;
+                return;
+            }
+            
+            // Agar on bo'lsa, oddiy ochish
             this.openAiChat();
             return;
         }
