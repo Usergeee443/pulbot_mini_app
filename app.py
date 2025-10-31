@@ -317,17 +317,7 @@ def get_statistics(user_id):
         
         balance = total_income - total_expense - total_debt
         
-        # Parallel yuklash: Kategoriya va tranzaksiyalarni bir vaqtda
-        # (Agar kerak bo'lsa faqat)
-        category_query = """
-        SELECT category, COALESCE(SUM(amount), 0) as total 
-        FROM transactions 
-        WHERE user_id = %s AND transaction_type = 'expense' 
-        GROUP BY category 
-        ORDER BY total DESC 
-        LIMIT 5
-        """
-        
+        # Faqat kerak bo'lganda yuklash: So'nggi tranzaksiyalar (chartlar uchun emas)
         recent_transactions_query = """
         SELECT * FROM transactions 
         WHERE user_id = %s 
@@ -335,7 +325,6 @@ def get_statistics(user_id):
         LIMIT 10
         """
         
-        category_result = db.execute_query(category_query, (user_id,))
         recent_transactions = db.execute_query(recent_transactions_query, (user_id,))
         
         # transaction_type ni type ga qo'shish
@@ -353,7 +342,6 @@ def get_statistics(user_id):
                 'total_debt': total_debt,
                 'monthly_income': monthly_income,
                 'monthly_expense': monthly_expense,
-                'category_data': category_result or [],
                 'recent_transactions': recent_transactions or []
             }
         })
