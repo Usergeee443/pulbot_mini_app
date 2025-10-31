@@ -332,8 +332,9 @@ class BalansAI {
             if (aiVoiceBtn) aiVoiceBtn.disabled = true;
             if (aiRealTimeBtn) aiRealTimeBtn.disabled = true;
         } 
-        // Plus, Biznes, Oila tariflar
+        // Plus, Pro, Biznes, Oila tariflar
         else if (tariff === 'Plus' || tariff === 'PLUS' || 
+                 tariff === 'Pro' || tariff === 'PRO' ||
                  tariff === 'Biznes' || tariff === 'BIZNES' ||
                  tariff === 'Oila' || tariff === 'OILA' ||
                  tariff === 'Max' || tariff === 'MAX' ||
@@ -404,21 +405,22 @@ class BalansAI {
             this.createBasicChart();
             this.lockPremiumCharts();
         } 
-        // Plus, Biznes, Oila - 5 ta grafik
-        else if (tariff === 'Plus' || tariff === 'PLUS' || 
-                 tariff === 'Biznes' || tariff === 'BIZNES' ||
-                 tariff === 'Oila' || tariff === 'OILA') {
-            console.log('Creating plus/business/family charts for tariff:', tariff);
+        // Plus - 5 ta grafik
+        else if (tariff === 'Plus' || tariff === 'PLUS') {
+            console.log('Creating plus charts for tariff:', tariff);
             this.createPremiumCharts();
             requestAnimationFrame(() => this.lockMaxCharts());
         }
-        // Max - 10 ta grafik
-        else if (tariff === 'Max' || tariff === 'MAX' || 
+        // Pro, Max - 10 ta grafik (barcha grafiklar)
+        else if (tariff === 'Pro' || tariff === 'PRO' ||
+                 tariff === 'Max' || tariff === 'MAX' || 
                  tariff === 'Biznes Plus' || tariff === 'BIZNES PLUS' ||
                  tariff === 'Biznes Max' || tariff === 'BIZNES MAX' ||
                  tariff === 'Oila Plus' || tariff === 'OILA PLUS' ||
-                 tariff === 'Oila Max' || tariff === 'OILA MAX') {
-            console.log('Creating max charts for tariff:', tariff);
+                 tariff === 'Oila Max' || tariff === 'OILA MAX' ||
+                 tariff === 'Biznes' || tariff === 'BIZNES' ||
+                 tariff === 'Oila' || tariff === 'OILA') {
+            console.log('Creating max/pro charts for tariff:', tariff);
             this.createMaxCharts();
         }
         else {
