@@ -1665,10 +1665,6 @@ class BalansAI {
             return;
         }
         
-        // Sahifa holatini tekshirish (settings)
-        const settings = this.config.settings || {};
-        const pageSetting = settings[tabName];
-        
         // Agar sahifa off yoki maintenance bo'lsa, "Ish olib borilmoqda" ko'rsatish
         if (pageSetting === 'off' || pageSetting === 'maintenance') {
             // Close AI Chat if it's open
