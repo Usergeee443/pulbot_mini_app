@@ -377,13 +377,29 @@ class BalansAI {
         `).join('');
     }
 
-    updateCharts() {
+    async updateCharts() {
         console.log('Updating charts for tariff:', this.data.tariff);
         
         // Chart.js yuklanganligini tekshirish
         if (typeof Chart === 'undefined') {
             console.error('Chart.js is not loaded!');
             return;
+        }
+        
+        // Analytics uchun to'liq ma'lumotni yuklash
+        if (!this.data.allTransactions || this.data.allTransactions.length === 0) {
+            console.log('Loading full transactions for analytics...');
+            try {
+                const userId = this.currentUser.id;
+                const transactions = await this.fetchData(`/api/transactions/${userId}`);
+                if (transactions.success) {
+                    this.data.allTransactions = transactions.data || [];
+                    console.log('Loaded', this.data.allTransactions.length, 'transactions for analytics');
+                }
+            } catch (error) {
+                console.error('Error loading full transactions:', error);
+                this.data.allTransactions = this.data.transactions; // Fallback to recent
+            }
         }
         
         // Eski grafiklarni tozalash
@@ -398,6 +414,10 @@ class BalansAI {
         
         // Grafiklarni darhol render qilish
         const tariff = this.data.tariff || 'Bepul';
+        
+        // Chart yaratish paytida allTransactions'dan foydalanish
+        const originalTransactions = this.data.transactions;
+        this.data.transactions = this.data.allTransactions;
         
         // Bepul tarifida faqat asosiy grafik
         if (tariff === 'Bepul' || tariff === 'FREE') {
@@ -426,6 +446,9 @@ class BalansAI {
             this.createBasicChart();
             this.lockPremiumCharts();
         }
+        
+        // Restore original transactions for UI
+        this.data.transactions = originalTransactions;
         
         console.log('Charts created:', Object.keys(this.charts));
     }
@@ -1759,8 +1782,8 @@ class BalansAI {
         // Analytics tabiga kirganda grafiklarni yuklash (faqat on bo'lsa)
         if (tabName === 'analytics' && !this.chartsLoaded && pageSetting === 'on') {
             this.chartsLoaded = true;
-            requestAnimationFrame(() => {
-                this.updateCharts();
+            requestAnimationFrame(async () => {
+                await this.updateCharts();
             });
         }
     }
