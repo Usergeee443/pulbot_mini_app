@@ -422,7 +422,7 @@
         .success-banner { display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: #e8f8ee; color: #137a2a; border: 1px solid #c6eed3; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 2000; }
         .success-banner.show { display: inline-block; }
         /* Loading overlay */
-        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .loading-overlay.hidden { display: none; }
         .loading-spinner { width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #000; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -431,10 +431,8 @@
 <body>
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
-        <div style="text-align: center;">
-            <div class="loading-spinner"></div>
-            <p style="color: #666; font-size: 15px; margin-top: 16px;">Ma'lumotlar yuklanmoqda...</p>
-        </div>
+        <div class="loading-spinner"></div>
+        <p style="color: #666; font-size: 15px; margin-top: 16px;">Ma'lumotlar yuklanmoqda...</p>
     </div>
 
     <!-- Plus Tarif View -->
