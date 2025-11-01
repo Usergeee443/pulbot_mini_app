@@ -20,7 +20,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             color: #000000;
-            overflow: hidden; /* scrollbars yo'q */
+            overflow: visible; /* scrollbars ruxsat berish */
             -webkit-user-select: none;
             user-select: none;
             touch-action: pan-y;
@@ -38,6 +38,7 @@
             display: flex;
             flex-direction: column;
             background: white;
+            overflow-y: auto;
         }
 
         /* Gradient overlay - faqat tepa 40% */

@@ -11,7 +11,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             color: #000000;
-            overflow: hidden; /* scrollbars yo'q */
+            overflow: visible; /* scrollbars ruxsat berish */
             -webkit-user-select: none; user-select: none;
             touch-action: pan-y; -webkit-text-size-adjust: 100%;
         }
@@ -19,7 +19,7 @@
         * { scrollbar-width: none; -ms-overflow-style: none; }
         *::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
-        .payment-container { width: 100%; min-height: 100vh; position: relative; display: flex; flex-direction: column; background: white; }
+        .payment-container { width: 100%; min-height: 100vh; position: relative; display: flex; flex-direction: column; background: white; overflow-y: auto; }
         .gradient-overlay { position: absolute; top: 0; left: 0; right: 0; height: 35%; z-index: 0; transition: opacity 0.5s ease; background: linear-gradient(180deg, #7CB3FF 00%, #ffffff 100%); }
         .payment-header { text-align: center; padding: 20px 20px 20px; position: relative; z-index: 1; transition: opacity 0.4s ease; }
         .payment-header h1 { font-size: 64px; font-weight: 900; color: #FFFFFF; letter-spacing: -1px; }
