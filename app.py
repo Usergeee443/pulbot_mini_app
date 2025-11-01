@@ -129,7 +129,7 @@ def payment():
             f"&amount={amount}"
             f"&transaction_param={urllib.parse.quote(merchant_trans_id)}"  # Backend uchun yashirin
             f"&customer={urllib.parse.quote(str(user_id))}"  # Buyurtma raqami (faqat user_id)
-            f"&return_url={urllib.parse.quote('https://balansai.onrender.com/payment-success')}"
+            f"&return_url={urllib.parse.quote('https://t.me/balansaibot')}"
         )
         
         logging.info(f"Payment redirect: user_id={user_id}, tariff={tariff}, months={months}, amount={amount}")
@@ -182,7 +182,7 @@ def payment_pro():
             f"&amount={amount}"
             f"&transaction_param={urllib.parse.quote(merchant_trans_id)}"
             f"&customer={urllib.parse.quote(str(user_id))}"
-            f"&return_url={urllib.parse.quote('https://balansai.onrender.com/payment-success')}"
+            f"&return_url={urllib.parse.quote('https://t.me/balansaibot')}"
         )
 
         logging.info(f"PAYMENT_PRO: user_id={user_id}, months={months}, amount={amount}, merchant_trans_id={merchant_trans_id}")
@@ -256,7 +256,7 @@ def test_payment():
             f"&merchant_id={CLICK_MERCHANT_ID}"
             f"&transaction_param={urllib.parse.quote(merchant_trans_id)}"
             f"&amount={amount}"
-            f"&return_url={urllib.parse.quote('https://balansai.onrender.com/test-payment')}"
+            f"&return_url={urllib.parse.quote('https://t.me/balansaibot')}"
         )
         
         logging.info(f"Test payment redirect: user_id={user_id}, months={months}, amount={amount}")
