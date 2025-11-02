@@ -8,6 +8,7 @@ class BalansAI {
             expense: 0,
             debt: 0,
             transactions: [],
+            allTransactions: [],
             debts: [],
             tariff: 'Bepul',
             limits: {}

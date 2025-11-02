@@ -387,6 +387,33 @@ def get_debts(user_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/api/transactions/<int:user_id>')
+def get_transactions(user_id):
+    """Foydalanuvchi barcha tranzaksiyalarini olish (analytics uchun)"""
+    try:
+        # Barcha tranzaksiyalarni olish (limit yo'q)
+        all_transactions_query = """
+        SELECT * FROM transactions 
+        WHERE user_id = %s 
+        ORDER BY created_at DESC
+        """
+        
+        all_transactions = db.execute_query(all_transactions_query, (user_id,))
+        
+        # transaction_type ni type ga qo'shish
+        if all_transactions:
+            for t in all_transactions:
+                if 'transaction_type' in t and 'type' not in t:
+                    t['type'] = t['transaction_type']
+        
+        return jsonify({
+            'success': True,
+            'data': all_transactions or []
+        })
+    except Exception as e:
+        logging.error(f"Transactions error: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
 @app.route('/api/user/tariff/<int:user_id>')
 def get_user_tariff(user_id):
     """Foydalanuvchi tarifini olish"""
