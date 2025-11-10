@@ -341,21 +341,34 @@ def click_complete():
         # Synchronous confirmation to avoid Click side "pending"
         user_payload = None
         try:
-            parts = merchant_trans_id.split('_') if merchant_trans_id else []
-            if len(parts) >= 2:
-                user_id = int(parts[0])
-                tariff_token = parts[1].upper()
-                months = 1
-                package_code = None
-                if tariff_token == 'PLUS' and len(parts) >= 3:
-                    third = parts[2]
-                    if third.isdigit():
-                        months = int(third)
-                    else:
-                        package_code = third.upper()
-                elif len(parts) >= 3 and parts[2].isdigit():
-                    months = int(parts[2])
-                normalized_tariff = 'PLUS' if tariff_token == 'PLUS' else tariff_token
+            payment_rec = db.get_payment_by_merchant_trans_id(merchant_trans_id)
+            user_id = None
+            normalized_tariff = None
+            package_code = None
+            amount_value = float(amount) if amount else 0
+            months = 1
+
+            if payment_rec:
+                user_id = int(payment_rec.get('user_id'))
+                normalized_tariff = (payment_rec.get('tariff') or 'PLUS').upper()
+                package_code = payment_rec.get('package_code')
+                amount_value = float(payment_rec.get('amount') or 0)
+            else:
+                parts = merchant_trans_id.split('_') if merchant_trans_id else []
+                if len(parts) >= 2:
+                    user_id = int(parts[0])
+                    tariff_token = parts[1].upper()
+                    normalized_tariff = 'PLUS' if tariff_token == 'PLUS' else tariff_token
+                    if tariff_token == 'PLUS' and len(parts) >= 3:
+                        third = parts[2]
+                        if third.isdigit():
+                            months = int(third)
+                        else:
+                            package_code = third.upper()
+                    elif len(parts) >= 3 and parts[2].isdigit():
+                        months = int(parts[2])
+
+            if normalized_tariff and user_id:
                 db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
                 db.activate_tariff(user_id, normalized_tariff, months)
                 package_info = None
@@ -363,10 +376,7 @@ def click_complete():
                     package_info = PLUS_PACKAGES.get(package_code)
                     if package_info:
                         db.assign_user_package(user_id, package_code, package_info['text_limit'], package_info['voice_limit'])
-                        db.log_package_purchase(user_id, package_code, float(amount) if amount else 0, merchant_trans_id)
-                else:
-                    package_info = None
-                amount_value = float(amount) if amount else 0
+                    db.log_package_purchase(user_id, package_code, amount_value, merchant_trans_id)
                 user_payload = {
                     'user_id': user_id,
                     'tariff': normalized_tariff,
