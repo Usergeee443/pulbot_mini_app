@@ -87,6 +87,21 @@ class Database:
         """
         self._execute(query)
 
+    def create_plus_package_purchases_table(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS plus_package_purchases (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            package_code VARCHAR(50) NOT NULL,
+            amount DECIMAL(15,2) NOT NULL,
+            merchant_trans_id VARCHAR(255) NOT NULL,
+            paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user (user_id),
+            INDEX idx_package (package_code)
+        )
+        """
+        self._execute(query)
+
     def ensure_payments_package_column(self):
         try:
             self._execute("ALTER TABLE payments ADD COLUMN package_code VARCHAR(50) NULL")
@@ -145,6 +160,13 @@ class Database:
             updated_at = CURRENT_TIMESTAMP
         """
         self._execute(query, (user_id, package_code, text_limit, voice_limit))
+
+    def log_package_purchase(self, user_id, package_code, amount, merchant_trans_id):
+        query = """
+        INSERT INTO plus_package_purchases (user_id, package_code, amount, merchant_trans_id)
+        VALUES (%s, %s, %s, %s)
+        """
+        self._execute(query, (user_id, package_code, amount, merchant_trans_id))
 
     def get_user_package_limits(self, user_id):
         query = "SELECT * FROM user_package_limits WHERE user_id = %s"

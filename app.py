@@ -31,6 +31,7 @@ try:
     db.create_payments_table()
     db.create_user_package_limits_table()
     db.ensure_payments_package_column()
+    db.create_plus_package_purchases_table()
 except Exception as bootstrap_err:
     logging.warning(f"⚠️ Database bootstrap warning: {bootstrap_err}")
 
@@ -362,6 +363,9 @@ def click_complete():
                     package_info = PLUS_PACKAGES.get(package_code)
                     if package_info:
                         db.assign_user_package(user_id, package_code, package_info['text_limit'], package_info['voice_limit'])
+                        db.log_package_purchase(user_id, package_code, float(amount) if amount else 0, merchant_trans_id)
+                else:
+                    package_info = None
                 amount_value = float(amount) if amount else 0
                 user_payload = {
                     'user_id': user_id,
@@ -494,6 +498,9 @@ def manual_complete_payment():
         if package_code and package_code in PLUS_PACKAGES:
             package = PLUS_PACKAGES[package_code]
             db.assign_user_package(user_id, package_code, package['text_limit'], package['voice_limit'])
+            payment_rec = db.get_payment_by_merchant_trans_id(merchant_trans_id)
+            amount_value = float(payment_rec.get('amount')) if payment_rec and payment_rec.get('amount') else 0
+            db.log_package_purchase(user_id, package_code, amount_value, merchant_trans_id)
 
         display_tariff = 'Max' if normalized_tariff == 'PRO' else normalized_tariff
         return jsonify({'success': True, 'message': f'Tariff activated: {display_tariff}', 'merchant_trans_id': merchant_trans_id})
