@@ -5,7 +5,7 @@ from datetime import datetime
 import pymysql
 from pymysql.cursors import DictCursor
 
-from config import DB_CONFIG
+from config import DB_CONFIG, PROMO_CODES
 
 
 class Database:
@@ -56,6 +56,10 @@ class Database:
             click_trans_id VARCHAR(100) UNIQUE,
             merchant_trans_id VARCHAR(255) NOT NULL,
             amount DECIMAL(15,2) NOT NULL,
+            original_amount DECIMAL(15,2),
+            discount_amount DECIMAL(15,2) DEFAULT 0,
+            discount_percent INT DEFAULT 0,
+            promo_code VARCHAR(50),
             tariff VARCHAR(50) NOT NULL,
             package_code VARCHAR(50),
             payment_method ENUM('click', 'payme', 'test') DEFAULT 'click',
@@ -71,6 +75,25 @@ class Database:
         )
         """
         self._execute(query)
+
+    def ensure_payments_discount_columns(self):
+        columns = [
+            ("original_amount", "ADD COLUMN original_amount DECIMAL(15,2) NULL AFTER amount"),
+            ("discount_amount", "ADD COLUMN discount_amount DECIMAL(15,2) DEFAULT 0 AFTER original_amount"),
+            ("discount_percent", "ADD COLUMN discount_percent INT DEFAULT 0 AFTER discount_amount"),
+            ("promo_code", "ADD COLUMN promo_code VARCHAR(50) NULL AFTER discount_percent"),
+        ]
+        for column, statement in columns:
+            try:
+                self._execute(f"ALTER TABLE payments {statement}")
+            except Exception as exc:
+                text = str(exc)
+                if 'Duplicate column name' in text:
+                    logging.debug(f'payments.{column} already exists')
+                elif 'doesn\'t exist' in text or 'Unknown table' in text:
+                    logging.debug(f'payments table not found when adding {column}')
+                else:
+                    logging.debug(f'ensure_payments_discount_columns {column}: {exc}')
 
     def create_user_package_limits_table(self):
         query = """
@@ -114,19 +137,183 @@ class Database:
             else:
                 logging.debug(f'ensure_payments_package_column: {exc}')
 
-    def create_payment_record(self, user_id, merchant_trans_id, amount, tariff, payment_method='click', package_code=None):
+    def create_promo_codes_table(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS promo_codes (
+            code VARCHAR(64) PRIMARY KEY,
+            discount_percent INT NOT NULL,
+            usage_limit INT NOT NULL,
+            usage_count INT NOT NULL DEFAULT 0,
+            plan_type VARCHAR(32) NOT NULL DEFAULT 'PLUS',
+            description VARCHAR(255),
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            starts_at DATETIME NULL,
+            expires_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+        """
+        self._execute(query)
+
+    def create_promo_code_redemptions_table(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS promo_code_redemptions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(64) NOT NULL,
+            user_id BIGINT NOT NULL,
+            merchant_trans_id VARCHAR(255) NOT NULL,
+            discount_percent INT NOT NULL,
+            discount_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+            status ENUM('reserved', 'completed', 'cancelled') DEFAULT 'reserved',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_code_trans (code, merchant_trans_id),
+            INDEX idx_code_status (code, status),
+            INDEX idx_merchant_trans_id (merchant_trans_id)
+        )
+        """
+        self._execute(query)
+
+    def seed_promo_codes(self):
+        if not PROMO_CODES:
+            return
+        for code, meta in PROMO_CODES.items():
+            try:
+                self._execute(
+                    """
+                    INSERT INTO promo_codes (code, discount_percent, usage_limit, plan_type, description, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        discount_percent = VALUES(discount_percent),
+                        usage_limit = VALUES(usage_limit),
+                        plan_type = VALUES(plan_type),
+                        description = VALUES(description),
+                        is_active = VALUES(is_active),
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (
+                        code.upper(),
+                        int(meta.get('discount_percent', 0)),
+                        int(meta.get('limit', 0)),
+                        meta.get('plan_type', 'PLUS').upper(),
+                        meta.get('description'),
+                        bool(meta.get('is_active', True)),
+                    ),
+                )
+            except Exception as exc:
+                logging.error(f"Promo code seed error ({code}): {exc}")
+
+    def get_promo_code(self, code):
+        query = """
+        SELECT code, discount_percent, usage_limit, usage_count, plan_type, is_active, starts_at, expires_at
+        FROM promo_codes
+        WHERE code = %s
+        """
+        return self._execute(query, (code.upper(),), fetchone=True)
+
+    def increment_promo_code_usage(self, code):
+        query = """
+        UPDATE promo_codes
+        SET usage_count = usage_count + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE code = %s
+        """
+        self._execute(query, (code.upper(),))
+
+    def decrement_promo_code_usage(self, code):
+        query = """
+        UPDATE promo_codes
+        SET usage_count = GREATEST(0, usage_count - 1),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE code = %s
+        """
+        self._execute(query, (code.upper(),))
+
+    def upsert_promo_redemption(self, code, user_id, merchant_trans_id, discount_percent, discount_amount):
+        query = """
+        INSERT INTO promo_code_redemptions (code, user_id, merchant_trans_id, discount_percent, discount_amount, status)
+        VALUES (%s, %s, %s, %s, %s, 'reserved')
+        ON DUPLICATE KEY UPDATE
+            user_id = VALUES(user_id),
+            discount_percent = VALUES(discount_percent),
+            discount_amount = VALUES(discount_amount),
+            status = 'reserved',
+            updated_at = CURRENT_TIMESTAMP
+        """
+        self._execute(
+            query,
+            (
+                code.upper(),
+                user_id,
+                merchant_trans_id,
+                discount_percent,
+                discount_amount,
+            ),
+        )
+
+    def update_promo_redemption_status(self, merchant_trans_id, status):
+        query = """
+        UPDATE promo_code_redemptions
+        SET status = %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE merchant_trans_id = %s
+        """
+        self._execute(query, (status, merchant_trans_id))
+
+    def get_redemption_by_merchant_trans_id(self, merchant_trans_id):
+        query = """
+        SELECT code, discount_percent, discount_amount, status
+        FROM promo_code_redemptions
+        WHERE merchant_trans_id = %s
+        """
+        return self._execute(query, (merchant_trans_id,), fetchone=True)
+
+    def create_payment_record(
+        self,
+        user_id,
+        merchant_trans_id,
+        amount,
+        tariff,
+        payment_method='click',
+        package_code=None,
+        promo_code=None,
+        discount_percent=0,
+        discount_amount=0,
+        original_amount=None,
+    ):
         if package_code:
             query = (
-                "INSERT INTO payments (user_id, merchant_trans_id, amount, tariff, payment_method, package_code, status) "
-                "VALUES (%s, %s, %s, %s, %s, %s, 'pending')"
+                "INSERT INTO payments (user_id, merchant_trans_id, amount, tariff, payment_method, package_code, status, promo_code, discount_percent, discount_amount, original_amount) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, %s)"
             )
-            params = (user_id, merchant_trans_id, amount, tariff, payment_method, package_code)
+            params = (
+                user_id,
+                merchant_trans_id,
+                amount,
+                tariff,
+                payment_method,
+                package_code,
+                promo_code.upper() if promo_code else None,
+                discount_percent,
+                discount_amount,
+                original_amount,
+            )
         else:
             query = (
-                "INSERT INTO payments (user_id, merchant_trans_id, amount, tariff, payment_method, status) "
-                "VALUES (%s, %s, %s, %s, %s, 'pending')"
+                "INSERT INTO payments (user_id, merchant_trans_id, amount, tariff, payment_method, status, promo_code, discount_percent, discount_amount, original_amount) "
+                "VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s, %s, %s)"
             )
-            params = (user_id, merchant_trans_id, amount, tariff, payment_method)
+            params = (
+                user_id,
+                merchant_trans_id,
+                amount,
+                tariff,
+                payment_method,
+                promo_code.upper() if promo_code else None,
+                discount_percent,
+                discount_amount,
+                original_amount,
+            )
         self._execute(query, params)
 
     def update_payment_prepare(self, merchant_trans_id, click_trans_id):

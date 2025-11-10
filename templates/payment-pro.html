@@ -67,6 +67,21 @@
 
         .sheet-action-btn { width: 100%; background: #000000; color: white; border: none; padding: 16px; border-radius: 100px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 24px; }
         .sheet-action-btn:active { opacity: 0.8; }
+        .promo-section { display: flex; flex-direction: column; gap: 12px; margin: 20px 0 8px; }
+        .promo-title { font-size: 14px; font-weight: 600; color: rgba(15, 23, 42, 0.6); text-transform: uppercase; letter-spacing: 0.4px; }
+        .promo-input-group { display: flex; gap: 10px; align-items: center; }
+        .promo-input-group input { flex: 1; border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 14px; padding: 12px 14px; font-size: 15px; background: #F8FAFC; }
+        .promo-input-group button { border: none; background: #1D4ED8; color: #fff; font-weight: 600; font-size: 14px; padding: 12px 16px; border-radius: 12px; cursor: pointer; transition: opacity 0.2s ease, transform 0.2s ease; }
+        .promo-input-group button:active { transform: scale(0.97); }
+        .promo-input-group button[disabled] { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .promo-feedback { font-size: 13px; min-height: 16px; color: rgba(15, 23, 42, 0.6); }
+        .promo-feedback.error { color: #DC2626; }
+        .promo-feedback.success { color: #16A34A; }
+        .promo-remove-btn { align-self: flex-start; background: none; border: none; color: rgba(15, 23, 42, 0.6); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+        .summary-section { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; font-size: 15px; color: rgba(15, 23, 42, 0.75); }
+        .summary-row { display: flex; justify-content: space-between; align-items: center; }
+        .summary-row.discount { color: #DC2626; }
+        .summary-row.total { font-size: 18px; font-weight: 700; color: #0F172A; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -198,11 +213,36 @@
             </div>
         </div>
 
+        <div class="promo-section">
+            <div class="promo-title">Promokod</div>
+            <div class="promo-input-group">
+                <input type="text" id="promoInput" placeholder="Masalan, 50FRIEND50" autocomplete="off">
+                <button id="promoApplyBtn">Qo'llash</button>
+            </div>
+            <div class="promo-feedback" id="promoFeedback"></div>
+            <button class="promo-remove-btn" id="promoRemoveBtn" style="display:none;">Promokodni olib tashlash</button>
+        </div>
+
         <div class="payment-methods">
             <div class="payment-section-title">To'lov usuli</div>
             <div class="payment-method-card click-payment">
                 <div class="payment-method-name">Click</div>
                 <div class="payment-method-check">✓</div>
+            </div>
+        </div>
+
+        <div class="summary-section">
+            <div class="summary-row">
+                <span>Asl narx</span>
+                <span id="summaryOriginalPrice">-</span>
+            </div>
+            <div class="summary-row discount" id="promoDiscountRow" style="display:none;">
+                <span>Chegirma</span>
+                <span id="promoDiscountValue">-</span>
+            </div>
+            <div class="summary-row total">
+                <span>To'lov summasi</span>
+                <span id="summaryFinalPrice">-</span>
             </div>
         </div>
 
@@ -231,12 +271,26 @@
         const bottomSheet = document.getElementById('bottomSheet');
         const sheetClose = bottomSheet.querySelector('.sheet-close');
         const featuresList = document.getElementById('featuresList');
+const promoInput = document.getElementById('promoInput');
+const promoApplyBtn = document.getElementById('promoApplyBtn');
+const promoFeedback = document.getElementById('promoFeedback');
+const promoRemoveBtn = document.getElementById('promoRemoveBtn');
+const summaryOriginalPrice = document.getElementById('summaryOriginalPrice');
+const summaryFinalPrice = document.getElementById('summaryFinalPrice');
+const promoDiscountRow = document.getElementById('promoDiscountRow');
+const promoDiscountValue = document.getElementById('promoDiscountValue');
 
         let currentDuration = 1;
         let userId = null;
         let currentTariff = 'Bepul';
         let currentExpiry = null;
         let lastPayment = null;
+let appliedPromo = null;
+const monthlyPrice = 49990;
+const durationPrices = {
+    1: monthlyPrice,
+    12: Math.round(monthlyPrice * 12 * 0.9),
+};
 
         function hideLoading() {
             loadingOverlay.style.display = 'none';
@@ -255,6 +309,7 @@
 
         function openBottomSheet() {
             hapticFeedback();
+    updateSummary();
             if (bottomSheetOverlay) bottomSheetOverlay.classList.add('active');
             if (bottomSheet) bottomSheet.classList.add('active');
         }
@@ -269,21 +324,153 @@
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
+function formatPriceValue(amount) {
+    const numeric = Number(amount) || 0;
+    return numeric.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+function getBasePrice(months = currentDuration) {
+    return durationPrices[months] || durationPrices[1];
+}
+
+function updateDurationLabels() {
+    const price1El = document.getElementById('price1Month');
+    const price12El = document.getElementById('price12Month');
+    if (price1El) {
+        price1El.textContent = `${formatPriceValue(durationPrices[1])} so'm`;
+    }
+    if (price12El) {
+        price12El.textContent = `${formatPriceValue(durationPrices[12])} so'm`;
+    }
+}
+
+function showPromoFeedback(message, isError) {
+    if (!promoFeedback) return;
+    promoFeedback.textContent = message;
+    promoFeedback.className = 'promo-feedback';
+    if (message) {
+        promoFeedback.classList.add(isError ? 'error' : 'success');
+    }
+}
+
+function clearPromo(options = {}) {
+    const keepInput = options.keepInput || false;
+    appliedPromo = null;
+    if (!keepInput && promoInput) {
+        promoInput.value = '';
+    }
+    if (promoRemoveBtn) {
+        promoRemoveBtn.style.display = 'none';
+    }
+    showPromoFeedback('', false);
+    if (promoDiscountRow) {
+        promoDiscountRow.style.display = 'none';
+    }
+    updateSummary();
+}
+
+function updateSummary() {
+    const basePrice = getBasePrice();
+    const finalPrice = appliedPromo ? appliedPromo.final_amount : basePrice;
+    const discountAmount = appliedPromo ? appliedPromo.discount_amount : 0;
+    if (summaryOriginalPrice) {
+        summaryOriginalPrice.textContent = `${formatPriceValue(basePrice)} so'm`;
+    }
+    if (promoDiscountRow) {
+        if (discountAmount > 0) {
+            promoDiscountRow.style.display = 'flex';
+            if (promoDiscountValue) {
+                promoDiscountValue.textContent = `- ${formatPriceValue(discountAmount)} so'm`;
+            }
+        } else {
+            promoDiscountRow.style.display = 'none';
+        }
+    }
+    if (summaryFinalPrice) {
+        summaryFinalPrice.textContent = `${formatPriceValue(finalPrice)} so'm`;
+    }
+    const actionBtnText = document.getElementById('actionBtnText');
+    if (actionBtnText) {
+        actionBtnText.textContent = `${formatPriceValue(finalPrice)} so'm evaziga yangilanish`;
+    }
+    if (payBtn) {
+        payBtn.textContent = `${formatPriceValue(finalPrice)} so'mga to'lash`;
+    }
+}
+
         function selectDuration(months, element) {
             hapticFeedback();
             currentDuration = months;
             document.querySelectorAll('.duration-card').forEach(c => c.classList.remove('selected'));
             element.classList.add('selected');
-            updateActionButton();
+    clearPromo({ keepInput: true });
+    updateActionButton();
         }
 
         function updateActionButton() {
-            const monthly = 49990;
-            const price = currentDuration === 1 ? monthly : Math.round(monthly * 12 * 0.9);
-            document.getElementById('actionBtnText').textContent = `${price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm evaziga yangilanish`;
-            document.getElementById('price1Month').textContent = `${monthly.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
-            document.getElementById('price12Month').textContent = `${Math.round(monthly * 12 * 0.9).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
+    updateDurationLabels();
+    updateSummary();
         }
+
+async function applyPromo() {
+    if (!promoInput || !promoApplyBtn) return;
+    const code = promoInput.value.trim();
+    if (!code) {
+        showPromoFeedback('Iltimos, promokodni kiriting.', true);
+        hapticFeedback();
+        return;
+    }
+    const basePrice = getBasePrice();
+    promoApplyBtn.disabled = true;
+    promoApplyBtn.textContent = 'Tekshirilmoqda...';
+    showPromoFeedback('', false);
+    try {
+        const response = await fetch('/api/promocode/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                code,
+                plan_type: 'PRO',
+                amount: basePrice,
+            }),
+        });
+        const json = await response.json();
+        if (!response.ok || !json?.success) {
+            throw new Error(json?.message || 'Promokod topilmadi.');
+        }
+        const data = json.data || {};
+        appliedPromo = {
+            code: data.code,
+            discount_percent: data.discount_percent,
+            discount_amount: data.discount_amount,
+            final_amount: data.final_amount,
+        };
+        if (promoRemoveBtn) {
+            promoRemoveBtn.style.display = 'inline-flex';
+        }
+        showPromoFeedback(`${appliedPromo.discount_percent}% chegirma qo'llandi.`, false);
+        updateSummary();
+        hapticFeedback();
+    } catch (err) {
+        appliedPromo = null;
+        showPromoFeedback(err.message || 'Promokodni qo\'llab bo\'lmadi.', true);
+        if (promoRemoveBtn) {
+            promoRemoveBtn.style.display = 'none';
+        }
+        updateSummary();
+    } finally {
+        promoApplyBtn.disabled = false;
+        promoApplyBtn.textContent = "Qo'llash";
+    }
+}
+
+function removePromo() {
+    clearPromo({ keepInput: true });
+    if (promoInput) {
+        promoInput.focus();
+    }
+    hapticFeedback();
+}
 
         async function resolveUserId() {
             if (tg?.initDataUnsafe?.user?.id) return tg.initDataUnsafe.user.id;
@@ -363,6 +550,10 @@
             form.action = '/payment-pro';
             form.appendChild(createHiddenInput('user_id', userId));
             form.appendChild(createHiddenInput('months', currentDuration.toString()));
+    form.appendChild(createHiddenInput('payment_method', 'click'));
+    if (appliedPromo?.code) {
+        form.appendChild(createHiddenInput('promo_code', appliedPromo.code));
+    }
             document.body.appendChild(form);
             form.submit();
         }
@@ -393,6 +584,16 @@
         if (bottomSheetOverlay) bottomSheetOverlay.addEventListener('click', closeBottomSheet);
         if (sheetClose) sheetClose.addEventListener('click', closeBottomSheet);
         if (payBtn) payBtn.addEventListener('click', processPayment);
+if (promoApplyBtn) promoApplyBtn.addEventListener('click', applyPromo);
+if (promoRemoveBtn) promoRemoveBtn.addEventListener('click', removePromo);
+if (promoInput) {
+    promoInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            applyPromo();
+        }
+    });
+}
 
         init();
     </script>

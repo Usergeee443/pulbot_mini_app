@@ -5,7 +5,9 @@ import hashlib
 import logging
 import threading
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 from database import Database
+from typing import Tuple
 from config import (
     CLICK_SECRET_KEY,
     CLICK_SERVICE_ID,
@@ -32,8 +34,70 @@ try:
     db.create_user_package_limits_table()
     db.ensure_payments_package_column()
     db.create_plus_package_purchases_table()
+    db.ensure_payments_discount_columns()
+    db.create_promo_codes_table()
+    db.create_promo_code_redemptions_table()
+    db.seed_promo_codes()
 except Exception as bootstrap_err:
     logging.warning(f"⚠️ Database bootstrap warning: {bootstrap_err}")
+
+
+def _normalize_plan(plan_token: str) -> str:
+    if not plan_token:
+        return ''
+    token = plan_token.strip().upper()
+    if token in {'PLUS', 'PRO', 'MAX'}:
+        return token
+    if token == 'ALL':
+        return 'ALL'
+    return token
+
+
+def _calculate_discount(amount: Decimal, percent: int) -> Tuple[Decimal, Decimal]:
+    percent_value = max(0, min(100, int(percent or 0)))
+    discount_amount = (amount * Decimal(percent_value) / Decimal(100)).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+    final_amount = amount - discount_amount
+    if final_amount < 0:
+        final_amount = Decimal('0')
+    return discount_amount, final_amount
+
+
+def _validate_promocode(code: str, plan_type: str, amount: Decimal):
+    if not code:
+        raise ValueError("Promokod kiritilmadi")
+    promo = db.get_promo_code(code)
+    if not promo:
+        raise ValueError("Bunday promokod topilmadi")
+    if not promo.get('is_active'):
+        raise ValueError("Promokod faol emas")
+    now = datetime.now()
+    starts_at = promo.get('starts_at')
+    expires_at = promo.get('expires_at')
+    if starts_at and now < starts_at:
+        raise ValueError("Promokod hali faol emas")
+    if expires_at and now > expires_at:
+        raise ValueError("Promokod muddati tugagan")
+    plan = _normalize_plan(plan_type)
+    promo_plan = _normalize_plan(promo.get('plan_type'))
+    if promo_plan and promo_plan not in {'', 'ALL'}:
+        if plan not in {promo_plan, 'ALL'}:
+            raise ValueError("Bu promokod tanlangan tarif uchun amal qilmaydi")
+    usage_limit = promo.get('usage_limit', 0) or 0
+    usage_count = promo.get('usage_count', 0) or 0
+    if usage_limit > 0 and usage_count >= usage_limit:
+        raise ValueError("Promokod qo'llanish limiti tugagan")
+    discount_percent = int(promo.get('discount_percent') or 0)
+    if discount_percent <= 0:
+        raise ValueError("Promokodda chegirma ko'rsatilmagan")
+    discount_amount, final_amount = _calculate_discount(amount, discount_percent)
+    if final_amount <= 0:
+        raise ValueError("Promokod noto'g'ri sozlangan")
+    return {
+        'code': promo.get('code', code).upper(),
+        'discount_percent': discount_percent,
+        'discount_amount': discount_amount,
+        'final_amount': final_amount,
+    }
 
 
 @app.route('/')
@@ -63,9 +127,12 @@ def payment_plus():
     try:
         user_id_raw = request.form.get('user_id', CLICK_MERCHANT_USER_ID)
         package_code = (request.form.get('package_code') or '').upper()
+        payment_method = (request.form.get('payment_method') or 'click').strip().lower()
 
         if not package_code or package_code not in PLUS_PACKAGES:
             return jsonify({'error': 'Invalid package selection'}), 400
+        if payment_method != 'click':
+            return jsonify({'error': "Hozircha faqat Click orqali to'lash mumkin"}), 400
 
         try:
             user_id = int(user_id_raw)
@@ -74,15 +141,60 @@ def payment_plus():
             return jsonify({'error': 'Invalid user identifier'}), 400
 
         package = PLUS_PACKAGES[package_code]
-        amount = package['price']
+        original_amount = Decimal(str(package['price']))
+        discount_amount = Decimal('0')
+        discount_percent = 0
+        final_amount = original_amount
+        promo_code_raw = (request.form.get('promo_code') or '').strip()
+        promo_code = promo_code_raw.upper() if promo_code_raw else ''
+
+        if promo_code:
+            try:
+                promo_eval = _validate_promocode(promo_code, 'PLUS', original_amount)
+                discount_amount = promo_eval['discount_amount']
+                final_amount = promo_eval['final_amount']
+                discount_percent = promo_eval['discount_percent']
+                promo_code = promo_eval['code']
+            except ValueError as promo_err:
+                logging.info(f"Promo validation failed (%s): %s", promo_code, promo_err)
+                return jsonify({'error': str(promo_err)}), 400
+
+        amount = int(final_amount)
+        if amount <= 0:
+            return jsonify({'error': 'Chegirmadan so\'ng to\'lov summasi noto\'g\'ri'}), 400
+        original_amount_int = int(original_amount)
+        discount_amount_int = int(discount_amount)
 
         timestamp = int(datetime.now().timestamp())
         merchant_trans_id = f"{user_id}_PLUS_{package_code}_{timestamp}"
 
         try:
-            db.create_payment_record(user_id, merchant_trans_id, amount, 'PLUS', 'click', package_code=package_code)
+            db.create_payment_record(
+                user_id,
+                merchant_trans_id,
+                amount,
+                'PLUS',
+                payment_method,
+                package_code=package_code,
+                promo_code=promo_code if promo_code else None,
+                discount_percent=discount_percent,
+                discount_amount=discount_amount_int,
+                original_amount=original_amount_int,
+            )
         except Exception as e:
             logging.error(f"Error creating payment record: {e}")
+        else:
+            if promo_code:
+                try:
+                    db.upsert_promo_redemption(
+                        promo_code,
+                        user_id,
+                        merchant_trans_id,
+                        discount_percent,
+                        discount_amount_int,
+                    )
+                except Exception as promo_err:
+                    logging.error(f"Promo redemption reserve error: {promo_err}")
 
         import urllib.parse
         click_url = (
@@ -108,6 +220,50 @@ def payment_plus():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/promocode/validate', methods=['POST'])
+def validate_promocode_api():
+    try:
+        payload = request.get_json(silent=True) or {}
+    except Exception:
+        payload = {}
+    if not payload:
+        payload = request.form.to_dict()
+
+    code_raw = (payload.get('code') or payload.get('promo_code') or '').strip()
+    plan_type = (payload.get('plan_type') or payload.get('plan') or 'PLUS').strip()
+    amount_raw = payload.get('amount')
+
+    if not code_raw:
+        return jsonify({'success': False, 'message': "Promokod kiritilmadi"}), 400
+    if amount_raw is None:
+        return jsonify({'success': False, 'message': "Summani yuboring"}), 400
+
+    try:
+        amount_decimal = Decimal(str(amount_raw))
+    except Exception:
+        return jsonify({'success': False, 'message': "Summani aniqlab bo'lmadi"}), 400
+
+    if amount_decimal <= 0:
+        return jsonify({'success': False, 'message': "Summani to'g'ri yuboring"}), 400
+
+    try:
+        promo_eval = _validate_promocode(code_raw, plan_type, amount_decimal)
+        return jsonify({
+            'success': True,
+            'data': {
+                'code': promo_eval['code'],
+                'discount_percent': promo_eval['discount_percent'],
+                'discount_amount': int(promo_eval['discount_amount']),
+                'final_amount': int(promo_eval['final_amount']),
+            }
+        })
+    except ValueError as err:
+        return jsonify({'success': False, 'message': str(err)}), 400
+    except Exception as err:
+        logging.error(f"Promocode validation error: {err}")
+        return jsonify({'success': False, 'message': "Promokodni tekshirishda xatolik yuz berdi"}), 500
+
+
 @app.route('/payment-pro', methods=['GET', 'POST'])
 def payment_pro():
     if request.method == 'GET':
@@ -116,21 +272,68 @@ def payment_pro():
     try:
         user_id = int(request.form.get('user_id', CLICK_MERCHANT_USER_ID))
         months_raw = request.form.get('months')
+        payment_method = (request.form.get('payment_method') or 'click').strip().lower()
 
         if months_raw not in ['1', '12']:
             return jsonify({'error': 'Invalid months selection'}), 400
+        if payment_method != 'click':
+            return jsonify({'error': "Hozircha faqat Click orqali to'lash mumkin"}), 400
 
         months = int(months_raw)
         prices = {1: 49990, 12: int(49990 * 12 * 0.9)}
-        amount = prices.get(months, 49990)
+        original_amount = Decimal(str(prices.get(months, 49990)))
+        discount_amount = Decimal('0')
+        discount_percent = 0
+        final_amount = original_amount
+
+        promo_code_raw = (request.form.get('promo_code') or '').strip()
+        promo_code = promo_code_raw.upper() if promo_code_raw else ''
+        if promo_code:
+            try:
+                promo_eval = _validate_promocode(promo_code, 'PRO', original_amount)
+                discount_amount = promo_eval['discount_amount']
+                final_amount = promo_eval['final_amount']
+                discount_percent = promo_eval['discount_percent']
+                promo_code = promo_eval['code']
+            except ValueError as promo_err:
+                logging.info(f"Promo validation failed (%s): %s", promo_code, promo_err)
+                return jsonify({'error': str(promo_err)}), 400
+
+        amount = int(final_amount)
+        if amount <= 0:
+            return jsonify({'error': 'Chegirmadan so\'ng to\'lov summasi noto\'g\'ri'}), 400
+        original_amount_int = int(original_amount)
+        discount_amount_int = int(discount_amount)
 
         timestamp = int(datetime.now().timestamp())
         merchant_trans_id = f"{user_id}_PRO_{months}_{timestamp}"
 
         try:
-            db.create_payment_record(user_id, merchant_trans_id, amount, 'PRO', 'click')
+            db.create_payment_record(
+                user_id,
+                merchant_trans_id,
+                amount,
+                'PRO',
+                payment_method,
+                promo_code=promo_code if promo_code else None,
+                discount_percent=discount_percent,
+                discount_amount=discount_amount_int,
+                original_amount=original_amount_int,
+            )
         except Exception as e:
             logging.error(f"Error creating payment record (MAX): {e}")
+        else:
+            if promo_code:
+                try:
+                    db.upsert_promo_redemption(
+                        promo_code,
+                        user_id,
+                        merchant_trans_id,
+                        discount_percent,
+                        discount_amount_int,
+                    )
+                except Exception as promo_err:
+                    logging.error(f"Promo redemption reserve error: {promo_err}")
 
         import urllib.parse
         click_url = (
@@ -328,6 +531,10 @@ def click_complete():
 
         if error_code != 0:
             db.update_payment_complete(merchant_trans_id, status='failed', error_code=error_code, error_note='Transaction cancelled')
+            try:
+                db.update_promo_redemption_status(merchant_trans_id, 'cancelled')
+            except Exception as promo_err:
+                logging.error(f"Promo redemption cancel error: {promo_err}")
             response = {
                 'click_trans_id': int(click_trans_id),
                 'merchant_trans_id': merchant_trans_id,
@@ -347,12 +554,14 @@ def click_complete():
             package_code = None
             amount_value = float(amount) if amount else 0
             months = 1
+            promo_code_value = None
 
             if payment_rec:
                 user_id = int(payment_rec.get('user_id'))
                 normalized_tariff = (payment_rec.get('tariff') or 'PLUS').upper()
                 package_code = payment_rec.get('package_code')
                 amount_value = float(payment_rec.get('amount') or 0)
+                promo_code_value = (payment_rec.get('promo_code') or '').strip() or None
             else:
                 parts = merchant_trans_id.split('_') if merchant_trans_id else []
                 if len(parts) >= 2:
@@ -372,6 +581,12 @@ def click_complete():
                 db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
                 db.activate_tariff(user_id, normalized_tariff, months)
                 package_info = None
+                if promo_code_value:
+                    try:
+                        db.update_promo_redemption_status(merchant_trans_id, 'completed')
+                        db.increment_promo_code_usage(promo_code_value)
+                    except Exception as promo_err:
+                        logging.error(f"Promo redemption complete error: {promo_err}")
                 if package_code:
                     package_info = PLUS_PACKAGES.get(package_code)
                     if package_info:
@@ -490,6 +705,15 @@ def manual_complete_payment():
         tariff_token = parts[1].upper()
         months = 1
         package_code = None
+        promo_code_value = None
+        payment_rec = None
+
+        try:
+            payment_rec = db.get_payment_by_merchant_trans_id(merchant_trans_id)
+            if payment_rec:
+                promo_code_value = (payment_rec.get('promo_code') or '').strip() or None
+        except Exception as err:
+            logging.error(f"Manual complete fetch error: {err}")
 
         if tariff_token == 'PLUS' and len(parts) >= 3:
             third = parts[2]
@@ -508,9 +732,15 @@ def manual_complete_payment():
         if package_code and package_code in PLUS_PACKAGES:
             package = PLUS_PACKAGES[package_code]
             db.assign_user_package(user_id, package_code, package['text_limit'], package['voice_limit'])
-            payment_rec = db.get_payment_by_merchant_trans_id(merchant_trans_id)
             amount_value = float(payment_rec.get('amount')) if payment_rec and payment_rec.get('amount') else 0
             db.log_package_purchase(user_id, package_code, amount_value, merchant_trans_id)
+
+        if promo_code_value:
+            try:
+                db.update_promo_redemption_status(merchant_trans_id, 'completed')
+                db.increment_promo_code_usage(promo_code_value)
+            except Exception as promo_err:
+                logging.error(f"Promo redemption manual complete error: {promo_err}")
 
         display_tariff = 'Max' if normalized_tariff == 'PRO' else normalized_tariff
         return jsonify({'success': True, 'message': f'Tariff activated: {display_tariff}', 'merchant_trans_id': merchant_trans_id})

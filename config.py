@@ -77,3 +77,13 @@ PLUS_PACKAGES = {
 }
 
 PLUS_PACKAGE_SEQUENCE = ['T300V100', 'T750V250', 'T1750V600']
+
+PROMO_CODES = {
+    '50FRIEND50': {
+        'discount_percent': 60,
+        'limit': 10,
+        'plan_type': 'PLUS',
+        'description': "Do'stlar uchun 60% chegirma",
+        'is_active': True,
+    },
+}

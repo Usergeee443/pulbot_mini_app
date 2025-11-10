@@ -272,6 +272,229 @@
             line-height: 1.5;
             margin-bottom: 24px;
         }
+        .bottom-sheet-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            z-index: 1100;
+        }
+        .bottom-sheet-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .bottom-sheet {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #FFFFFF;
+            border-radius: 28px 28px 0 0;
+            box-shadow: 0 -18px 42px rgba(15, 23, 42, 0.2);
+            transform: translateY(100%);
+            transition: transform 0.28s ease;
+            z-index: 1200;
+            padding: 20px 20px 30px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .bottom-sheet.active {
+            transform: translateY(0);
+        }
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .sheet-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: #0F172A;
+        }
+        .sheet-subtitle {
+            margin-top: 4px;
+            font-size: 14px;
+            color: rgba(15, 23, 42, 0.6);
+            line-height: 1.4;
+        }
+        .sheet-close {
+            background: rgba(148, 163, 184, 0.15);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: rgba(15, 23, 42, 0.6);
+            cursor: pointer;
+        }
+        .sheet-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .sheet-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(15, 23, 42, 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .sheet-package-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: rgba(37, 99, 235, 0.04);
+            border: 1px solid rgba(37, 99, 235, 0.12);
+            padding: 12px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            color: rgba(15, 23, 42, 0.7);
+        }
+        .sheet-package-stats strong {
+            color: #0F172A;
+        }
+        .promo-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .promo-input-group input {
+            flex: 1;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 14px;
+            padding: 12px 14px;
+            font-size: 15px;
+            background: #F8FAFC;
+        }
+        .promo-input-group button {
+            border: none;
+            background: #1D4ED8;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .promo-input-group button:active {
+            transform: scale(0.98);
+        }
+        .promo-input-group button[disabled] {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .promo-feedback {
+            font-size: 13px;
+            min-height: 16px;
+            color: rgba(15, 23, 42, 0.6);
+        }
+        .promo-feedback.error {
+            color: #DC2626;
+        }
+        .promo-feedback.success {
+            color: #16A34A;
+        }
+        .promo-remove-btn {
+            align-self: flex-start;
+            background: none;
+            border: none;
+            color: rgba(15, 23, 42, 0.6);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .payment-methods {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .payment-method-card {
+            flex: 1 1 calc(50% - 10px);
+            min-width: 140px;
+            background: #F8FAFC;
+            border: 1.5px solid transparent;
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+        .payment-method-card.active {
+            border-color: #1D4ED8;
+            background: rgba(29, 78, 216, 0.08);
+        }
+        .payment-method-card[data-available="false"] {
+            opacity: 0.55;
+        }
+        .payment-method-card:active {
+            transform: scale(0.98);
+        }
+        .payment-method-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #0F172A;
+        }
+        .payment-method-description {
+            font-size: 12px;
+            color: rgba(15, 23, 42, 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 15px;
+            color: rgba(15, 23, 42, 0.75);
+        }
+        .summary-row + .summary-row {
+            margin-top: 6px;
+        }
+        .summary-row.discount {
+            color: #DC2626;
+        }
+        .summary-row.total {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0F172A;
+            margin-top: 4px;
+        }
+        .sheet-action-btn {
+            width: 100%;
+            background: #111827;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 999px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-top: 12px;
+        }
+        .sheet-action-btn:active {
+            transform: scale(0.98);
+        }
+        .sheet-action-btn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
@@ -334,6 +557,75 @@
         <p class="legal-text">Sotib olish orqali <a href="/terms">foydalanish shartlari</a> va <a href="/privacy">maxfiylik siyosati</a>ga rozilik bildirasiz.</p>
     </footer>
 
+    <div class="bottom-sheet-overlay" id="checkoutOverlay"></div>
+    <div class="bottom-sheet" id="checkoutSheet">
+        <div class="sheet-header">
+            <div>
+                <div class="sheet-title" id="checkoutTitle">Plus paket</div>
+                <div class="sheet-subtitle" id="checkoutTagline"></div>
+            </div>
+            <button class="sheet-close" id="checkoutCloseBtn">✕</button>
+        </div>
+
+        <div class="sheet-section">
+            <div class="sheet-section-title">Tanlangan paket</div>
+            <div class="sheet-package-stats" id="checkoutLimits">
+                <span>Matn limiti: <strong>-</strong></span>
+                <span>Ovoz limiti: <strong>-</strong></span>
+            </div>
+        </div>
+
+        <div class="sheet-section">
+            <div class="sheet-section-title">Promokod</div>
+            <div class="promo-input-group">
+                <input type="text" id="promoInput" placeholder="Masalan, 50FRIEND50" autocomplete="off" inputmode="text">
+                <button id="promoApplyBtn">Qo'llash</button>
+            </div>
+            <div class="promo-feedback" id="promoFeedback"></div>
+            <button class="promo-remove-btn" id="promoRemoveBtn" style="display:none;">Promokodni olib tashlash</button>
+        </div>
+
+        <div class="sheet-section">
+            <div class="sheet-section-title">To'lov usuli</div>
+            <div class="payment-methods">
+                <button class="payment-method-card active" data-method="click" data-available="true">
+                    <span class="payment-method-name">Click</span>
+                    <span class="payment-method-description">Bank karta</span>
+                </button>
+                <button class="payment-method-card" data-method="payme" data-available="false">
+                    <span class="payment-method-name">Payme</span>
+                    <span class="payment-method-description">Tez orada</span>
+                </button>
+                <button class="payment-method-card" data-method="uzum" data-available="false">
+                    <span class="payment-method-name">Uzum Pay</span>
+                    <span class="payment-method-description">Tez orada</span>
+                </button>
+                <button class="payment-method-card" data-method="other" data-available="false">
+                    <span class="payment-method-name">Boshqa</span>
+                    <span class="payment-method-description">Tez orada</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="sheet-section">
+            <div class="sheet-section-title">To'lov xulosasi</div>
+            <div class="summary-row">
+                <span>Asl narx</span>
+                <span id="checkoutOriginalPrice">-</span>
+            </div>
+            <div class="summary-row discount" id="checkoutDiscountRow" style="display:none;">
+                <span>Chegirma</span>
+                <span id="checkoutDiscountValue">-</span>
+            </div>
+            <div class="summary-row total">
+                <span>To'lov summasi</span>
+                <span id="checkoutFinalPrice">-</span>
+            </div>
+        </div>
+
+        <button class="sheet-action-btn" id="checkoutPayBtn">To'lash</button>
+    </div>
+
     <script>
         (function () {
             const tg = window.Telegram?.WebApp;
@@ -343,69 +635,108 @@
                 tg.disableVerticalSwipes();
             }
 
-            const packages = Array.from(document.querySelectorAll('.package-card'));
-            const purchaseBtn = document.getElementById('purchaseBtn');
-            const infoBanner = document.getElementById('infoBanner');
-            const subscriptionInfo = document.getElementById('subscriptionInfo');
-            const subscriptionStatus = document.getElementById('subscriptionStatus');
-            const subscriptionName = document.getElementById('subscriptionName');
-            const subscriptionExpiry = document.getElementById('subscriptionExpiry');
-            const subscriptionLimits = document.getElementById('subscriptionLimits');
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            const blockedView = document.getElementById('blockedView');
-            const content = document.getElementById('content');
-            const footer = document.getElementById('footer');
-            const blockedCloseBtn = document.getElementById('blockedCloseBtn');
+            const elements = {
+                packages: Array.from(document.querySelectorAll('.package-card')),
+                purchaseBtn: document.getElementById('purchaseBtn'),
+                infoBanner: document.getElementById('infoBanner'),
+                subscriptionInfo: document.getElementById('subscriptionInfo'),
+                subscriptionStatus: document.getElementById('subscriptionStatus'),
+                subscriptionName: document.getElementById('subscriptionName'),
+                subscriptionExpiry: document.getElementById('subscriptionExpiry'),
+                subscriptionLimits: document.getElementById('subscriptionLimits'),
+                loadingOverlay: document.getElementById('loadingOverlay'),
+                blockedView: document.getElementById('blockedView'),
+                content: document.getElementById('content'),
+                footer: document.getElementById('footer'),
+                blockedCloseBtn: document.getElementById('blockedCloseBtn'),
+                checkoutOverlay: document.getElementById('checkoutOverlay'),
+                checkoutSheet: document.getElementById('checkoutSheet'),
+                checkoutCloseBtn: document.getElementById('checkoutCloseBtn'),
+                checkoutTitle: document.getElementById('checkoutTitle'),
+                checkoutTagline: document.getElementById('checkoutTagline'),
+                checkoutLimits: document.getElementById('checkoutLimits'),
+                checkoutOriginalPrice: document.getElementById('checkoutOriginalPrice'),
+                checkoutDiscountRow: document.getElementById('checkoutDiscountRow'),
+                checkoutDiscountValue: document.getElementById('checkoutDiscountValue'),
+                checkoutFinalPrice: document.getElementById('checkoutFinalPrice'),
+                checkoutPayBtn: document.getElementById('checkoutPayBtn'),
+                promoInput: document.getElementById('promoInput'),
+                promoApplyBtn: document.getElementById('promoApplyBtn'),
+                promoFeedback: document.getElementById('promoFeedback'),
+                promoRemoveBtn: document.getElementById('promoRemoveBtn'),
+                paymentMethodCards: Array.from(document.querySelectorAll('.payment-method-card')),
+            };
 
-            let userId = null;
-            let selectedPackage = null;
-            let currentPackageCode = null;
-            let currentTariff = null;
-            let currentPackageMeta = null;
-            let currentExpiry = null;
+            const state = {
+                userId: null,
+                selectedPackage: null,
+                currentPackageCode: null,
+                currentTariff: null,
+                currentPackageMeta: null,
+                currentExpiry: null,
+                appliedPromo: null,
+                paymentMethod: 'click',
+            };
 
-            function haptic() {
+            function haptic(type = 'light') {
                 if (tg?.HapticFeedback?.impactOccurred) {
-                    tg.HapticFeedback.impactOccurred('light');
+                    tg.HapticFeedback.impactOccurred(type);
                 }
             }
 
             function formatPrice(amount) {
-                return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+                const numeric = Number(amount) || 0;
+                return numeric.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            }
+
+            function parsePrice(value) {
+                const parsed = parseInt(value, 10);
+                return Number.isFinite(parsed) ? parsed : 0;
             }
 
             function hideLoading() {
-                loadingOverlay.classList.add('hidden');
-                content.style.visibility = 'visible';
-                footer.style.visibility = 'visible';
+                elements.loadingOverlay.classList.add('hidden');
+                elements.content.style.visibility = 'visible';
+                elements.footer.style.visibility = 'visible';
             }
 
             function showBanner(text) {
-                infoBanner.textContent = text;
-                infoBanner.classList.add('show');
+                if (!elements.infoBanner) return;
+                elements.infoBanner.textContent = text;
+                elements.infoBanner.classList.add('show');
             }
 
             function hideBanner() {
-                infoBanner.classList.remove('show');
+                if (!elements.infoBanner) return;
+                elements.infoBanner.classList.remove('show');
+            }
+
+            function getBaseAmount() {
+                if (!state.selectedPackage) return 0;
+                return parsePrice(state.selectedPackage.dataset.price);
             }
 
             function updateButton() {
-                if (!selectedPackage) {
-                    purchaseBtn.textContent = 'Paketni tanlang';
-                    purchaseBtn.setAttribute('disabled', 'true');
+                const btn = elements.purchaseBtn;
+                if (!btn) return;
+                if (!state.selectedPackage) {
+                    btn.textContent = 'Paketni tanlang';
+                    btn.setAttribute('disabled', 'true');
                     return;
                 }
-                const amount = selectedPackage.dataset.price;
-                purchaseBtn.textContent = `${formatPrice(amount)} so'mga sotib olish`;
-                if (selectedPackage.dataset.code === currentPackageCode) {
-                    purchaseBtn.textContent = `${formatPrice(amount)} so'mga limitni yangilash`;
+                const baseAmount = getBaseAmount();
+                const effectiveAmount = state.appliedPromo ? state.appliedPromo.final_amount : baseAmount;
+                let label = `${formatPrice(effectiveAmount)} so'mga sotib olish`;
+                if (state.selectedPackage.dataset.code === state.currentPackageCode) {
+                    label = `${formatPrice(effectiveAmount)} so'mga limitni yangilash`;
                 }
-                purchaseBtn.removeAttribute('disabled');
+                btn.textContent = label;
+                btn.removeAttribute('disabled');
             }
 
             function markActivePackages() {
-                packages.forEach((card) => {
-                    if (card.dataset.code === currentPackageCode) {
+                elements.packages.forEach((card) => {
+                    if (card.dataset.code === state.currentPackageCode) {
                         card.classList.add('active');
                     } else {
                         card.classList.remove('active');
@@ -413,45 +744,242 @@
                 });
             }
 
-            function selectPackage(card) {
-                if (!card) return;
-                if (card === selectedPackage) return;
-                packages.forEach(pkg => pkg.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedPackage = card;
-                hideBanner();
-                if (card.dataset.code === currentPackageCode) {
-                    showBanner('Bu paket sizda allaqachon faol. Sotib olsangiz limitlar yangilanadi.');
+            function clearPromo(options = {}) {
+                const keepInput = options.keepInput || false;
+                state.appliedPromo = null;
+                if (!keepInput && elements.promoInput) {
+                    elements.promoInput.value = '';
                 }
+                if (elements.promoFeedback) {
+                    elements.promoFeedback.textContent = '';
+                    elements.promoFeedback.className = 'promo-feedback';
+                }
+                if (elements.promoRemoveBtn) {
+                    elements.promoRemoveBtn.style.display = 'none';
+                }
+                if (elements.checkoutDiscountRow) {
+                    elements.checkoutDiscountRow.style.display = 'none';
+                }
+                renderCheckoutSummary();
                 updateButton();
+            }
+
+            function selectPackage(card, options = {}) {
+                if (!card) return;
+                const allowReselect = options.allowReselect || false;
+                const skipPromoReset = options.skipPromoReset || false;
+                const silent = options.silent || false;
+                const skipBanner = options.skipBanner || false;
+                if (!allowReselect && card === state.selectedPackage) {
+                    return;
+                }
+                elements.packages.forEach(pkg => pkg.classList.remove('selected'));
+                card.classList.add('selected');
+                state.selectedPackage = card;
+                if (!skipBanner) {
+                    hideBanner();
+                    if (card.dataset.code === state.currentPackageCode) {
+                        showBanner('Bu paket sizda allaqachon faol. Sotib olsangiz limitlar yangilanadi.');
+                    }
+                }
+                if (!skipPromoReset) {
+                    clearPromo();
+                } else {
+                    renderCheckoutSummary();
+                    updateButton();
+                }
+                if (!silent) {
+                    haptic();
+                }
+            }
+
+            function renderCheckoutSummary() {
+                if (!state.selectedPackage) return;
+                const titleEl = state.selectedPackage.querySelector('.package-title');
+                const taglineEl = state.selectedPackage.querySelector('.package-tagline');
+                const baseAmount = getBaseAmount();
+                const discountAmount = state.appliedPromo ? state.appliedPromo.discount_amount : 0;
+                const finalAmount = state.appliedPromo ? state.appliedPromo.final_amount : baseAmount;
+
+                if (elements.checkoutTitle) {
+                    elements.checkoutTitle.textContent = titleEl ? titleEl.textContent : 'Plus paket';
+                }
+                if (elements.checkoutTagline) {
+                    elements.checkoutTagline.textContent = taglineEl ? taglineEl.textContent : '';
+                }
+                if (elements.checkoutLimits) {
+                    const textLimitRaw = state.selectedPackage.dataset.text;
+                    const voiceLimitRaw = state.selectedPackage.dataset.voice;
+                    const formatLimit = (value) => {
+                        if (value === undefined || value === null || value === '') return '-';
+                        return value === '-1' ? 'Cheksiz' : value;
+                    };
+                    const textLimit = formatLimit(textLimitRaw);
+                    const voiceLimit = formatLimit(voiceLimitRaw);
+                    elements.checkoutLimits.innerHTML = `
+                        <span>Matn limiti: <strong>${textLimit}</strong></span>
+                        <span>Ovoz limiti: <strong>${voiceLimit}</strong></span>
+                    `;
+                }
+                if (elements.checkoutOriginalPrice) {
+                    elements.checkoutOriginalPrice.textContent = `${formatPrice(baseAmount)} so'm`;
+                }
+                if (elements.checkoutDiscountRow) {
+                    if (discountAmount > 0) {
+                        elements.checkoutDiscountRow.style.display = 'flex';
+                        if (elements.checkoutDiscountValue) {
+                            elements.checkoutDiscountValue.textContent = `- ${formatPrice(discountAmount)} so'm`;
+                        }
+                    } else {
+                        elements.checkoutDiscountRow.style.display = 'none';
+                    }
+                }
+                if (elements.checkoutFinalPrice) {
+                    elements.checkoutFinalPrice.textContent = `${formatPrice(finalAmount)} so'm`;
+                }
+                if (elements.checkoutPayBtn) {
+                    elements.checkoutPayBtn.textContent = `${formatPrice(finalAmount)} so'mga to'lash`;
+                }
+            }
+
+            function openCheckoutSheet() {
+                if (!state.selectedPackage) return;
+                haptic('medium');
+                renderCheckoutSummary();
+                elements.checkoutOverlay?.classList.add('active');
+                elements.checkoutSheet?.classList.add('active');
+            }
+
+            function closeCheckoutSheet() {
+                elements.checkoutOverlay?.classList.remove('active');
+                elements.checkoutSheet?.classList.remove('active');
+            }
+
+            function showPromoFeedback(message, isError) {
+                if (!elements.promoFeedback) return;
+                elements.promoFeedback.textContent = message;
+                elements.promoFeedback.className = 'promo-feedback';
+                if (message) {
+                    elements.promoFeedback.classList.add(isError ? 'error' : 'success');
+                }
+            }
+
+            async function applyPromo() {
+                if (!state.selectedPackage || !elements.promoInput || !elements.promoApplyBtn) return;
+                const code = elements.promoInput.value.trim();
+                if (!code) {
+                    showPromoFeedback('Iltimos, promokodni kiriting.', true);
+                    haptic();
+                    return;
+                }
+                const baseAmount = getBaseAmount();
+                if (!baseAmount) {
+                    showPromoFeedback('Paket narxi aniqlanmadi.', true);
+                    return;
+                }
+
+                elements.promoApplyBtn.disabled = true;
+                elements.promoApplyBtn.textContent = 'Tekshirilmoqda...';
+                showPromoFeedback('', false);
+
+                try {
+                    const response = await fetch('/api/promocode/validate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code,
+                            plan_type: 'PLUS',
+                            amount: baseAmount,
+                        }),
+                    });
+                    const json = await response.json();
+                    if (!response.ok || !json?.success) {
+                        throw new Error(json?.message || 'Promokod topilmadi.');
+                    }
+                    const data = json.data || {};
+                    state.appliedPromo = {
+                        code: data.code,
+                        discount_percent: data.discount_percent,
+                        discount_amount: data.discount_amount,
+                        final_amount: data.final_amount,
+                    };
+                    if (elements.promoRemoveBtn) {
+                        elements.promoRemoveBtn.style.display = 'inline-flex';
+                    }
+                    showPromoFeedback(`${state.appliedPromo.discount_percent}% chegirma qo'llandi.`, false);
+                    renderCheckoutSummary();
+                    updateButton();
+                    haptic('medium');
+                } catch (err) {
+                    state.appliedPromo = null;
+                    showPromoFeedback(err.message || 'Promokodni qo\'llab bo\'lmadi.', true);
+                    if (elements.promoRemoveBtn) {
+                        elements.promoRemoveBtn.style.display = 'none';
+                    }
+                    renderCheckoutSummary();
+                    updateButton();
+                } finally {
+                    elements.promoApplyBtn.disabled = false;
+                    elements.promoApplyBtn.textContent = "Qo'llash";
+                }
+            }
+
+            function removePromo() {
+                clearPromo({ keepInput: true });
+                if (elements.promoInput) {
+                    elements.promoInput.focus();
+                }
                 haptic();
             }
 
-            packages.forEach(card => {
-                card.addEventListener('click', () => selectPackage(card));
-            });
-
-            if (blockedCloseBtn) {
-                blockedCloseBtn.addEventListener('click', () => {
-                    if (tg) {
-                        tg.close();
+            function selectPaymentMethod(card) {
+                if (!card) return;
+                const method = card.dataset.method || 'click';
+                const available = card.dataset.available !== 'false';
+                if (!available) {
+                    if (tg?.showAlert) {
+                        tg.showAlert('Bu to\'lov usuli tez orada ishga tushadi.');
                     } else {
-                        window.close();
+                        alert('Bu to\'lov usuli tez orada ishga tushadi.');
                     }
+                    return;
+                }
+                state.paymentMethod = method;
+                elements.paymentMethodCards.forEach(item => {
+                    item.classList.toggle('active', item === card);
                 });
+                haptic();
             }
 
-            purchaseBtn.addEventListener('click', () => {
-                if (!selectedPackage || !userId) return;
+            function createHiddenInput(name, value) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = value;
+                return input;
+            }
+
+            function submitPayment() {
+                if (!state.selectedPackage || !state.userId) return;
+                if (state.paymentMethod !== 'click') {
+                    if (tg?.showAlert) {
+                        tg.showAlert('Bu to\'lov usuli tez orada ishga tushadi.');
+                    } else {
+                        alert('Bu to\'lov usuli tez orada ishga tushadi.');
+                    }
+                    return;
+                }
                 try {
-                    haptic();
+                    haptic('medium');
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = '/payment-plus';
-                    form.innerHTML = `
-                        <input type="hidden" name="user_id" value="${userId}">
-                        <input type="hidden" name="package_code" value="${selectedPackage.dataset.code}">
-                    `;
+                    form.appendChild(createHiddenInput('user_id', state.userId));
+                    form.appendChild(createHiddenInput('package_code', state.selectedPackage.dataset.code));
+                    form.appendChild(createHiddenInput('payment_method', state.paymentMethod));
+                    if (state.appliedPromo?.code) {
+                        form.appendChild(createHiddenInput('promo_code', state.appliedPromo.code));
+                    }
                     document.body.appendChild(form);
                     form.submit();
                 } catch (err) {
@@ -462,7 +990,44 @@
                         alert('To\'lovni boshlashda xatolik yuz berdi.');
                     }
                 }
+            }
+
+            elements.packages.forEach(card => {
+                card.addEventListener('click', () => selectPackage(card));
             });
+
+            elements.purchaseBtn?.addEventListener('click', () => {
+                if (!state.selectedPackage) return;
+                if (!state.userId) {
+                    if (tg?.showAlert) {
+                        tg.showAlert('Telegram foydalanuvchisini aniqlab bo\'lmadi.');
+                    } else {
+                        alert('Telegram foydalanuvchisini aniqlab bo\'lmadi.');
+                    }
+                    return;
+                }
+                openCheckoutSheet();
+            });
+
+            elements.checkoutOverlay?.addEventListener('click', closeCheckoutSheet);
+            elements.checkoutCloseBtn?.addEventListener('click', closeCheckoutSheet);
+            elements.checkoutPayBtn?.addEventListener('click', submitPayment);
+            elements.promoApplyBtn?.addEventListener('click', applyPromo);
+            elements.promoRemoveBtn?.addEventListener('click', removePromo);
+
+            elements.paymentMethodCards.forEach(card => {
+                card.addEventListener('click', () => selectPaymentMethod(card));
+            });
+
+            if (elements.blockedCloseBtn) {
+                elements.blockedCloseBtn.addEventListener('click', () => {
+                    if (tg) {
+                        tg.close();
+                    } else {
+                        window.close();
+                    }
+                });
+            }
 
             async function resolveUserId() {
                 if (tg?.initDataUnsafe?.user?.id) {
@@ -484,42 +1049,74 @@
             }
 
             function showBlockedView(tariffCode) {
-                content.style.display = 'none';
-                footer.style.display = 'none';
-                blockedView.style.display = 'flex';
-                const title = blockedView.querySelector('h2');
-                const text = blockedView.querySelector('p');
+                if (!elements.blockedView) return;
+                elements.content.style.display = 'none';
+                elements.footer.style.display = 'none';
+                elements.blockedView.style.display = 'flex';
+                const title = elements.blockedView.querySelector('h2');
+                const text = elements.blockedView.querySelector('p');
+                if (!title || !text) return;
                 if (tariffCode === 'PRO' || tariffCode === 'MAX') {
                     title.textContent = 'Max obuna allaqachon faol';
                     text.textContent = 'Sizda eng yuqori tarif ishga tushgan. Qo\'shimcha paket sotib olish mavjud imkoniyatlarni o\'zgartirmaydi.';
                 }
             }
 
+            function renderSubscriptionInfo() {
+                if (!elements.subscriptionInfo) return;
+                elements.subscriptionInfo.classList.add('show');
+                elements.subscriptionStatus.textContent = 'Faol paket';
+                const title = state.currentPackageMeta?.title || 'Plus';
+                elements.subscriptionName.textContent = title;
+                const textLimit = state.currentPackageMeta?.text_limit;
+                const voiceLimit = state.currentPackageMeta?.voice_limit;
+                if (textLimit && voiceLimit) {
+                    elements.subscriptionLimits.textContent = `${textLimit} ta matn / ${voiceLimit} ta ovoz`;
+                } else {
+                    elements.subscriptionLimits.textContent = 'Limitlar mavjud';
+                }
+                if (state.currentExpiry) {
+                    try {
+                        const date = new Date(state.currentExpiry);
+                        elements.subscriptionExpiry.textContent = date.toLocaleDateString('uz-UZ', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                    } catch (_) {
+                        elements.subscriptionExpiry.textContent = state.currentExpiry;
+                    }
+                } else {
+                    elements.subscriptionExpiry.textContent = 'Avtomatik yangilanadi';
+                }
+                showBanner('Faol paket maʼlumotlari yangilandi.');
+            }
+
             async function loadTariff() {
                 try {
-                    const response = await fetch(`/api/user/tariff/${userId}`);
-                    if (!response.ok) return;
+                    const response = await fetch(`/api/user/tariff/${state.userId}`);
+                    if (!response.ok) return true;
                     const json = await response.json();
-                    currentTariff = (json?.data?.tariff || 'Bepul').toString().toUpperCase();
-                    currentPackageCode = (json?.data?.package?.code || '').toString().toUpperCase();
-                    currentPackageMeta = json?.data?.package || null;
-                    currentExpiry = json?.data?.expires_at || null;
-                    subscriptionInfo.classList.remove('show');
-                    if (currentTariff === 'PRO' || currentTariff === 'MAX') {
-                        showBlockedView(currentTariff);
+                    state.currentTariff = (json?.data?.tariff || 'Bepul').toString().toUpperCase();
+                    state.currentPackageCode = (json?.data?.package?.code || '').toString().toUpperCase();
+                    state.currentPackageMeta = json?.data?.package || null;
+                    state.currentExpiry = json?.data?.expires_at || null;
+                    if (elements.subscriptionInfo) {
+                        elements.subscriptionInfo.classList.remove('show');
+                    }
+                    if (state.currentTariff === 'PRO' || state.currentTariff === 'MAX') {
+                        showBlockedView(state.currentTariff);
                         return false;
                     }
-                    if (currentTariff === 'PLUS') {
+                    if (state.currentTariff === 'PLUS') {
                         renderSubscriptionInfo();
                     }
                     markActivePackages();
-                    if (currentPackageCode) {
-                        const activeCard = packages.find(card => card.dataset.code === currentPackageCode);
+                    if (state.currentPackageCode) {
+                        const activeCard = elements.packages.find(card => card.dataset.code === state.currentPackageCode);
                         if (activeCard) {
-                            selectPackage(activeCard);
+                            selectPackage(activeCard, { silent: true, skipPromoReset: true });
                         }
-                    } else if (packages.length) {
-                        selectPackage(packages[0]);
                     }
                     return true;
                 } catch (err) {
@@ -528,38 +1125,9 @@
                 }
             }
 
-            function renderSubscriptionInfo() {
-                subscriptionInfo.classList.add('show');
-                subscriptionStatus.textContent = 'Faol paket';
-                const title = currentPackageMeta?.title || 'Plus';
-                subscriptionName.textContent = title;
-                const textLimit = currentPackageMeta?.text_limit;
-                const voiceLimit = currentPackageMeta?.voice_limit;
-                if (textLimit && voiceLimit) {
-                    subscriptionLimits.textContent = `${textLimit} ta matn / ${voiceLimit} ta ovoz`;
-                } else {
-                    subscriptionLimits.textContent = 'Limitlar mavjud';
-                }
-                if (currentExpiry) {
-                    try {
-                        const date = new Date(currentExpiry);
-                        subscriptionExpiry.textContent = date.toLocaleDateString('uz-UZ', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        });
-                    } catch (_) {
-                        subscriptionExpiry.textContent = currentExpiry;
-                    }
-                } else {
-                    subscriptionExpiry.textContent = 'Avtomatik yangilanadi';
-                }
-                showBanner('Faol paket maʼlumotlari yangilandi.');
-            }
-
             async function init() {
-                userId = await resolveUserId();
-                if (!userId) {
+                state.userId = await resolveUserId();
+                if (!state.userId) {
                     hideLoading();
                     if (tg?.showAlert) {
                         tg.showAlert('Telegram foydalanuvchisini aniqlab bo\'lmadi. Iltimos, mini ilovani Telegram orqali oching.');
@@ -571,9 +1139,10 @@
                 if (proceed === false) {
                     return;
                 }
-                if (!selectedPackage && packages.length) {
-                    selectPackage(packages[0]);
+                if (!state.selectedPackage && elements.packages.length) {
+                    selectPackage(elements.packages[0], { silent: true });
                 }
+                updateButton();
             }
 
             init();
