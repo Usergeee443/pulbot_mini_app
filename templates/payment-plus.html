@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Balans AI - Plus paketlar</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #F7F8FA;
+            color: #0F172A;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .page {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 20px 120px;
+        }
+        .page-header {
+            margin-bottom: 24px;
+        }
+        .page-header span {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: #E0EDFF;
+            color: #1D4ED8;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-top: 12px;
+            margin-bottom: 10px;
+            letter-spacing: -0.3px;
+        }
+        .page-header p {
+            font-size: 15px;
+            color: rgba(15, 23, 42, 0.65);
+            line-height: 1.55;
+            max-width: 360px;
+        }
+        .info-banner {
+            display: none;
+            margin-bottom: 20px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: #FDF6E8;
+            color: #92400E;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .info-banner.show { display: block; }
+        .subscription-card {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+            background: #ffffff;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 20px;
+            padding: 18px 20px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+        }
+        .subscription-card.show { display: flex; }
+        .subscription-status {
+            font-size: 12px;
+            font-weight: 700;
+            color: #16A34A;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+        .subscription-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0F172A;
+            letter-spacing: -0.3px;
+        }
+        .subscription-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 14px;
+            color: rgba(15, 23, 42, 0.65);
+        }
+        .subscription-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .subscription-label {
+            font-weight: 600;
+            color: rgba(15, 23, 42, 0.6);
+        }
+        .subscription-value {
+            font-weight: 600;
+            color: #0F172A;
+        }
+        .packages-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .package-card {
+            background: white;
+            border-radius: 24px;
+            padding: 20px 18px 18px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            text-align: left;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            position: relative;
+        }
+        .package-card:active { transform: scale(0.99); }
+        .package-card.selected {
+            border-color: #2563EB;
+            box-shadow: 0 12px 20px rgba(37, 99, 235, 0.18);
+        }
+        .package-badge {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            background: linear-gradient(120deg, #2563EB, #1D4ED8);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 999px;
+            letter-spacing: 0.3px;
+        }
+        .package-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+        .package-tagline {
+            font-size: 15px;
+            color: rgba(15, 23, 42, 0.65);
+        }
+        .package-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .metric {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            color: rgba(15, 23, 42, 0.85);
+        }
+        .metric img {
+            width: 20px;
+            height: 20px;
+        }
+        .package-price {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+        }
+        .package-active-label {
+            display: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: #16A34A;
+        }
+        .package-card.active .package-active-label {
+            display: block;
+        }
+        .page-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 20px 24px;
+            background: linear-gradient(180deg, rgba(247, 248, 250, 0.1) 0%, rgba(247, 248, 250, 0.95) 35%, #F7F8FA 100%);
+            backdrop-filter: saturate(180%) blur(18px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .primary-btn {
+            width: 100%;
+            border: none;
+            border-radius: 999px;
+            background: black;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 16px;
+            cursor: pointer;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .primary-btn:active { transform: scale(0.98); }
+        .primary-btn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .legal-text {
+            text-align: center;
+            font-size: 11px;
+            color: rgba(15, 23, 42, 0.5);
+            line-height: 1.4;
+        }
+        .legal-text a { color: inherit; text-decoration: underline; }
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            font-size: 15px;
+            color: rgba(15, 23, 42, 0.65);
+            z-index: 1000;
+        }
+        .loading-overlay.hidden { display: none; }
+        .loading-spinner {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 3px solid rgba(148, 163, 184, 0.35);
+            border-top-color: #2563EB;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .blocked-view {
+            display: none;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .blocked-card {
+            background: white;
+            border-radius: 28px;
+            padding: 32px 28px;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        }
+        .blocked-icon {
+            width: 68px;
+            height: 68px;
+            border-radius: 999px;
+            background: #E0EDFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 18px;
+        }
+        .blocked-card h2 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .blocked-card p {
+            font-size: 15px;
+            color: rgba(15, 23, 42, 0.6);
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <span>Ma'lumotlar yuklanmoqda...</span>
+    </div>
+
+    <section class="page" id="content" style="visibility:hidden;">
+        <header class="page-header">
+            <span>Plus paketlar</span>
+            <h1>Foydalanish hajmingizni tanlang</h1>
+            <p>Matn va ovozli kiritish limitini o'zingizga mos ravishda tanlang. Qolgan barcha imkoniyatлар cheksiz.</p>
+        </header>
+
+        <div class="info-banner" id="infoBanner"></div>
+
+        <div class="subscription-card" id="subscriptionInfo">
+            <div class="subscription-status" id="subscriptionStatus">Faol paket</div>
+            <div class="subscription-name" id="subscriptionName">Plus</div>
+            <div class="subscription-meta">
+                <span><span class="subscription-label">Muddati:</span> <span class="subscription-value" id="subscriptionExpiry">-</span></span>
+                <span><span class="subscription-label">Limitlar:</span> <span class="subscription-value" id="subscriptionLimits">-</span></span>
+            </div>
+        </div>
+
+        <div class="packages-grid" id="packagesGrid">
+            {% for package in plus_packages %}
+            <button class="package-card" data-code="{{ package.code }}" data-price="{{ package.price }}" data-text="{{ package.text_limit }}" data-voice="{{ package.voice_limit }}">
+                {% if package.badge %}
+                <span class="package-badge">{{ package.badge }}</span>
+                {% endif %}
+                <div class="package-title">{{ package.title }}</div>
+                <div class="package-tagline">{{ package.tagline }}</div>
+                <div class="package-metrics">
+                    <div class="metric"><img src="/static/icons/verify.svg" alt=""> <span>{{ package.text_limit }} ta matn</span></div>
+                    <div class="metric"><img src="/static/icons/verify.svg" alt=""> <span>{{ package.voice_limit }} ta ovoz</span></div>
+                    <div class="metric"><img src="/static/icons/verify.svg" alt=""> <span>Boshqa funksiyalar cheksiz</span></div>
+                </div>
+                <div class="package-price">{{ '{:,}'.format(package.price).replace(',', ' ') }} so'm</div>
+                <div class="package-active-label">Aktiv paket</div>
+            </button>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="blocked-view" id="blockedView">
+        <div class="blocked-card">
+            <div class="blocked-icon">
+                <img src="/static/icons/verify.svg" alt="" style="width:28px;height:28px;">
+            </div>
+            <h2>Max obuna allaqachon faol</h2>
+            <p>Hozirda sizda eng yuqori tarif ishga tushgan. Barcha imkoniyatlar ochiq, qo'shimcha paket sotib olish shart emas.</p>
+            <button class="primary-btn" id="blockedCloseBtn">Asosiy menyuga qaytish</button>
+        </div>
+    </section>
+
+    <footer class="page-footer" id="footer" style="visibility:hidden;">
+        <button class="primary-btn" id="purchaseBtn" disabled>Paketni tanlang</button>
+        <p class="legal-text">Sotib olish orqali <a href="/terms">foydalanish shartlari</a> va <a href="/privacy">maxfiylik siyosati</a>ga rozilik bildirasiz.</p>
+    </footer>
+
+    <script>
+        (function () {
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+                tg.disableVerticalSwipes();
+            }
+
+            const packages = Array.from(document.querySelectorAll('.package-card'));
+            const purchaseBtn = document.getElementById('purchaseBtn');
+            const infoBanner = document.getElementById('infoBanner');
+            const subscriptionInfo = document.getElementById('subscriptionInfo');
+            const subscriptionStatus = document.getElementById('subscriptionStatus');
+            const subscriptionName = document.getElementById('subscriptionName');
+            const subscriptionExpiry = document.getElementById('subscriptionExpiry');
+            const subscriptionLimits = document.getElementById('subscriptionLimits');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const blockedView = document.getElementById('blockedView');
+            const content = document.getElementById('content');
+            const footer = document.getElementById('footer');
+            const blockedCloseBtn = document.getElementById('blockedCloseBtn');
+
+            let userId = null;
+            let selectedPackage = null;
+            let currentPackageCode = null;
+            let currentTariff = null;
+            let currentPackageMeta = null;
+            let currentExpiry = null;
+
+            function haptic() {
+                if (tg?.HapticFeedback?.impactOccurred) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+            }
+
+            function formatPrice(amount) {
+                return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            }
+
+            function hideLoading() {
+                loadingOverlay.classList.add('hidden');
+                content.style.visibility = 'visible';
+                footer.style.visibility = 'visible';
+            }
+
+            function showBanner(text) {
+                infoBanner.textContent = text;
+                infoBanner.classList.add('show');
+            }
+
+            function hideBanner() {
+                infoBanner.classList.remove('show');
+            }
+
+            function updateButton() {
+                if (!selectedPackage) {
+                    purchaseBtn.textContent = 'Paketni tanlang';
+                    purchaseBtn.setAttribute('disabled', 'true');
+                    return;
+                }
+                const amount = selectedPackage.dataset.price;
+                purchaseBtn.textContent = `${formatPrice(amount)} so'mga sotib olish`;
+                if (selectedPackage.dataset.code === currentPackageCode) {
+                    purchaseBtn.textContent = `${formatPrice(amount)} so'mga limitni yangilash`;
+                }
+                purchaseBtn.removeAttribute('disabled');
+            }
+
+            function markActivePackages() {
+                packages.forEach((card) => {
+                    if (card.dataset.code === currentPackageCode) {
+                        card.classList.add('active');
+                    } else {
+                        card.classList.remove('active');
+                    }
+                });
+            }
+
+            function selectPackage(card) {
+                if (!card) return;
+                if (card === selectedPackage) return;
+                packages.forEach(pkg => pkg.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedPackage = card;
+                hideBanner();
+                if (card.dataset.code === currentPackageCode) {
+                    showBanner('Bu paket sizda allaqachon faol. Sotib olsangiz limitlar yangilanadi.');
+                }
+                updateButton();
+                haptic();
+            }
+
+            packages.forEach(card => {
+                card.addEventListener('click', () => selectPackage(card));
+            });
+
+            if (blockedCloseBtn) {
+                blockedCloseBtn.addEventListener('click', () => {
+                    if (tg) {
+                        tg.close();
+                    } else {
+                        window.close();
+                    }
+                });
+            }
+
+            purchaseBtn.addEventListener('click', () => {
+                if (!selectedPackage || !userId) return;
+                try {
+                    haptic();
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/payment-plus';
+                    form.innerHTML = `
+                        <input type="hidden" name="user_id" value="${userId}">
+                        <input type="hidden" name="package_code" value="${selectedPackage.dataset.code}">
+                    `;
+                    document.body.appendChild(form);
+                    form.submit();
+                } catch (err) {
+                    console.error('Checkout error:', err);
+                    if (tg?.showAlert) {
+                        tg.showAlert('To\'lovni boshlashda xatolik yuz berdi.');
+                    } else {
+                        alert('To\'lovni boshlashda xatolik yuz berdi.');
+                    }
+                }
+            });
+
+            async function resolveUserId() {
+                if (tg?.initDataUnsafe?.user?.id) {
+                    return tg.initDataUnsafe.user.id;
+                }
+                if (tg?.initData) {
+                    try {
+                        const params = new URLSearchParams(tg.initData);
+                        const userStr = params.get('user');
+                        if (userStr) {
+                            const parsed = JSON.parse(decodeURIComponent(userStr));
+                            if (parsed?.id) return parsed.id;
+                        }
+                    } catch (err) {
+                        console.error('initData parse error:', err);
+                    }
+                }
+                return null;
+            }
+
+            function showBlockedView(tariffCode) {
+                content.style.display = 'none';
+                footer.style.display = 'none';
+                blockedView.style.display = 'flex';
+                const title = blockedView.querySelector('h2');
+                const text = blockedView.querySelector('p');
+                if (tariffCode === 'PRO' || tariffCode === 'MAX') {
+                    title.textContent = 'Max obuna allaqachon faol';
+                    text.textContent = 'Sizda eng yuqori tarif ishga tushgan. Qo\'shimcha paket sotib olish mavjud imkoniyatlarni o\'zgartirmaydi.';
+                }
+            }
+
+            async function loadTariff() {
+                try {
+                    const response = await fetch(`/api/user/tariff/${userId}`);
+                    if (!response.ok) return;
+                    const json = await response.json();
+                    currentTariff = (json?.data?.tariff || 'Bepul').toString().toUpperCase();
+                    currentPackageCode = (json?.data?.package?.code || '').toString().toUpperCase();
+                    currentPackageMeta = json?.data?.package || null;
+                    currentExpiry = json?.data?.expires_at || null;
+                    subscriptionInfo.classList.remove('show');
+                    if (currentTariff === 'PRO' || currentTariff === 'MAX') {
+                        showBlockedView(currentTariff);
+                        return false;
+                    }
+                    if (currentTariff === 'PLUS') {
+                        renderSubscriptionInfo();
+                    }
+                    markActivePackages();
+                    if (currentPackageCode) {
+                        const activeCard = packages.find(card => card.dataset.code === currentPackageCode);
+                        if (activeCard) {
+                            selectPackage(activeCard);
+                        }
+                    } else if (packages.length) {
+                        selectPackage(packages[0]);
+                    }
+                    return true;
+                } catch (err) {
+                    console.error('Tariff load error:', err);
+                    return true;
+                }
+            }
+
+            function renderSubscriptionInfo() {
+                subscriptionInfo.classList.add('show');
+                subscriptionStatus.textContent = 'Faol paket';
+                const title = currentPackageMeta?.title || 'Plus';
+                subscriptionName.textContent = title;
+                const textLimit = currentPackageMeta?.text_limit;
+                const voiceLimit = currentPackageMeta?.voice_limit;
+                if (textLimit && voiceLimit) {
+                    subscriptionLimits.textContent = `${textLimit} ta matn / ${voiceLimit} ta ovoz`;
+                } else {
+                    subscriptionLimits.textContent = 'Limitlar mavjud';
+                }
+                if (currentExpiry) {
+                    try {
+                        const date = new Date(currentExpiry);
+                        subscriptionExpiry.textContent = date.toLocaleDateString('uz-UZ', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                    } catch (_) {
+                        subscriptionExpiry.textContent = currentExpiry;
+                    }
+                } else {
+                    subscriptionExpiry.textContent = 'Avtomatik yangilanadi';
+                }
+                showBanner('Faol paket maʼlumotlari yangilandi.');
+            }
+
+            async function init() {
+                userId = await resolveUserId();
+                if (!userId) {
+                    hideLoading();
+                    if (tg?.showAlert) {
+                        tg.showAlert('Telegram foydalanuvchisini aniqlab bo\'lmadi. Iltimos, mini ilovani Telegram orqali oching.');
+                    }
+                    return;
+                }
+                const proceed = await loadTariff();
+                hideLoading();
+                if (proceed === false) {
+                    return;
+                }
+                if (!selectedPackage && packages.length) {
+                    selectPackage(packages[0]);
+                }
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>

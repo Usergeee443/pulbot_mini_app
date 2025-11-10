@@ -1,37 +1,24 @@
 import os
+
 from dotenv import load_dotenv
 
-# .env faylini yuklash
 load_dotenv()
 
-# Ma'lumotlar bazasi sozlamalari
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', ''),
     'port': int(os.getenv('DB_PORT', 3306)),
     'user': os.getenv('DB_USER', ''),
     'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', '')
+    'database': os.getenv('DB_NAME', ''),
 }
 
-# Bot sozlamalari
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-WEBHOOK_URL = os.getenv('WEBHOOK_URL')
+BOT_TOKEN = os.getenv('BOT_TOKEN', '')
 
-# Flask sozlamalari
-FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
-FLASK_PORT = int(os.getenv('FLASK_PORT', 8080))
-SECRET_KEY = os.getenv('SECRET_KEY', '')
-
-# OpenAI sozlamalari
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-
-# Click.uz to'lov sozlamalari (HECH QANDAY HOLATDA HARDCODE QILINMASIN!)
 CLICK_SECRET_KEY = os.getenv('CLICK_SECRET_KEY', '')
 CLICK_SERVICE_ID = os.getenv('CLICK_SERVICE_ID', '')
 CLICK_MERCHANT_ID = os.getenv('CLICK_MERCHANT_ID', '')
 CLICK_MERCHANT_USER_ID = os.getenv('CLICK_MERCHANT_USER_ID', '')
 
-# Tarif tizimi
 TARIFF_LIMITS = {
     'Bepul': {
         'transactions_per_month': 50,
@@ -39,85 +26,54 @@ TARIFF_LIMITS = {
         'advanced_analytics': False,
         'export_data': False,
         'custom_categories': 5,
-        'charts_count': 1
+        'charts_count': 1,
     },
     'Plus': {
-        'transactions_per_month': -1,  # Unlimited
-        'ai_requests_per_day': 0,
-        'advanced_analytics': True,
-        'export_data': True,
-        'custom_categories': -1,  # Unlimited
-        'charts_count': 5
-    },
-    'Pro': {
-        'transactions_per_month': -1,  # Unlimited
-        'ai_requests_per_day': -1,  # Unlimited
-        'advanced_analytics': True,
-        'export_data': True,
-        'custom_categories': -1,  # Unlimited
-        'charts_count': 10
-    },
-    'Max': {
-        'transactions_per_month': -1,  # Unlimited
-        'ai_requests_per_day': -1,  # Unlimited
-        'advanced_analytics': True,
-        'export_data': True,
-        'custom_categories': -1,  # Unlimited
-        'charts_count': 10
-    },
-    'Biznes': {
         'transactions_per_month': -1,
         'ai_requests_per_day': 0,
         'advanced_analytics': True,
         'export_data': True,
         'custom_categories': -1,
-        'charts_count': 5
+        'charts_count': 5,
     },
-    'Biznes Plus': {
-        'transactions_per_month': -1,
-        'ai_requests_per_day': 10,
-        'advanced_analytics': True,
-        'export_data': True,
-        'custom_categories': -1,
-        'charts_count': 10
-    },
-    'Biznes Max': {
+    'PRO': {
         'transactions_per_month': -1,
         'ai_requests_per_day': -1,
         'advanced_analytics': True,
         'export_data': True,
         'custom_categories': -1,
-        'charts_count': 10
+        'charts_count': 10,
     },
-    'Oila': {
-        'transactions_per_month': -1,
-        'ai_requests_per_day': 0,
-        'advanced_analytics': True,
-        'export_data': True,
-        'custom_categories': -1,
-        'charts_count': 5
-    },
-    'Oila Plus': {
-        'transactions_per_month': -1,
-        'ai_requests_per_day': 10,
-        'advanced_analytics': True,
-        'export_data': True,
-        'custom_categories': -1,
-        'charts_count': 10
-    },
-    'Oila Max': {
-        'transactions_per_month': -1,
-        'ai_requests_per_day': -1,
-        'advanced_analytics': True,
-        'export_data': True,
-        'custom_categories': -1,
-        'charts_count': 10
-    }
 }
 
-# Qo'shimcha sozlamalar
-DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+PLUS_PACKAGES = {
+    'T300V100': {
+        'code': 'T300V100',
+        'title': 'Mini',
+        'tagline': "300 ta matn, 100 ta ovoz",
+        'text_limit': 300,
+        'voice_limit': 100,
+        'price': 9900,
+        'badge': "Boshlang'ich",
+    },
+    'T750V250': {
+        'code': 'T750V250',
+        'title': 'Optimal',
+        'tagline': "750 ta matn, 250 ta ovoz",
+        'text_limit': 750,
+        'voice_limit': 250,
+        'price': 19990,
+        'badge': 'Eng ommabop',
+    },
+    'T1750V600': {
+        'code': 'T1750V600',
+        'title': 'Pro',
+        'tagline': "1750 ta matn, 600 ta ovoz",
+        'text_limit': 1750,
+        'voice_limit': 600,
+        'price': 39990,
+        'badge': 'Eng ko\'p imkoniyat',
+    },
+}
 
-# Mini app URL
-MINI_APP_URL = f"{WEBHOOK_URL}/miniapp" if WEBHOOK_URL and WEBHOOK_URL != 'YOUR_NGROK_URL_HERE' else f'http://localhost:{FLASK_PORT}/miniapp'
+PLUS_PACKAGE_SEQUENCE = ['T300V100', 'T750V250', 'T1750V600']

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Balans AI - PRO Obuna</title>
+    <title>Balans AI - Max tarif</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -15,7 +15,6 @@
             -webkit-user-select: none; user-select: none;
             touch-action: pan-y; -webkit-text-size-adjust: 100%;
         }
-        /* Scrollbarni yashirish (iOS/Android/WebKit) */
         * { scrollbar-width: none; -ms-overflow-style: none; }
         *::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
@@ -30,11 +29,16 @@
         .feature-icon { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
         .feature-icon svg { width: 22px; height: 22px; stroke: #5A8EF4; stroke-width: 2.5; }
         .feature-text { font-size: 16px; color: rgba(0,0,0,0.85); line-height: 1.5; font-weight: 400; }
-        /* Success banner */
+        .subscription-card { display: none; flex-direction: column; gap: 8px; margin-bottom: 20px; background: #ffffff; border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 20px; padding: 18px 20px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05); }
+        .subscription-card.show { display: flex; }
+        .subscription-status { font-size: 12px; font-weight: 700; color: #16A34A; letter-spacing: 0.4px; text-transform: uppercase; }
+        .subscription-name { font-size: 20px; font-weight: 700; color: #0F172A; letter-spacing: -0.3px; }
+        .subscription-meta { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: rgba(15, 23, 42, 0.65); }
+        .subscription-label { font-weight: 600; color: rgba(15, 23, 42, 0.6); }
+        .subscription-value { font-weight: 600; color: #0F172A; }
         .success-banner { display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: #e8f8ee; color: #137a2a; border: 1px solid #c6eed3; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 2000; }
         .success-banner.show { display: inline-block; }
 
-        /* Bottom Sheet */
         .bottom-sheet-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .bottom-sheet-overlay.active { opacity: 1; pointer-events: all; }
         .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 24px 24px 0 0; padding: 24px 20px 40px; z-index: 1001; transform: translateY(100%); transition: transform 0.3s ease; max-height: 80vh; overflow-y: auto; }
@@ -63,21 +67,44 @@
 
         .sheet-action-btn { width: 100%; background: #000000; color: white; border: none; padding: 16px; border-radius: 100px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 24px; }
         .sheet-action-btn:active { opacity: 0.8; }
-        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <div class="success-banner" id="successBanner">✅ Sizda PRO obuna faol. Qayta to'lov kerak emas.</div>
+    <div class="loading-overlay" id="loadingOverlay" style="position:fixed;inset:0;background:white;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-size:15px;color:rgba(15,23,42,0.65);">
+        <div class="loading-spinner" style="width:42px;height:42px;border-radius:50%;border:3px solid rgba(148,163,184,0.35);border-top-color:#2563EB;animation:spin 0.9s linear infinite;"></div>
+        <span>Ma'lumotlar yuklanmoqda...</span>
+    </div>
+    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
 
-    <div class="payment-container" id="mainView">
+    <div class="payment-container" id="mainView" style="visibility:hidden;">
         <div class="gradient-overlay pro" id="gradientOverlay"></div>
 
         <div class="payment-header">
-            <h1 id="tariffTitle">Pro</h1>
-            <p id="tariffDesc">AI bilan yanada chuqurroq nazorat va tahlil.</p>
+            <h1 id="tariffTitle">Max</h1>
+            <p id="tariffDesc">AI yordamchisi bilan to'liq funksionallik va cheksiz imkoniyatlar.</p>
         </div>
 
         <div class="content-area">
+            <div class="subscription-card" id="subscriptionSummary" style="display:none;">
+                <div class="subscription-status">Max tarifi aktiv</div>
+                <div class="subscription-name">Tarif ma'lumotlari</div>
+                <div class="subscription-meta">
+                    <span><span class="subscription-label">Sotib olingan sana:</span> <span class="subscription-value" id="summaryPurchasedAt">-</span></span>
+                    <span><span class="subscription-label">Tugash sanasi:</span> <span class="subscription-value" id="summaryExpiry">-</span></span>
+                    <span><span class="subscription-label">Qolgan kunlar:</span> <span class="subscription-value" id="summaryRemaining">-</span></span>
+                    <span><span class="subscription-label">To'langan summa:</span> <span class="subscription-value" id="summaryAmount">-</span></span>
+                </div>
+            </div>
+            <div class="subscription-card" id="subscriptionBenefits" style="display:none;">
+                <div class="subscription-name">Tarif imkoniyatlari</div>
+                <div class="subscription-meta" style="gap:8px;">
+                    <span>🤖 AI bilan real vaqtda suhbat</span>
+                    <span>📊 Shaxsiy tahlil va moliyaviy maslahatlar</span>
+                    <span>📈 Qo'shimcha 5 ta kengaytirilgan grafiklar</span>
+                    <span>🧾 Oyiga cheksiz tranzaksiya va to'liq eksport</span>
+                    <span>🔔 Ogohlantirish va eslatmalarni avtomatik yuborish</span>
+                </div>
+            </div>
             <div class="features-list" id="featuresList">
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -86,7 +113,7 @@
                             <path d="M10.7499 2.45031C11.4399 1.86031 12.5699 1.86031 13.2699 2.45031L14.8499 3.81031C15.1499 4.07031 15.7099 4.28031 16.1099 4.28031H17.8099C18.8699 4.28031 19.7399 5.15031 19.7399 6.21031V7.91031C19.7399 8.30031 19.9499 8.87031 20.2099 9.17031L21.5699 10.7503C22.1599 11.4403 22.1599 12.5703 21.5699 13.2703L20.2099 14.8503C19.9499 15.1503 19.7399 15.7103 19.7399 16.1103V17.8103C19.7399 18.8703 18.8699 19.7403 17.8099 19.7403H16.1099C15.7199 19.7403 15.1499 19.9503 14.8499 20.2103L13.2699 21.5703C12.5799 22.1603 11.4499 22.1603 10.7499 21.5703L9.16988 20.2103C8.86988 19.9503 8.30988 19.7403 7.90988 19.7403H6.17988C5.11988 19.7403 4.24988 18.8703 4.24988 17.8103V16.1003C4.24988 15.7103 4.03988 15.1503 3.78988 14.8503L2.43988 13.2603C1.85988 12.5703 1.85988 11.4503 2.43988 10.7603L3.78988 9.17031C4.03988 8.87031 4.24988 8.31031 4.24988 7.92031V6.20031C4.24988 5.14031 5.11988 4.27031 6.17988 4.27031H7.90988C8.29988 4.27031 8.86988 4.06031 9.16988 3.80031L10.7499 2.45031Z" stroke="#5A8EF4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
-                    <div class="feature-text">Bu oddiy kuzatuv emas — bu siz bilan birga o‘ylaydigan, tahlil qiladigan va maslahat beradigan moliyaviy hamroh.</div>
+                    <div class="feature-text">Bu oddiy kuzatuv emas — bu siz bilan birga oʻylaydigan, tahlil qiladigan va maslahat beradigan moliyaviy hamroh.</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -118,7 +145,7 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </div>
-                    <div class="feature-text">Plus’dagi barcha imkoniyatlar + qo‘shimcha 5 ta grafik</div>
+                    <div class="feature-text">Plus paketlaridagi barcha imkoniyatlar + qoʻshimcha 5 ta grafik</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -126,7 +153,7 @@
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                     </div>
-                    <div class="feature-text">Oyiga 10 baravar ko‘p tranzaksiya limiti</div>
+                    <div class="feature-text">Oyiga 10 baravar koʻp tranzaksiya limiti</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">
@@ -139,7 +166,7 @@
             </div>
         </div>
 
-        <button class="action-btn" id="openSheetBtn" onclick="openBottomSheet()">
+        <button class="action-btn" id="openSheetBtn">
             <span id="actionBtnText">49 990 so'm evaziga yangilanish</span>
         </button>
 
@@ -148,8 +175,7 @@
         </div>
     </div>
 
-    <!-- Bottom Sheet -->
-    <div class="bottom-sheet-overlay" id="bottomSheetOverlay" onclick="closeBottomSheet()"></div>
+    <div class="bottom-sheet-overlay" id="bottomSheetOverlay"></div>
     <div class="bottom-sheet" id="bottomSheet">
         <div class="sheet-header">
             <div class="sheet-title">Muddat tanlang</div>
@@ -174,7 +200,7 @@
 
         <div class="payment-methods">
             <div class="payment-section-title">To'lov usuli</div>
-            <div class="payment-method-card click-payment" onclick="handleClickPayment()">
+            <div class="payment-method-card click-payment">
                 <div class="payment-method-name">Click</div>
                 <div class="payment-method-check">✓</div>
             </div>
@@ -184,7 +210,6 @@
     </div>
 
     <script>
-        // Telegram WebApp init
         const tg = window.Telegram?.WebApp;
         if (tg) {
             tg.ready();
@@ -192,20 +217,58 @@
             tg.disableVerticalSwipes();
         }
 
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const mainView = document.getElementById('mainView');
+        const subscriptionSummary = document.getElementById('subscriptionSummary');
+        const summaryPurchasedAt = document.getElementById('summaryPurchasedAt');
+        const summaryExpiry = document.getElementById('summaryExpiry');
+        const summaryRemaining = document.getElementById('summaryRemaining');
+        const summaryAmount = document.getElementById('summaryAmount');
+        const subscriptionBenefits = document.getElementById('subscriptionBenefits');
+        const openSheetBtn = document.getElementById('openSheetBtn');
+        const payBtn = document.getElementById('payBtn');
+        const bottomSheetOverlay = document.getElementById('bottomSheetOverlay');
+        const bottomSheet = document.getElementById('bottomSheet');
+        const sheetClose = bottomSheet.querySelector('.sheet-close');
+        const featuresList = document.getElementById('featuresList');
+
         let currentDuration = 1;
+        let userId = null;
+        let currentTariff = 'Bepul';
+        let currentExpiry = null;
+        let lastPayment = null;
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+            mainView.style.visibility = 'visible';
+        }
+
+        function formatDate(isoString) {
+            if (!isoString) return 'Avtomatik yangilanadi';
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long', day: 'numeric' });
+            } catch (e) {
+                return isoString;
+            }
+        }
+
         function openBottomSheet() {
             hapticFeedback();
-            document.getElementById('bottomSheetOverlay').classList.add('active');
-            document.getElementById('bottomSheet').classList.add('active');
+            if (bottomSheetOverlay) bottomSheetOverlay.classList.add('active');
+            if (bottomSheet) bottomSheet.classList.add('active');
         }
+
         function closeBottomSheet() {
             hapticFeedback();
-            document.getElementById('bottomSheetOverlay').classList.remove('active');
-            document.getElementById('bottomSheet').classList.remove('active');
+            if (bottomSheetOverlay) bottomSheetOverlay.classList.remove('active');
+            if (bottomSheet) bottomSheet.classList.remove('active');
         }
+
         function hapticFeedback() {
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
+
         function selectDuration(months, element) {
             hapticFeedback();
             currentDuration = months;
@@ -213,6 +276,7 @@
             element.classList.add('selected');
             updateActionButton();
         }
+
         function updateActionButton() {
             const monthly = 49990;
             const price = currentDuration === 1 ? monthly : Math.round(monthly * 12 * 0.9);
@@ -221,47 +285,79 @@
             document.getElementById('price12Month').textContent = `${Math.round(monthly * 12 * 0.9).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
         }
 
-        // Subscription lock: agar PRO/PLUS aktiv bo'lsa — to'lashni bloklash
-        async function checkSubscriptionAndLock() {
-            try {
-                let userId = null;
-                if (tg?.initDataUnsafe?.user?.id) userId = tg.initDataUnsafe.user.id;
-                else if (tg?.initData) {
+        async function resolveUserId() {
+            if (tg?.initDataUnsafe?.user?.id) return tg.initDataUnsafe.user.id;
+            if (tg?.initData) {
+                try {
                     const params = new URLSearchParams(tg.initData);
                     const userStr = params.get('user');
-                    if (userStr) userId = JSON.parse(decodeURIComponent(userStr)).id;
+                    if (userStr) {
+                        const parsed = JSON.parse(decodeURIComponent(userStr));
+                        if (parsed?.id) return parsed.id;
+                    }
+                } catch (e) {
+                    console.error('initData parse error:', e);
                 }
-                if (!userId) return;
-                const res = await fetch(`/api/user/tariff/${userId}`);
-                const json = await res.json();
-                const code = (json?.data?.tariff || 'Bepul').toString().toUpperCase();
-                // PRO sahifasida faqat PRO bo'lsa bloklanadi
-                if (code === 'PRO') {
-                    document.getElementById('successBanner').textContent = "✅ Sizda allaqachon PRO obuna faol. Qayta to'lov shart emas.";
-                    document.getElementById('successBanner').classList.add('show');
-                    document.getElementById('openSheetBtn').setAttribute('disabled', 'true');
-                    document.getElementById('payBtn').setAttribute('disabled', 'true');
-                } else {
-                    document.getElementById('successBanner').classList.remove('show');
-                    document.getElementById('openSheetBtn').removeAttribute('disabled');
-                    document.getElementById('payBtn').removeAttribute('disabled');
+            }
+            return null;
+        }
+
+        function renderSubscription() {
+            const isActive = currentTariff === 'PRO' || currentTariff === 'MAX';
+            if (isActive) {
+                const paidDisplay = lastPayment?.paid_at ? formatDate(lastPayment.paid_at) : '—';
+                const amountDisplay = lastPayment?.amount ? `${lastPayment.amount.toLocaleString('uz-UZ')} so'm` : '—';
+                const expiryDisplay = formatDate(currentExpiry);
+                let remainingDays = '—';
+                if (currentExpiry) {
+                    try {
+                        const diffMs = new Date(currentExpiry) - new Date();
+                        if (!Number.isNaN(diffMs)) {
+                            const days = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+                            remainingDays = `${days} kun`;
+                        }
+                    } catch (_) {}
                 }
-            } catch (e) { console.log('check sub error', e); }
+                summaryPurchasedAt.textContent = paidDisplay;
+                summaryExpiry.textContent = expiryDisplay;
+                summaryRemaining.textContent = remainingDays;
+                summaryAmount.textContent = amountDisplay;
+                subscriptionSummary.style.display = 'flex';
+                subscriptionBenefits.style.display = 'flex';
+                if (featuresList) featuresList.style.display = 'none';
+                if (openSheetBtn) openSheetBtn.style.display = 'none';
+                if (payBtn) payBtn.style.display = 'none';
+                closeBottomSheet();
+            } else {
+                subscriptionSummary.style.display = 'none';
+                subscriptionBenefits.style.display = 'none';
+                if (featuresList) featuresList.style.display = 'flex';
+                if (openSheetBtn) openSheetBtn.style.display = 'block';
+                if (payBtn) payBtn.style.display = 'block';
+            }
+        }
+
+        async function loadTariff() {
+            try {
+                const response = await fetch(`/api/user/tariff/${userId}`);
+                if (!response.ok) return;
+                const json = await response.json();
+                currentTariff = (json?.data?.tariff || 'Bepul').toString().toUpperCase();
+                currentExpiry = json?.data?.expires_at || null;
+                lastPayment = json?.data?.last_payment || null;
+                renderSubscription();
+            } catch (e) {
+                console.error('Tariff load error:', e);
+            }
         }
 
         async function processPayment() {
             hapticFeedback();
-            let userId = null;
-            if (tg?.initDataUnsafe?.user?.id) userId = tg.initDataUnsafe.user.id;
-            else if (tg?.initData) {
-                try {
-                    const params = new URLSearchParams(tg.initData);
-                    const userStr = params.get('user');
-                    if (userStr) userId = JSON.parse(decodeURIComponent(userStr)).id;
-                } catch {}
+            if (!userId) {
+                if (tg) tg.showAlert('❌ User ID topilmadi');
+                else alert('❌ User ID topilmadi');
+                return;
             }
-            if (!userId) { if (tg) tg.showAlert('❌ User ID topilmadi'); else alert('❌ User ID topilmadi'); return; }
-
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/payment-pro';
@@ -270,9 +366,35 @@
             document.body.appendChild(form);
             form.submit();
         }
-        function createHiddenInput(name, value) { const i = document.createElement('input'); i.type='hidden'; i.name=name; i.value=value; return i; }
 
-        window.addEventListener('DOMContentLoaded', () => { updateActionButton(); checkSubscriptionAndLock(); });
+        function createHiddenInput(name, value) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            return input;
+        }
+
+        async function init() {
+            updateActionButton();
+            userId = await resolveUserId();
+            if (!userId) {
+                hideLoading();
+                if (tg?.showAlert) {
+                    tg.showAlert('Telegram foydalanuvchisini aniqlashning imkoni bo\'lmadi.');
+                }
+                return;
+            }
+            await loadTariff();
+            hideLoading();
+        }
+
+        if (openSheetBtn) openSheetBtn.addEventListener('click', openBottomSheet);
+        if (bottomSheetOverlay) bottomSheetOverlay.addEventListener('click', closeBottomSheet);
+        if (sheetClose) sheetClose.addEventListener('click', closeBottomSheet);
+        if (payBtn) payBtn.addEventListener('click', processPayment);
+
+        init();
     </script>
 </body>
 </html>
