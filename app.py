@@ -337,6 +337,42 @@ def click_complete():
             click_logger.info(f"COMPLETE_RESPONSE_FAILED: {response}")
             return jsonify(response)
 
+        # Synchronous confirmation to avoid Click side "pending"
+        user_payload = None
+        try:
+            parts = merchant_trans_id.split('_') if merchant_trans_id else []
+            if len(parts) >= 2:
+                user_id = int(parts[0])
+                tariff_token = parts[1].upper()
+                months = 1
+                package_code = None
+                if tariff_token == 'PLUS' and len(parts) >= 3:
+                    third = parts[2]
+                    if third.isdigit():
+                        months = int(third)
+                    else:
+                        package_code = third.upper()
+                elif len(parts) >= 3 and parts[2].isdigit():
+                    months = int(parts[2])
+                normalized_tariff = 'PLUS' if tariff_token == 'PLUS' else tariff_token
+                db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
+                db.activate_tariff(user_id, normalized_tariff, months)
+                package_info = None
+                if package_code:
+                    package_info = PLUS_PACKAGES.get(package_code)
+                    if package_info:
+                        db.assign_user_package(user_id, package_code, package_info['text_limit'], package_info['voice_limit'])
+                amount_value = float(amount) if amount else 0
+                user_payload = {
+                    'user_id': user_id,
+                    'tariff': normalized_tariff,
+                    'amount': amount_value,
+                    'package': package_info,
+                    'package_code': package_code,
+                }
+        except Exception as sync_err:
+            logging.error(f"Immediate confirmation error: {sync_err}")
+
         response = {
             'click_trans_id': int(click_trans_id),
             'merchant_trans_id': merchant_trans_id,
@@ -346,70 +382,32 @@ def click_complete():
         }
         click_logger.info(f"COMPLETE_RESPONSE: {response}")
 
-        def background_update():
+        def notify_telegram(payload):
+            if not payload or not BOT_TOKEN:
+                return
             try:
-                local_merchant_trans_id = merchant_trans_id
-                local_click_trans_id = click_trans_id
-                local_amount = float(amount) if amount else 0
-
-                if not local_merchant_trans_id:
-                    payment = db.get_payment_by_click_trans_id(local_click_trans_id)
-                    if payment:
-                        local_merchant_trans_id = payment.get('merchant_trans_id')
-                        if local_amount == 0 and payment.get('amount'):
-                            local_amount = float(payment['amount'])
-
-                if not local_merchant_trans_id:
-                    return
-
-                parts = local_merchant_trans_id.split('_')
-                if len(parts) < 2:
-                    return
-
-                user_id = int(parts[0])
-                tariff_token = parts[1].upper()
-                months = 1
-                package_code = None
-                package_info = None
-
-                if tariff_token == 'PLUS' and len(parts) >= 3:
-                    third = parts[2]
-                    if third.isdigit():
-                        months = int(third)
-                    else:
-                        package_code = third.upper()
-                elif len(parts) >= 3 and parts[2].isdigit():
-                    months = int(parts[2])
-
-                normalized_tariff = 'PLUS' if tariff_token == 'PLUS' else tariff_token
-
-                db.update_payment_complete(local_merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
-                db.activate_tariff(user_id, normalized_tariff, months)
-
-                if package_code and package_code in PLUS_PACKAGES:
-                    package = PLUS_PACKAGES[package_code]
-                    db.assign_user_package(user_id, package_code, package['text_limit'], package['voice_limit'])
-
-                if BOT_TOKEN:
-                    display_tariff = 'Max' if normalized_tariff == 'PRO' else normalized_tariff
-                    message = (
-                        f"✅ To'lov {int(local_amount):,} so'm muvaffaqiyatli amalga oshirildi!\n\n"
-                        f"Tarifingiz faollashtirildi: {display_tariff}"
+                display_tariff = 'Max' if payload['tariff'] == 'PRO' else payload['tariff']
+                message = (
+                    f"✅ To'lov {int(payload['amount']):,} so'm muvaffaqiyatli amalga oshirildi!\n\n"
+                    f"Tarifingiz faollashtirildi: {display_tariff}"
+                )
+                package_info = payload.get('package')
+                if package_info:
+                    message += (
+                        f"\nPaket: {package_info.get('title', payload.get('package_code'))} "
+                        f"({package_info.get('text_limit', 0)} ta matn / {package_info.get('voice_limit', 0)} ta ovoz)"
                     )
-                    if package_info:
-                        message += (
-                            f"\nPaket: {package_info.get('title', package_code)} "
-                            f"({package_info.get('text_limit', 0)} ta matn / {package_info.get('voice_limit', 0)} ta ovoz)"
-                        )
-                    requests.post(
-                        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                        json={'chat_id': user_id, 'text': message},
-                        timeout=5,
-                    )
+                requests.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                    json={'chat_id': payload['user_id'], 'text': message},
+                    timeout=5,
+                )
             except Exception as err:
-                logging.error(f"Background update error: {err}")
+                logging.error(f"Telegram notification error: {err}")
 
-        threading.Thread(target=background_update, daemon=True).start()
+        if user_payload:
+            threading.Thread(target=notify_telegram, args=(user_payload,), daemon=True).start()
+
         return jsonify(response)
     except Exception as e:
         logging.error(f"Click Complete error: {e}")
