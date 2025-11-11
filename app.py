@@ -35,6 +35,7 @@ try:
     db.ensure_payments_package_column()
     db.create_plus_package_purchases_table()
     db.ensure_plus_purchase_amount_column()
+    db.ensure_plus_purchase_merchant_column()
     db.ensure_payments_discount_columns()
     db.create_promo_codes_table()
     db.create_promo_code_redemptions_table()

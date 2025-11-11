@@ -140,6 +140,21 @@ class Database:
             else:
                 logging.debug(f'ensure_plus_purchase_amount_column: {exc}')
 
+    def ensure_plus_purchase_merchant_column(self):
+        try:
+            self._execute(
+                "ALTER TABLE plus_package_purchases "
+                "ADD COLUMN merchant_trans_id VARCHAR(255) NOT NULL AFTER amount"
+            )
+        except Exception as exc:
+            text = str(exc)
+            if 'Duplicate column name' in text:
+                logging.debug('plus_package_purchases.merchant_trans_id already exists')
+            elif 'Unknown table' in text or "doesn't exist" in text:
+                logging.debug('plus_package_purchases table not found when adding merchant_trans_id column')
+            else:
+                logging.debug(f'ensure_plus_purchase_merchant_column: {exc}')
+
     def ensure_payments_package_column(self):
         try:
             self._execute("ALTER TABLE payments ADD COLUMN package_code VARCHAR(50) NULL")
