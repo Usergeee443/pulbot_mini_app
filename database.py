@@ -118,42 +118,102 @@ class Database:
             package_code VARCHAR(50) NOT NULL,
             amount DECIMAL(15,2) NOT NULL,
             merchant_trans_id VARCHAR(255) NOT NULL,
-            paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            text_limit INT NOT NULL DEFAULT 0,
+            text_used INT NOT NULL DEFAULT 0,
+            voice_limit INT NOT NULL DEFAULT 0,
+            voice_used INT NOT NULL DEFAULT 0,
+            status ENUM('reserved', 'completed', 'cancelled') NOT NULL DEFAULT 'completed',
+            purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_user (user_id),
-            INDEX idx_package (package_code)
+            INDEX idx_package (package_code),
+            UNIQUE KEY uq_plus_merchant_trans_id (merchant_trans_id)
         )
         """
         self._execute(query)
 
-    def ensure_plus_purchase_amount_column(self):
-        try:
-            self._execute(
-                "ALTER TABLE plus_package_purchases "
-                "ADD COLUMN amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER package_code"
-            )
-        except Exception as exc:
-            text = str(exc)
-            if 'Duplicate column name' in text:
-                logging.debug('plus_package_purchases.amount already exists')
-            elif 'Unknown table' in text or "doesn't exist" in text:
-                logging.debug('plus_package_purchases table not found when adding amount column')
-            else:
-                logging.debug(f'ensure_plus_purchase_amount_column: {exc}')
+    def ensure_plus_purchase_columns(self):
+        statements = [
+            ("amount", "ADD COLUMN amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER package_code"),
+            ("merchant_trans_id", "ADD COLUMN merchant_trans_id VARCHAR(255) NOT NULL AFTER amount"),
+            ("text_limit", "ADD COLUMN text_limit INT NOT NULL DEFAULT 0 AFTER merchant_trans_id"),
+            ("text_used", "ADD COLUMN text_used INT NOT NULL DEFAULT 0 AFTER text_limit"),
+            ("voice_limit", "ADD COLUMN voice_limit INT NOT NULL DEFAULT 0 AFTER text_used"),
+            ("voice_used", "ADD COLUMN voice_used INT NOT NULL DEFAULT 0 AFTER voice_limit"),
+            ("status", "ADD COLUMN status ENUM('reserved','completed','cancelled') NOT NULL DEFAULT 'completed' AFTER voice_used"),
+            ("purchased_at", "ADD COLUMN purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER status"),
+            ("updated_at", "ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER purchased_at"),
+        ]
+        for column, clause in statements:
+            try:
+                self._execute(f"ALTER TABLE plus_package_purchases {clause}")
+            except Exception as exc:
+                text = str(exc)
+                if 'Duplicate column name' in text:
+                    logging.debug(f'plus_package_purchases.{column} already exists')
+                elif 'Unknown table' in text or "doesn't exist" in text:
+                    logging.debug('plus_package_purchases table not found when ensuring columns')
+                    break
+                else:
+                    logging.debug(f'ensure_plus_purchase_columns {column}: {exc}')
 
-    def ensure_plus_purchase_merchant_column(self):
+        adjustments = [
+            "MODIFY amount DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "MODIFY merchant_trans_id VARCHAR(255) NOT NULL",
+            "MODIFY text_limit INT NOT NULL DEFAULT 0",
+            "MODIFY text_used INT NOT NULL DEFAULT 0",
+            "MODIFY voice_limit INT NOT NULL DEFAULT 0",
+            "MODIFY voice_used INT NOT NULL DEFAULT 0",
+            "MODIFY status ENUM('reserved','completed','cancelled') NOT NULL DEFAULT 'completed'",
+            "MODIFY purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "MODIFY updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+        ]
+        for clause in adjustments:
+            try:
+                self._execute(f"ALTER TABLE plus_package_purchases {clause}")
+            except Exception as exc:
+                text = str(exc)
+                if 'doesn\'t have a default value' in text or 'check constraint' in text:
+                    logging.debug(f'ensure_plus_purchase_columns adjustment warning: {exc}')
+                elif 'Unknown table' in text or "doesn't exist" in text:
+                    logging.debug('plus_package_purchases table not found when adjusting columns')
+                    break
+                else:
+                    logging.debug(f'ensure_plus_purchase_columns adjustment: {exc}')
+
         try:
             self._execute(
                 "ALTER TABLE plus_package_purchases "
-                "ADD COLUMN merchant_trans_id VARCHAR(255) NOT NULL AFTER amount"
+                "ADD UNIQUE KEY uq_plus_merchant_trans_id (merchant_trans_id)"
             )
         except Exception as exc:
             text = str(exc)
-            if 'Duplicate column name' in text:
-                logging.debug('plus_package_purchases.merchant_trans_id already exists')
+            if 'Duplicate key name' in text or 'Duplicate entry' in text:
+                logging.debug('plus_package_purchases unique constraint already exists')
             elif 'Unknown table' in text or "doesn't exist" in text:
-                logging.debug('plus_package_purchases table not found when adding merchant_trans_id column')
+                logging.debug('plus_package_purchases table not found when ensuring unique constraint')
             else:
-                logging.debug(f'ensure_plus_purchase_merchant_column: {exc}')
+                logging.debug(f'ensure_plus_purchase_columns unique: {exc}')
+
+    def ensure_user_package_limit_defaults(self):
+        statements = [
+            ("text_limit", "ALTER TABLE user_package_limits MODIFY text_limit INT NOT NULL DEFAULT 0"),
+            ("voice_limit", "ALTER TABLE user_package_limits MODIFY voice_limit INT NOT NULL DEFAULT 0"),
+            ("text_used", "ALTER TABLE user_package_limits MODIFY text_used INT NOT NULL DEFAULT 0"),
+            ("voice_used", "ALTER TABLE user_package_limits MODIFY voice_used INT NOT NULL DEFAULT 0"),
+        ]
+        for column, statement in statements:
+            try:
+                self._execute(statement)
+            except Exception as exc:
+                text = str(exc)
+                if 'Duplicate column name' in text or 'Data truncated' in text or 'Invalid default value' in text:
+                    logging.debug(f'user_package_limits.{column} already has default')
+                elif 'Unknown table' in text or "doesn't exist" in text:
+                    logging.debug('user_package_limits table not found when ensuring defaults')
+                    break
+                else:
+                    logging.debug(f'ensure_user_package_limit_defaults {column}: {exc}')
 
     def ensure_payments_package_column(self):
         try:
@@ -369,6 +429,8 @@ class Database:
         return self._execute(query, (merchant_trans_id,), fetchone=True)
 
     def assign_user_package(self, user_id, package_code, text_limit, voice_limit):
+        text_limit_val = int(text_limit) if text_limit is not None else 0
+        voice_limit_val = int(voice_limit) if voice_limit is not None else 0
         query = """
         INSERT INTO user_package_limits (user_id, package_code, text_limit, voice_limit, text_used, voice_used)
         VALUES (%s, %s, %s, %s, 0, 0)
@@ -380,14 +442,54 @@ class Database:
             voice_used = 0,
             updated_at = CURRENT_TIMESTAMP
         """
-        self._execute(query, (user_id, package_code, text_limit, voice_limit))
+        self._execute(query, (user_id, package_code, text_limit_val, voice_limit_val))
 
-    def log_package_purchase(self, user_id, package_code, amount, merchant_trans_id):
+    def log_package_purchase(
+        self,
+        user_id,
+        package_code,
+        amount,
+        merchant_trans_id,
+        *,
+        text_limit=None,
+        voice_limit=None,
+        status='completed',
+    ):
+        text_limit_val = int(text_limit) if text_limit is not None else 0
+        voice_limit_val = int(voice_limit) if voice_limit is not None else 0
+        status_val = status or 'completed'
         query = """
-        INSERT INTO plus_package_purchases (user_id, package_code, amount, merchant_trans_id)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO plus_package_purchases (
+            user_id,
+            package_code,
+            amount,
+            merchant_trans_id,
+            text_limit,
+            text_used,
+            voice_limit,
+            voice_used,
+            status
+        )
+        VALUES (%s, %s, %s, %s, %s, 0, %s, 0, %s)
+        ON DUPLICATE KEY UPDATE
+            amount = VALUES(amount),
+            text_limit = VALUES(text_limit),
+            voice_limit = VALUES(voice_limit),
+            status = VALUES(status),
+            updated_at = CURRENT_TIMESTAMP
         """
-        self._execute(query, (user_id, package_code, amount, merchant_trans_id))
+        self._execute(
+            query,
+            (
+                user_id,
+                package_code,
+                amount,
+                merchant_trans_id,
+                text_limit_val,
+                voice_limit_val,
+                status_val,
+            ),
+        )
 
     def get_user_package_limits(self, user_id):
         query = "SELECT * FROM user_package_limits WHERE user_id = %s"

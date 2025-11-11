@@ -34,8 +34,8 @@ try:
     db.create_user_package_limits_table()
     db.ensure_payments_package_column()
     db.create_plus_package_purchases_table()
-    db.ensure_plus_purchase_amount_column()
-    db.ensure_plus_purchase_merchant_column()
+    db.ensure_plus_purchase_columns()
+    db.ensure_user_package_limit_defaults()
     db.ensure_payments_discount_columns()
     db.create_promo_codes_table()
     db.create_promo_code_redemptions_table()
@@ -591,9 +591,19 @@ def click_complete():
                         logging.error(f"Promo redemption complete error: {promo_err}")
                 if package_code:
                     package_info = PLUS_PACKAGES.get(package_code)
+                    text_limit_val = int(package_info['text_limit']) if package_info and package_info.get('text_limit') is not None else 0
+                    voice_limit_val = int(package_info['voice_limit']) if package_info and package_info.get('voice_limit') is not None else 0
                     if package_info:
                         db.assign_user_package(user_id, package_code, package_info['text_limit'], package_info['voice_limit'])
-                    db.log_package_purchase(user_id, package_code, amount_value, merchant_trans_id)
+                    db.log_package_purchase(
+                        user_id,
+                        package_code,
+                        amount_value,
+                        merchant_trans_id,
+                        text_limit=text_limit_val,
+                        voice_limit=voice_limit_val,
+                        status='completed',
+                    )
                 user_payload = {
                     'user_id': user_id,
                     'tariff': normalized_tariff,
@@ -735,7 +745,17 @@ def manual_complete_payment():
             package = PLUS_PACKAGES[package_code]
             db.assign_user_package(user_id, package_code, package['text_limit'], package['voice_limit'])
             amount_value = float(payment_rec.get('amount')) if payment_rec and payment_rec.get('amount') else 0
-            db.log_package_purchase(user_id, package_code, amount_value, merchant_trans_id)
+            text_limit_val = int(package.get('text_limit')) if package.get('text_limit') is not None else 0
+            voice_limit_val = int(package.get('voice_limit')) if package.get('voice_limit') is not None else 0
+            db.log_package_purchase(
+                user_id,
+                package_code,
+                amount_value,
+                merchant_trans_id,
+                text_limit=text_limit_val,
+                voice_limit=voice_limit_val,
+                status='completed',
+            )
 
         if promo_code_value:
             try:
