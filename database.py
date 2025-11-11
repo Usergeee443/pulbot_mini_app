@@ -334,6 +334,10 @@ class Database:
         query = "SELECT * FROM payments WHERE click_trans_id = %s"
         return self._execute(query, (click_trans_id,), fetchone=True)
 
+    def get_payment_by_merchant_trans_id(self, merchant_trans_id):
+        query = "SELECT * FROM payments WHERE merchant_trans_id = %s"
+        return self._execute(query, (merchant_trans_id,), fetchone=True)
+
     def assign_user_package(self, user_id, package_code, text_limit, voice_limit):
         query = """
         INSERT INTO user_package_limits (user_id, package_code, text_limit, voice_limit, text_used, voice_used)
