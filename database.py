@@ -125,6 +125,21 @@ class Database:
         """
         self._execute(query)
 
+    def ensure_plus_purchase_amount_column(self):
+        try:
+            self._execute(
+                "ALTER TABLE plus_package_purchases "
+                "ADD COLUMN amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER package_code"
+            )
+        except Exception as exc:
+            text = str(exc)
+            if 'Duplicate column name' in text:
+                logging.debug('plus_package_purchases.amount already exists')
+            elif 'Unknown table' in text or "doesn't exist" in text:
+                logging.debug('plus_package_purchases table not found when adding amount column')
+            else:
+                logging.debug(f'ensure_plus_purchase_amount_column: {exc}')
+
     def ensure_payments_package_column(self):
         try:
             self._execute("ALTER TABLE payments ADD COLUMN package_code VARCHAR(50) NULL")
