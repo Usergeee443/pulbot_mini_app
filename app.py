@@ -102,6 +102,131 @@ def _validate_promocode(code: str, plan_type: str, amount: Decimal):
     }
 
 
+def _notify_telegram(payload: dict) -> None:
+    if not payload or not BOT_TOKEN:
+        return
+    try:
+        display_tariff = 'Max' if payload['tariff'] == 'PRO' else payload['tariff']
+        message = (
+            f"✅ To'lov {int(payload['amount']):,} so'm muvaffaqiyatli amalga oshirildi!\n\n"
+            f"Tarifingiz faollashtirildi: {display_tariff}"
+        )
+        package_info = payload.get('package')
+        if package_info:
+            message += (
+                f"\nPaket: {package_info.get('title', payload.get('package_code'))} "
+                f"({package_info.get('text_limit', 0)} ta matn / {package_info.get('voice_limit', 0)} ta ovoz)"
+            )
+        requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            json={'chat_id': payload['user_id'], 'text': message},
+            timeout=5,
+        )
+    except Exception as err:
+        logging.error(f"Telegram notification error: {err}")
+
+
+def _process_payment_success(merchant_trans_id: str, amount_value: float, *, update_payment: bool = True, send_notification: bool = True) -> None:
+    try:
+        if update_payment:
+            try:
+                db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
+            except Exception as update_err:
+                logging.error(f"Payment status update error: {update_err}")
+
+        payment_rec = None
+        try:
+            payment_rec = db.get_payment_by_merchant_trans_id(merchant_trans_id)
+        except Exception as fetch_err:
+            logging.error(f"Fetch payment error: {fetch_err}")
+
+        user_id = None
+        normalized_tariff = None
+        package_code = None
+        promo_code_value = None
+        months = 1
+
+        if payment_rec:
+            try:
+                user_id = int(payment_rec.get('user_id'))
+            except (TypeError, ValueError):
+                user_id = None
+            normalized_tariff = (payment_rec.get('tariff') or 'PLUS').upper()
+            package_code = payment_rec.get('package_code')
+            promo_code_value = (payment_rec.get('promo_code') or '').strip() or None
+            try:
+                amount_value = float(payment_rec.get('amount') or amount_value or 0)
+            except (TypeError, ValueError):
+                amount_value = float(amount_value or 0)
+        else:
+            parts = merchant_trans_id.split('_') if merchant_trans_id else []
+            if len(parts) >= 2:
+                try:
+                    user_id = int(parts[0])
+                except (TypeError, ValueError):
+                    user_id = None
+                tariff_token = parts[1].upper()
+                normalized_tariff = 'PLUS' if tariff_token == 'PLUS' else tariff_token
+                if tariff_token == 'PLUS' and len(parts) >= 3:
+                    third = parts[2]
+                    if third.isdigit():
+                        months = int(third)
+                    else:
+                        package_code = third.upper()
+                elif len(parts) >= 3 and parts[2].isdigit():
+                    months = int(parts[2])
+
+        if not (normalized_tariff and user_id):
+            return
+
+        try:
+            db.activate_tariff(user_id, normalized_tariff, months)
+        except Exception as activate_err:
+            logging.error(f"Activate tariff error: {activate_err}")
+
+        package_info = None
+        if promo_code_value:
+            try:
+                db.update_promo_redemption_status(merchant_trans_id, 'completed')
+                db.increment_promo_code_usage(promo_code_value)
+            except Exception as promo_err:
+                logging.error(f"Promo redemption complete error: {promo_err}")
+
+        if package_code:
+            package_info = PLUS_PACKAGES.get(package_code)
+            text_limit_val = int(package_info['text_limit']) if package_info and package_info.get('text_limit') is not None else 0
+            voice_limit_val = int(package_info['voice_limit']) if package_info and package_info.get('voice_limit') is not None else 0
+            if package_info:
+                try:
+                    db.assign_user_package(user_id, package_code, package_info['text_limit'], package_info['voice_limit'])
+                except Exception as assign_err:
+                    logging.error(f"Assign package error: {assign_err}")
+            try:
+                db.log_package_purchase(
+                    user_id,
+                    package_code,
+                    amount_value,
+                    merchant_trans_id,
+                    text_limit=text_limit_val,
+                    voice_limit=voice_limit_val,
+                    status='completed',
+                )
+            except Exception as log_err:
+                logging.error(f"Log package purchase error: {log_err}")
+
+        payload = {
+            'user_id': user_id,
+            'tariff': normalized_tariff,
+            'amount': amount_value,
+            'package': package_info,
+            'package_code': package_code,
+        }
+        if send_notification and payload:
+            threading.Thread(target=_notify_telegram, args=(payload,), daemon=True).start()
+    except Exception as err:
+        logging.error(f"Payment processing error: {err}")
+
+
 @app.route('/')
 def root():
     return redirect('/payment-plus')
@@ -547,72 +672,13 @@ def click_complete():
             click_logger.info(f"COMPLETE_RESPONSE_FAILED: {response}")
             return jsonify(response)
 
-        # Synchronous confirmation to avoid Click side "pending"
-        user_payload = None
-        try:
-            payment_rec = db.get_payment_by_merchant_trans_id(merchant_trans_id)
-            user_id = None
-            normalized_tariff = None
-            package_code = None
-            amount_value = float(amount) if amount else 0
-            months = 1
-            promo_code_value = None
-
-            if payment_rec:
-                user_id = int(payment_rec.get('user_id'))
-                normalized_tariff = (payment_rec.get('tariff') or 'PLUS').upper()
-                package_code = payment_rec.get('package_code')
-                amount_value = float(payment_rec.get('amount') or 0)
-                promo_code_value = (payment_rec.get('promo_code') or '').strip() or None
-            else:
-                parts = merchant_trans_id.split('_') if merchant_trans_id else []
-                if len(parts) >= 2:
-                    user_id = int(parts[0])
-                    tariff_token = parts[1].upper()
-                    normalized_tariff = 'PLUS' if tariff_token == 'PLUS' else tariff_token
-                    if tariff_token == 'PLUS' and len(parts) >= 3:
-                        third = parts[2]
-                        if third.isdigit():
-                            months = int(third)
-                        else:
-                            package_code = third.upper()
-                    elif len(parts) >= 3 and parts[2].isdigit():
-                        months = int(parts[2])
-
-            if normalized_tariff and user_id:
-                db.update_payment_complete(merchant_trans_id, status='confirmed', error_code=0, error_note='Success')
-                db.activate_tariff(user_id, normalized_tariff, months)
-                package_info = None
-                if promo_code_value:
-                    try:
-                        db.update_promo_redemption_status(merchant_trans_id, 'completed')
-                        db.increment_promo_code_usage(promo_code_value)
-                    except Exception as promo_err:
-                        logging.error(f"Promo redemption complete error: {promo_err}")
-                if package_code:
-                    package_info = PLUS_PACKAGES.get(package_code)
-                    text_limit_val = int(package_info['text_limit']) if package_info and package_info.get('text_limit') is not None else 0
-                    voice_limit_val = int(package_info['voice_limit']) if package_info and package_info.get('voice_limit') is not None else 0
-                    if package_info:
-                        db.assign_user_package(user_id, package_code, package_info['text_limit'], package_info['voice_limit'])
-                    db.log_package_purchase(
-                        user_id,
-                        package_code,
-                        amount_value,
-                        merchant_trans_id,
-                        text_limit=text_limit_val,
-                        voice_limit=voice_limit_val,
-                        status='completed',
-                    )
-                user_payload = {
-                    'user_id': user_id,
-                    'tariff': normalized_tariff,
-                    'amount': amount_value,
-                    'package': package_info,
-                    'package_code': package_code,
-                }
-        except Exception as sync_err:
-            logging.error(f"Immediate confirmation error: {sync_err}")
+        amount_value = float(amount) if amount else 0
+        threading.Thread(
+            target=_process_payment_success,
+            args=(merchant_trans_id, amount_value),
+            kwargs={'update_payment': True, 'send_notification': True},
+            daemon=True,
+        ).start()
 
         response = {
             'click_trans_id': int(click_trans_id),
@@ -622,32 +688,6 @@ def click_complete():
             'error_note': 'Success',
         }
         click_logger.info(f"COMPLETE_RESPONSE: {response}")
-
-        def notify_telegram(payload):
-            if not payload or not BOT_TOKEN:
-                return
-            try:
-                display_tariff = 'Max' if payload['tariff'] == 'PRO' else payload['tariff']
-                message = (
-                    f"✅ To'lov {int(payload['amount']):,} so'm muvaffaqiyatli amalga oshirildi!\n\n"
-                    f"Tarifingiz faollashtirildi: {display_tariff}"
-                )
-                package_info = payload.get('package')
-                if package_info:
-                    message += (
-                        f"\nPaket: {package_info.get('title', payload.get('package_code'))} "
-                        f"({package_info.get('text_limit', 0)} ta matn / {package_info.get('voice_limit', 0)} ta ovoz)"
-                    )
-                requests.post(
-                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                    json={'chat_id': payload['user_id'], 'text': message},
-                    timeout=5,
-                )
-            except Exception as err:
-                logging.error(f"Telegram notification error: {err}")
-
-        if user_payload:
-            threading.Thread(target=notify_telegram, args=(user_payload,), daemon=True).start()
 
         return jsonify(response)
     except Exception as e:
